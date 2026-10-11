@@ -40,7 +40,7 @@ function money(n: number | null): string {
 // The rule lives in ./reconciliation so the overview table can share it;
 // re-exported here for existing imports and tests.
 export { bankReconciledStale } from "./reconciliation";
-import { bankReconciledStale, unreconciledSinceFor, UNRECONCILED_SINCE_RULE_FROM } from "./reconciliation";
+// (bank-not-reconciled feed item disabled — see note in buildFeed)
 
 export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; cleared: FeedEvent[]; notes: string[] } {
   const events: FeedEvent[] = [];
@@ -141,24 +141,9 @@ export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; cleared:
       events.push({ ...base, eventKey: "data:stale", kind: "data", severity: 1, headline: "Snapshot out of date", before: null, after: now.detail, date: ctx.today, href: settingsHref });
     }
 
-    // Bank not reconciled: the newest reconciled bank transaction is old, or
-    // the file has none at all. Only for connected files with nightly figures.
-    if (kAnchor && kAnchor.slice(0, 10) >= UNRECONCILED_SINCE_RULE_FROM && conns.some((x) => x.status === "connected")) {
-      const rec = unreconciledSinceFor(kf.get(kAnchor));
-      if (bankReconciledStale(rec, kAnchor)) {
-        events.push({
-          ...base,
-          eventKey: "data:bank_not_reconciled",
-          kind: "data",
-          severity: 1,
-          headline: rec === null ? "Bank never reconciled" : "Bank not reconciled recently",
-          before: null,
-          after: rec === null ? "No reconciled bank transactions" : `Last reconciled to ${rec}`,
-          date: kAnchor,
-          href: settingsHref,
-        });
-      }
-    }
+    // "Bank not reconciled" is switched off: the signal counted coded-but-never-
+    // reconciled lines on closed/archived accounts, so it reported years-old
+    // dates for files reconciled to today. Re-enable only once proven correct.
 
     // Monthly report not sent by the 15th business day.
     const due = nthBusinessDay(ctx.today, REPORT_NOT_SENT.businessDay);
