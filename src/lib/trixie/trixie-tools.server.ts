@@ -75,15 +75,6 @@ async function perFile<T>(
   };
 }
 
-async function bankChoices(ctx: TrixieContext, tenantId: string) {
-  const { data } = await (ctx.supabase as any)
-    .from("client_bank_account_classifications")
-    .select("client_id, tenant_id, account_id, classification")
-    .eq("client_id", ctx.clientId)
-    .eq("tenant_id", tenantId);
-  return data ?? [];
-}
-
 async function balanceSheetAnalysis(ctx: TrixieContext, tenantId: string) {
   const [bs, accounts] = await Promise.all([snapshot(ctx, tenantId, "balance_sheet"), snapshot(ctx, tenantId, "accounts")]);
   if (!bs || !accounts) return null;
@@ -99,7 +90,6 @@ async function balanceSheetAnalysis(ctx: TrixieContext, tenantId: string) {
 
 async function readCash(ctx: TrixieContext) {
   return perFile(ctx, "cashflow", "Cash at bank (Balance Sheet)", async (tenantId) => {
-    void bankChoices; // classifications are applied inside readSnapshot('accounts')
     const r = await balanceSheetAnalysis(ctx, tenantId);
     if (!r || r.analysis.status !== "assessed" || r.analysis.cashAtBank.status !== "assessed") {
       return { file: "", available: false, reason: "No saved Balance Sheet figures are available yet for this file." };
