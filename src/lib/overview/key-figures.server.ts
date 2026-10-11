@@ -71,7 +71,7 @@ export async function writeKeyFigures(target: { clientId: string; firmId: string
   const { data: cls, error: clsErr } = await db.from("client_bank_account_classifications").select("account_id, classification").eq("tenant_id", target.tenantId).eq("client_id", target.clientId);
   const pull = (key: string, items: string) => {
     const r = latest.get(key);
-    return r && r.as_at.slice(0, 10) === asAt ? { items: r.payload?.[items] ?? [], complete: !!r.complete } : null;
+    return r && Date.now() - new Date(r.fetched_at).getTime() < 36 * 3600 * 1000 ? { items: r.payload?.[items] ?? [], complete: !!r.complete } : null;
   };
   const bankReconciliation = computeBankReconciliation({
     accounts: latest.get("accounts")?.payload?.Accounts,
