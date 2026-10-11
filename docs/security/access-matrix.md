@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **2125**. Known failures: **0**.
+Rows: **2144**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -165,6 +165,7 @@ None.
 | admin_onboard: start the Xero sign-in (oauth state) | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
 | admin_onboard: callback stores the pending record for the state's user | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
 | admin_onboard: create the organisation (non-super-admin caller) | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
+| viewer_scope: change a Viewer's clients | execute | DENY | pglite | PK section 2 path D / PK 3 / PK 5 — only can_manage_client_viewers, at aal2 |  |
 | Trixie tables and functions | execute | DENY | live | PK 1 — deny by default | All table privileges and function execution are revoked from anon and PUBLIC. |
 
 ## Active member, aal1 session only
@@ -338,6 +339,7 @@ None.
 | admin_onboard: start the Xero sign-in (oauth state) | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
 | admin_onboard: callback stores the pending record for the state's user | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
 | admin_onboard: create the organisation (non-super-admin caller) | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
+| viewer_scope: change a Viewer's clients | execute | DENY | pglite | PK section 2 path D / PK 3 / PK 5 — only can_manage_client_viewers, at aal2 |  |
 | trixie_threads: own client thread | read | DENY | pglite | PK 2 — the aal2 guard |  |
 | Trixie | execute | DENY | live | PK 2 — MFA is enforced on the server | The route validates the aal claim and every database function directly calls app_private.assert_aal2(). |
 
@@ -574,6 +576,8 @@ None.
 | admin_onboard: start the Xero sign-in (oauth state) | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
 | admin_onboard: callback stores the pending record for the state's user | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
 | admin_onboard: create the organisation (non-super-admin caller) | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
+| viewer_scope: switch All clients to Selected removes the rest immediately | execute | ALLOW | pglite | PK section 2 path D — the Organisation Owner changes a Viewer's scope in one audited step |  |
+| viewer_scope: switch Selected to All clients | execute | ALLOW | pglite | PK section 2 path D — the Organisation Owner changes a Viewer's scope in one audited step |  |
 | trixie_threads: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
 | trixie_messages: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
 | trixie_threads: another person's thread | delete | DENY | pglite | PK 1 / PK 3 / PK 5 — nobody deletes another person's chats |  |
@@ -770,6 +774,7 @@ None.
 | admin_onboard: start the Xero sign-in (oauth state) | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
 | admin_onboard: callback stores the pending record for the state's user | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
 | admin_onboard: create the organisation (non-super-admin caller) | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
+| viewer_scope: change a Viewer's clients | execute | DENY | pglite | PK section 2 path D / PK 3 / PK 5 — only can_manage_client_viewers, at aal2 |  |
 | trixie_threads: own client thread | read | ALLOW | pglite | Owner decision 11 Oct 2026 — a person reads only their own Trixie chats |  |
 | trixie_messages: own client thread | read | ALLOW | pglite | Owner decision 11 Oct 2026 — a person reads only their own Trixie chats |  |
 | trixie_threads: create own thread | insert | ALLOW | pglite | Owner decision 11 Oct 2026 |  |
@@ -941,6 +946,7 @@ None.
 | admin_onboard: start the Xero sign-in (oauth state) | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
 | admin_onboard: callback stores the pending record for the state's user | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
 | admin_onboard: create the organisation (non-super-admin caller) | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
+| viewer_scope: change a Viewer's clients | execute | DENY | pglite | PK section 2 path D / PK 3 / PK 5 — only can_manage_client_viewers, at aal2 |  |
 | trixie_threads: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
 | trixie_messages: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
 
@@ -1156,6 +1162,14 @@ None.
 | admin_onboard: start the Xero sign-in (oauth state) | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
 | admin_onboard: callback stores the pending record for the state's user | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
 | admin_onboard: create the organisation (non-super-admin caller) | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
+| client_cost_classifications | read | ALLOW | pglite | PK section 2 path D — a Selected-clients Viewer reads the same per-client data as an All-clients Viewer, through has_client_read_access |  |
+| client_statutory_accounts | read | ALLOW | pglite | PK section 2 path D — a Selected-clients Viewer reads the same per-client data as an All-clients Viewer, through has_client_read_access |  |
+| client_true_breakeven_inputs | read | ALLOW | pglite | PK section 2 path D — a Selected-clients Viewer reads the same per-client data as an All-clients Viewer, through has_client_read_access |  |
+| client_income_tax_instalments | read | ALLOW | pglite | PK section 2 path D — a Selected-clients Viewer reads the same per-client data as an All-clients Viewer, through has_client_read_access |  |
+| client_xero_orgs | read | ALLOW | pglite | PK section 2 path D — a Selected-clients Viewer reads the same per-client data as an All-clients Viewer, through has_client_read_access |  |
+| unreconciled_lines | read | ALLOW | pglite | PK section 2 path D — a Selected-clients Viewer reads the same per-client data as an All-clients Viewer, through has_client_read_access |  |
+| unreconciled_uploads | read | ALLOW | pglite | PK section 2 path D — a Selected-clients Viewer reads the same per-client data as an All-clients Viewer, through has_client_read_access |  |
+| viewer_scope: change a Viewer's clients | execute | DENY | pglite | PK section 2 path D / PK 3 / PK 5 — only can_manage_client_viewers, at aal2 |  |
 | trixie_threads: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
 | trixie_messages: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
 | trixie_threads: own client thread | read | ALLOW | pglite | Path D / E — own chat about the exact client they can read |  |
@@ -1195,6 +1209,7 @@ None.
 | admin_onboard: start the Xero sign-in (oauth state) | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
 | admin_onboard: callback stores the pending record for the state's user | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
 | admin_onboard: create the organisation (non-super-admin caller) | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
+| viewer_scope: change a Viewer's clients | execute | DENY | pglite | PK section 2 path D / PK 3 / PK 5 — only can_manage_client_viewers, at aal2 |  |
 | trixie_threads: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
 | trixie_messages: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
 | trixie_messages: another person's thread | insert | DENY | pglite | PK 1 — nobody writes into another person's chat |  |
@@ -1319,6 +1334,7 @@ None.
 | admin_onboard: start the Xero sign-in (oauth state) | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
 | admin_onboard: callback stores the pending record for the state's user | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
 | admin_onboard: create the organisation (non-super-admin caller) | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
+| viewer_scope: change a Viewer's clients | execute | DENY | pglite | PK section 2 path D / PK 3 / PK 5 — only can_manage_client_viewers, at aal2 |  |
 | trixie_threads: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
 | trixie_messages: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
 
@@ -1488,6 +1504,7 @@ None.
 | security_attestations | delete | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
 | server fn: acknowledgeSetupItem (record a setup decision) | execute | DENY | live | PK 5 (support grants are READ-ONLY) | The acknowledgement is an UPDATE on public.clients through context.supabase, so the clients write policies (app_private.user_can_manage_client) decide. A support grant is read-only, so the update matches no row and the function raises 'You cannot change this client.' Reading the checklist stays allowed, like other client reads under a grant. |
 | server fn: getClientOrgTrial | execute | DENY | live | PK 5 / Path B — a support grant is read-only client data, never billing state | app_private.has_firm_access counts active firm_members rows only, so a support grant does not satisfy it; without a business_owner row the function returns nothing. |
+| viewer_scope: change a Viewer's clients | execute | DENY | pglite | PK section 2 path D / PK 3 / PK 5 — only can_manage_client_viewers, at aal2 |  |
 | trixie_threads: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
 | trixie_messages: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
 | trixie_threads: another person's thread | delete | DENY | pglite | PK 1 / PK 3 / PK 5 — nobody deletes another person's chats |  |
@@ -1944,6 +1961,8 @@ None.
 | admin_onboard: more files than the clients bought | execute | DENY | pglite | PK 4 — pending id and tenant ids are filters: own, unexpired, single use, within the cap, not already linked |  |
 | admin_onboard: a file already linked in the app | execute | DENY | pglite | PK 4 — pending id and tenant ids are filters: own, unexpired, single use, within the cap, not already linked |  |
 | admin_onboard: a file not in this authorisation | execute | DENY | pglite | PK 4 — pending id and tenant ids are filters: own, unexpired, single use, within the cap, not already linked |  |
+| admin_onboard: unticked Traction Advisory team adds no team member | execute | ALLOW | pglite | Owner decision 11 Oct 2026 — the Traction Advisory team is added only when ticked; enforced in the definer |  |
+| viewer_scope: change a Viewer's clients | execute | DENY | pglite | PK section 2 path D / PK 3 / PK 5 — only can_manage_client_viewers, at aal2 |  |
 | trixie_threads: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
 | trixie_messages: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
 | trixie_threads: another person's thread | delete | DENY | pglite | PK 1 / PK 3 / PK 5 — nobody deletes another person's chats |  |
