@@ -20,6 +20,8 @@ export type DayFigures = {
   cash: number | null;
   creditCardDebt: number | null;
   protectedMoney: number | null;
+  /** Per-account breakdown of protected money, for the tooltip. */
+  protectedAccounts?: { name: string; amount: number; counted: boolean }[];
   revenueMtd: number | null;
   netProfitMtd: number | null;
 };
@@ -226,7 +228,11 @@ export function seriesFor(ctx: OverviewContext, clientId: string): ClientSeries 
       const f = get(d);
       if (a.cashAtBank.status === "assessed") f.cash = a.cashAtBank.total;
       if (a.creditCardDebt.status === "assessed") f.creditCardDebt = a.creditCardDebt.total;
-      if (a.taxLines.status === "assessed") f.protectedMoney = buildProtectedMoney(d, a.taxLines.lines).total;
+      if (a.taxLines.status === "assessed") {
+        const pm = buildProtectedMoney(d, a.taxLines.lines);
+        f.protectedMoney = pm.total;
+        f.protectedAccounts = pm.components.flatMap((c) => (c.status === "resolved" ? c.accounts : []));
+      }
     } else if (row.report_key === "profit_and_loss_mtd") {
       const report = row.payload?.Reports?.[0];
       if (!report) continue;
@@ -258,7 +264,7 @@ export function seriesFor(ctx: OverviewContext, clientId: string): ClientSeries 
   return { anchor, byDate, avgMonthlyRevenue };
 }
 
-export type FigureKey = keyof DayFigures;
+export type FigureKey = Exclude<keyof DayFigures, "protectedAccounts">;
 
 /** A move of one figure over `days` ending at the anchor, with the prior-month routine check. */
 export function moveFor(s: ClientSeries, key: FigureKey, days: number): MoveResult {
@@ -334,7 +340,12 @@ export async function buildOverview(
       cashBigMove: m7.state === "evaluated" && m7.big,
       ...(() => {
         const share = cash !== null && prot !== null ? protectedShareOfCash(prot, cash) : null;
-        return { protectedPctOfCash: share?.pct ?? null, protectedLevel: share?.level ?? null, protectedTooltip: share?.tooltip ?? null };
+        const money = (n: number) => n.toLocaleString("en-AU", { style: "currency", currency: "AUD" });
+        const lines = (today?.protectedAccounts ?? []).map(
+          (a) => `${a.name}: ${money(a.amount)}${a.counted ? "" : " (debit balance, not a refund — not counted)"}`,
+        );
+        const tooltip = share ? [share.tooltip, ...(prot !== null ? [`Protected money: ${money(prot)}`] : []), ...lines].join("\n") : null;
+        return { protectedPctOfCash: share?.pct ?? null, protectedLevel: share?.level ?? null, protectedTooltip: tooltip };
       })(),
       netProfitMtd: today?.netProfitMtd ?? null,
       debtorsOverduePct,
