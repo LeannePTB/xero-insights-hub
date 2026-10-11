@@ -1,54 +1,68 @@
-# Overview Re-sync — plan
+# Clearer login types: Viewer merge, label renames, "Traction Advisory looks after this organisation"
 
-Classification: SECURITY-RELEVANT (Xero API calls, `supabaseAdmin` refresh worker, client data). No change to who can read or write any row.
+Classification: SECURITY-RELEVANT (Part A touches viewer read paths; Part C changes who becomes a member of a new organisation).
 
-## What exists today (checked)
-- `RefreshSnapshotsButton` — used only on the client dashboard, loops tenants one by one, 2-minute browser cooldown.
-- `refreshXeroSnapshots` server function — AAL2, then `assertWidgetAccess(tenant, "health")`, then rate limits: 1 manual refresh per tenant per 2 min, 2 runs per tenant per hour; calls `refreshTenant(target, "manual")`, which claims a row in `xero_snapshot_runs` (so manual and overnight runs cannot overlap) and writes snapshots.
-- Overview already shows each client's freshest snapshot time (`freshAsAt`) and reads `xero_snapshot_runs`.
-- Gap found: the existing manual refresh is gated by a READ check, so in principle a support grant or external adviser could trigger it. The new Overview path will use the write/manage check instead (see Decision 1).
+## Finding before building (live database, read today)
 
-## What the owner will see
-- Overview header (organisation and All organisations): "Re-sync" button with "Last synced <time>" beside it (latest successful sync among clients in view).
-- Per-row small re-sync icon on each client the person can manage.
-- While running: a status chip per row — Queued / Syncing / Done / Failed, with a plain reason:
-  - "Xero connection expired — reconnect"
-  - "Synced a moment ago — try again in a couple of minutes"
-  - "Xero is busy — try again shortly"
-  - "Not connected to Xero"
-- With more than 5 clients, a confirm line first: "About N clients, roughly M minutes."
-- When finished, the Overview re-reads its figures automatically. Button then cools down for 2 minutes.
-- Business owners, external advisers and support-access users never see the button or per-row icons, and the server refuses them anyway.
+All seven tables named in Part A already allow a Selected-clients adviser to read their granted client. Each has a SELECT policy `to authenticated` using `app_private.has_client_read_access`, which is "specific `client_access` row OR All-clients grant":
+client_cost_classifications, client_statutory_accounts, client_true_breakeven_inputs, client_income_tax_instalments, client_xero_orgs, unreconciled_lines, unreconciled_uploads.
 
-## How it works (small)
-- Browser queues the clients and runs them **one at a time** (one Xero connection in flight per person), calling one server function per client. No background job, no new table.
-- Server function `resyncClient({ clientId })`:
-  1. `requireAal2`.
-  2. Caller-scoped manage check via the existing database predicate (`user_can_write_client`, through an existing caller-scoped RPC) — never support/read access.
-  3. Resolve that client's linked Xero tenants server-side (client ID is a filter only).
-  4. Same rate limits as today, plus the app-wide Xero limiter; then existing `refreshTenant(target, "manual")` → run recorded in `xero_snapshot_runs`.
-  5. Write one `audit_log` row (`xero_manual_resync`, client ID, outcome, no figures).
-  6. Return only status and a reason code (`complete`, `cooldown`, `reconnect`, `rate_limited`, `not_connected`, `failed`).
-- 401/403 from Xero follow the existing rule: one refresh/retry, then mark disconnected → "reconnect". 429 stops the whole queue and marks the rest "Xero is busy".
-- Estimate = clients × ~20 s (from recent `xero_snapshot_runs` durations if available).
+So the database probably needs **no read widening**. If there is a real difference, it is in a server function or a card check that asks for the All-clients grant. Step A1 finds it. Only that gap gets fixed, using the same exact-client read check. No new predicate, no write.
 
-## Files
-- `src/lib/xero/snapshot-refresh.functions.ts` — add `resyncClient`; tighten existing `refreshXeroSnapshots` to the same manage check (Decision 1).
-- `src/lib/xero/resync-reasons.ts` (new) — reason code → plain wording, plus tests.
-- `src/components/overview/ResyncControls.tsx` (new) — header button, last-synced, queue, estimate, cooldown.
-- `src/components/overview/OverviewView.tsx` — header slot and per-row icon/status chip.
-- `src/lib/overview/overview.server.ts` — add per-row `canResync` from the existing caller-scoped `me_can_manage_client` signal (presentation only) and the header last-synced time.
-- `src/routes/_authenticated/firms.$firmId.overview.tsx`, `src/routes/_authenticated/overview.tsx` — mount controls.
-- `docs/security/access-matrix.ts`, `docs/security/admin-client-register.md` (existing worker use, new caller), `docs/security-backlog.md`.
+## A. One "Viewer" type
 
-## Database changes
-None expected. If no authenticated-callable caller-scoped wrapper over `user_can_write_client` exists, add one tiny definer function (`me_can_write_client(_client_id)`: AAL2, `auth.uid()` only, execute revoked from PUBLIC/anon) — I will confirm before building.
+- A1. Audit (no code changes): for each of the seven data sets, run the matrix as a Selected viewer and as an All-clients viewer on the same client. Also check the server functions and card gating that serve those screens. List every place where the result differs.
+- A2. Fix each difference by switching that read to `has_client_read_access` / `user_can_read_client`. Read paths only. Static guard 11 must stay green.
+- A3. Invite and edit screens: one type, "Viewer (read-only)", with a scope choice: "All clients (includes clients added later)" or "Selected clients" (tick list). Business Owner stays a separate choice and is only for selected clients.
+- A4. "Change access" on the person's People row. Uses existing audited functions only:
+  - All → Selected: `grant_client_access` for each ticked client (relationship `external_adviser`), then `revoke_firm_viewer_access`. Done in one new caller-scoped wrapper so access never widens in the middle.
+  - Selected → All: `grant_firm_viewer_access`, then remove the per-client adviser rows.
+  - The wrapper is a definer with aal2, the `can_manage_client_viewers` guard first, `auth.uid()` only, execute revoked from PUBLIC/anon, audited, and registered.
+- A5. People lists, filters and labels show "Viewer · All clients" or "Viewer · N clients". Rows where relationship is NULL still show "Not set" and stay read-only, with no backfill.
+- Storage is unchanged: `firm_viewer_access` = All clients, `client_access` with `external_adviser` = Selected. No data migration, so nobody gains or loses a client.
 
-## Decisions needed
-1. Tighten the existing client-dashboard "Refresh figures" button to the same manage check (closes the read-gated gap)? Recommended: yes.
-2. Cooldown: keep today's 1 per client per 2 min and 2 per hour, or allow more?
-3. All organisations view: re-sync every manageable client across all organisations in one click, or only within each organisation? Recommended: all in view, with the estimate shown.
-4. Should External advisers ever re-sync? Current plan: no.
+## B. Labels only (internal keys unchanged)
 
-## Checks after building
-tsgo, build, reason/queue unit tests, matrix rows (business owner / viewer / support denied; member allowed), `bun run security:check`, linter, security report and backlog update.
+| Old label | New label |
+|---|---|
+| Super admin | System Administrator |
+| Practice team | Traction Advisory team |
+| Organisation owner | Organisation Owner |
+| Organisation staff | Staff |
+| Business owner | Business Owner |
+
+- The System Administrator description will say: "Runs the platform. Gives no access to organisation or client data by itself."
+- Support access is shown as a temporary pass, not a login type.
+- These labels change in the UI, email templates, Trixie's guide and help seed text, and docs. Last-administrator protection is unchanged. No Manager role.
+
+## C. "Traction Advisory looks after this organisation" checkbox
+
+- The checkbox appears on both Add organisation paths and is ticked by default.
+- A new boolean parameter `p_add_practice_team` (default true) goes on the manual create function and on `admin_onboard_organisation_from_xero`. When it is false, no practice-team memberships are created.
+- The value is recorded in each function's existing audit event, and stored as `firms.managed_by_traction` (boolean, default true; existing rows true). It is a display flag only and is never used to grant access.
+- System Admin organisation detail shows "Looked after by Traction Advisory: Yes/No".
+- Risk to confirm: an unticked organisation that also has no owner email is reachable by nobody until an owner is invited. The plan allows this, with a warning on the Review screen.
+
+## D. Docs and records
+
+- AGENTS.md: one rule ("Viewer is one read-only type; scope is All clients or Selected; storage keys unchanged").
+- The access-control spec gets a new "Who can log in" section listing: System Administrator, Traction Advisory team, Organisation Owner, Staff, Viewer (All/Selected), Business Owner, and Support access as a temporary pass.
+- Access matrix rows:
+  - Selected Viewer: allowed on the granted client including all seven tables; denied on other clients, other organisations and every write.
+  - All-clients Viewer: allowed across the organisation, including a client added after the grant.
+  - Switching All→Selected removes the rest immediately; revoking works for both.
+  - Unticked onboarding adds no practice-team member.
+- Definer register (new wrapper, changed signatures) and the security backlog are updated.
+
+## Checks
+
+tsgo, build, app tests, `bun run security:check`, `security_posture()`, linter, live access proofs, and a Security report listing every access change.
+
+## Technical details
+
+- Migrations:
+  1. The viewer-scope switch wrapper.
+  2. The new `p_add_practice_team` parameter on both create definers. Uses drop+create with the same grants so no old overload is left behind.
+  3. The `firms.managed_by_traction` column, with grants unchanged.
+- Files: viewer invite/People components and `src/lib/viewers.functions.ts`; the role label map; the Add organisation dialogs and `admin-onboard` server functions; System Admin organisation detail; Trixie guide and seed; email templates; docs listed above.
+- Not changed: `src/routes/api/public/xero/signup.ts`, Business Owner permissions, and support grants.
