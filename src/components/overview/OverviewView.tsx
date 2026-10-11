@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Eye, EyeOff, Loader2, Search } from "lucide-react";
+import { AlertTriangle, Eye, EyeOff, Loader2, Search } from "lucide-react";
 import { getClientOverview, setOverviewAlert, setClientOverviewHidden, setFirmOverviewHidden, getHiddenOverviewItems, type OverviewRow, type FeedEvent } from "@/lib/overview/overview.functions";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -221,6 +221,11 @@ function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide, que
         </tr>
       )}
       {rows.map((r) => {
+        // Named per-account warning from the server; null shows nothing.
+        const staleTitle = r.bankReconWarning;
+        const staleMark = staleTitle ? (
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-info" aria-label={staleTitle} />
+        ) : null;
         return (
         <tr key={r.clientId} className="cursor-pointer border-t hover:bg-muted/30" onClick={() => onOpen(r.clientId)}>
           <td className="p-3">
@@ -234,8 +239,9 @@ function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide, que
               <ClientHealthBadge verdict={r.verdict} />
             </div>
           </td>
-          <td className="p-3 text-right tabular-nums" >
+          <td className="p-3 text-right tabular-nums" title={staleTitle ?? undefined}>
             <div className="flex items-center justify-end gap-2">
+              {staleMark}
               <Sparkline values={r.cashSpark} />
               {money(r.cash)}
             </div>
@@ -243,22 +249,25 @@ function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide, que
           <td
             className="p-3 text-right tabular-nums"
             title={
-              r.creditCardDebt !== null && r.creditCardDebt > 0
+              staleTitle ? staleTitle : r.creditCardDebt !== null && r.creditCardDebt > 0
                   ? `Cash at bank less ${money(r.creditCardDebt)} of credit card debt.`
                   : "Cash at bank; this client has no credit card debt."
             }
           >
             <span className="inline-flex items-center justify-end gap-1">
+              {staleMark}
               {money(r.netCash)}
             </span>
           </td>
-          <td className={`p-3 text-right tabular-nums ${r.cashBigMove ? "font-semibold text-destructive" : ""}`} title={r.historyNote ?? undefined}>
+          <td className={`p-3 text-right tabular-nums ${r.cashBigMove ? "font-semibold text-destructive" : ""}`} title={staleTitle ?? r.historyNote ?? undefined}>
             <span className="inline-flex items-center justify-end gap-1">
+              {staleMark}
               {r.cashChange7d === null ? "—" : `${r.cashChange7d >= 0 ? "+" : ""}${money(r.cashChange7d)}`}
             </span>
           </td>
-          <td className={`p-3 text-right tabular-nums ${r.protectedPctOfCash === null ? "" : r.protectedPctOfCash > 100 ? "font-semibold text-destructive" : "font-medium text-success"}`} title={r.protectedPctOfCash === null ? undefined : r.protectedPctOfCash > 100 ? "Tax and super owed is more than net cash." : "Net cash covers tax and super owed."}>
+          <td className={`p-3 text-right tabular-nums ${r.protectedPctOfCash === null ? "" : r.protectedPctOfCash > 100 ? "font-semibold text-destructive" : "font-medium text-success"}`} title={staleTitle ? staleTitle : r.protectedPctOfCash === null ? undefined : r.protectedPctOfCash > 100 ? "Tax and super owed is more than net cash." : "Net cash covers tax and super owed."}>
             <span className="inline-flex items-center justify-end gap-1">
+              {staleMark}
               {pct(r.protectedPctOfCash)}
             </span>
           </td>

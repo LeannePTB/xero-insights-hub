@@ -523,6 +523,7 @@ export type Database = {
         Row: {
           as_at: string
           bank_reconciled_to: string | null
+          bank_reconciliation: Json | null
           cash: number | null
           client_id: string
           created_at: string
@@ -542,6 +543,7 @@ export type Database = {
         Insert: {
           as_at: string
           bank_reconciled_to?: string | null
+          bank_reconciliation?: Json | null
           cash?: number | null
           client_id: string
           created_at?: string
@@ -561,6 +563,7 @@ export type Database = {
         Update: {
           as_at?: string
           bank_reconciled_to?: string | null
+          bank_reconciliation?: Json | null
           cash?: number | null
           client_id?: string
           created_at?: string

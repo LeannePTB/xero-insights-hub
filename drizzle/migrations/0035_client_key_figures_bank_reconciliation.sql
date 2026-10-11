@@ -1,0 +1,2 @@
+ALTER TABLE public.client_key_figures ADD COLUMN IF NOT EXISTS bank_reconciliation jsonb;
+COMMENT ON COLUMN public.client_key_figures.bank_reconciliation IS 'Per in-scope bank account reconciled-to dates {scope, windowFrom, accounts:[{accountId,name,reconciledTo}]}; written by the nightly key-figures job only.';

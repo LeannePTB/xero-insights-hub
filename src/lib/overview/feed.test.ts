@@ -27,8 +27,8 @@ describe("shared acknowledge and snooze", () => {
 });
 
 describe("bank not reconciled rule", () => {
-  test("never reconciled is stale", () => {
-    assert.strictEqual(bankReconciledStale(null, "2026-10-08"), true);
+  test("missing date is never stale (no warning)", () => {
+    assert.strictEqual(bankReconciledStale(null, "2026-10-08"), false);
   });
   test("reconciled 14 days before the anchor is stale", () => {
     assert.strictEqual(bankReconciledStale("2026-09-24", "2026-10-08"), true);

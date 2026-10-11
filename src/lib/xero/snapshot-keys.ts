@@ -6,6 +6,7 @@
 
 import { createHash } from "crypto";
 import { addDays, addMonths, endOfMonth, startOfFinancialYear, startOfMonth, sydneyDate } from "@/lib/sydney-time";
+import { RECON_WINDOW_DAYS } from "@/lib/overview/bank-reconciliation";
 
 /** Bump when a payload's shape changes. Older rows are treated as absent. */
 export const SNAPSHOT_PAYLOAD_VERSION = 1;
@@ -83,6 +84,8 @@ export const STALENESS_SECONDS: Record<string, number> = {
   invoices_accpay_open: 30 * 3600,
   payroll_payruns: 30 * 3600,
   bank_unreconciled_oldest: 30 * 3600,
+  bank_unreconciled_recent: 30 * 3600,
+  payments_unreconciled_recent: 30 * 3600,
   user_activities: 30 * 3600,
   rent_bank_receipts: 30 * 3600,
   rent_invoices_paid: 30 * 3600,
@@ -90,6 +93,9 @@ export const STALENESS_SECONDS: Record<string, number> = {
 
 /** Pages pulled for each rent receipt list. Only files with rental properties pay this. */
 export const RENT_PAGE_LIMIT = 3;
+
+/** Pages of unreconciled lines pulled per kind. A full last page leaves later accounts unknown, never "reconciled". */
+export const RECON_PAGE_LIMIT = 3;
 
 export type SnapshotReport = {
   reportKey: string;
@@ -129,6 +135,9 @@ export function snapshotReports(today: string = sydneyDate()): SnapshotReport[] 
   // Anchored to a month start so the stored parameter hash holds all month.
   const rentFrom = startOfMonth(addMonths(today, -13));
   const [ry, rm, rd] = rentFrom.split("-").map(Number);
+  const reconFrom = addDays(today, -RECON_WINDOW_DAYS);
+  const [cy, cm, cd] = reconFrom.split("-").map(Number);
+  const reconWhereDate = `DateTime(${cy},${String(cm).padStart(2, "0")},${String(cd).padStart(2, "0")})`;
   const rentWhereDate = `DateTime(${ry},${String(rm).padStart(2, "0")},${String(rd).padStart(2, "0")})`;
 
   return [
@@ -197,15 +206,27 @@ export function snapshotReports(today: string = sydneyDate()): SnapshotReport[] 
       api: "payroll",
     },
     {
-      // The OLDEST unreconciled bank transaction gives the "unreconciled
-      // since" date for the client overview (the newest reconciled line was
-      // misleading: one recent reconciliation hid months of open lines).
-      // One call: first page only, oldest first. Xero only exposes lines
-      // already coded in Xero; untouched raw feed lines are not visible.
-      reportKey: "bank_unreconciled_oldest",
+      // Coded-but-unreconciled bank lines from the last 90 days, oldest first,
+      // for the per-account "not reconciled since" date. Older leftovers are
+      // deliberately outside the window. Xero only exposes lines already coded
+      // in Xero; untouched raw feed lines are not visible.
+      reportKey: "bank_unreconciled_recent",
       path: "BankTransactions",
-      params: { where: 'IsReconciled==false&&Status=="AUTHORISED"', order: "Date ASC" },
+      params: { where: `IsReconciled==false&&Status=="AUTHORISED"&&Date>=${reconWhereDate}`, order: "Date ASC" },
       asAt: today,
+      paginated: true,
+      itemsKey: "BankTransactions",
+      pageLimit: RECON_PAGE_LIMIT,
+    },
+    {
+      // Invoice/bill payments are reconciled separately from bank transactions.
+      reportKey: "payments_unreconciled_recent",
+      path: "Payments",
+      params: { where: `IsReconciled==false&&Status=="AUTHORISED"&&Date>=${reconWhereDate}`, order: "Date ASC" },
+      asAt: today,
+      paginated: true,
+      itemsKey: "Payments",
+      pageLimit: RECON_PAGE_LIMIT,
     },
     {
       // Who last signed in to this Xero file, with login and document counts.

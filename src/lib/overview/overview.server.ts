@@ -2,7 +2,7 @@
 // caller (RLS applies). Zero Xero calls: this module must never import
 // `@/lib/xero/api.server`.
 
-import { unreconciledSinceFor } from "./reconciliation";
+import { bankReconWarning, parseStored } from "./bank-reconciliation";
 import { addDays, addMonths, endOfMonth, startOfFinancialYear, sydneyDate } from "@/lib/sydney-time";
 import { VERDICT_REPORT_KEYS } from "@/lib/health/rule-thresholds";
 import { debtorBook, evaluateClient, type SnapshotRow, type Verdict } from "@/lib/health/rules.server";
@@ -119,7 +119,7 @@ export async function loadOverviewContext(sb: Sb, firmId: string | null = null):
       sb.from("client_reports").select("client_id, period_end, sent_at").not("sent_at", "is", null).in("client_id", part),
       sb.from("xero_snapshot_runs").select("client_id, status, started_at").in("client_id", part).gte("started_at", addDays(today, -9)),
       sb.from("overview_alert_states").select("client_id, event_key, severity_at_ack, acknowledged_by, acknowledged_at, snoozed_by, snoozed_until").in("client_id", part),
-      sb.from("client_key_figures").select("client_id, as_at, cash, debtors_total, debtors_overdue, creditors, bank_reconciled_to, last_xero_login_at").in("client_id", part).gte("as_at", addDays(today, -40)),
+      sb.from("client_key_figures").select("client_id, as_at, cash, debtors_total, debtors_overdue, creditors, bank_reconciled_to, bank_reconciliation, last_xero_login_at").in("client_id", part).gte("as_at", addDays(today, -40)),
     ]);
     for (const r of [undated, bs, pnl, ytd]) if (r.error) throw new Error(r.error.message);
     for (const row of (undated.data ?? []) as Row[]) {
@@ -316,7 +316,8 @@ export async function buildOverview(
     const prot = today?.protectedMoney ?? null;
     // Bank reconciled to: from the most recent nightly key-figures row.
     const kfRows = (ctx.keyFigures.get(c.client_id) ?? []).sort((a: any, b: any) => (a.as_at < b.as_at ? 1 : -1));
-    const bankReconciledTo: string | null = unreconciledSinceFor(kfRows[0]);
+    const bankRecon = kfRows[0] ? bankReconWarning(kfRows[0].bank_reconciliation, String(kfRows[0].as_at)) : null;
+    const bankReconciledTo: string | null = kfRows[0] && parseStored(kfRows[0].bank_reconciliation) ? (kfRows[0].bank_reconciled_to ?? null) : null;
     out.push({
       clientId: c.client_id,
       clientName: c.client_name,
@@ -337,6 +338,7 @@ export async function buildOverview(
       freshAsAt,
       canResync: manageable.has(c.client_id),
       bankReconciledTo,
+      bankReconWarning: bankRecon?.text ?? null,
       lastXeroLoginAt: kfRows.find((k: any) => k.last_xero_login_at != null)?.last_xero_login_at ?? null,
       cashSpark: (ctx.keyFigures.get(c.client_id) ?? [])
         .filter((k) => k.as_at >= addDays(ctx.today, -30) && k.cash !== null)

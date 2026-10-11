@@ -37,8 +37,10 @@ export type OverviewRow = {
   freshAsAt: string | null;
   /** Presentation only: caller may manage (and so re-sync) this client. Server re-checks. */
   canResync: boolean;
-  /** Date of the newest reconciled bank transaction, from the nightly key figures. */
+  /** Oldest per-account reconciled-to date across in-scope bank accounts (nightly key figures). */
   bankReconciledTo: string | null;
+  /** Named stale-account warning; null when fine or when data is missing/unclear. */
+  bankReconWarning: string | null;
   /** Most recent Xero sign-in by anyone in the file (Finance API), from the nightly key figures. */
   lastXeroLoginAt: string | null;
   historyNote: string | null;
