@@ -2783,9 +2783,11 @@ BEGIN
   INSERT INTO public.subscriptions (firm_id, tier, status) VALUES (_firm, 'starter', 'active');
   INSERT INTO public.firm_members (firm_id, user_id, role, status) VALUES (_firm, _me, 'owner', 'active');
 
+  -- Practice team auto-add, as the manual path (practice_team is keyed on user_id).
   FOR _member IN SELECT pt.user_id FROM public.practice_team pt WHERE pt.user_id <> _me LOOP
-    INSERT INTO public.firm_members (firm_id, user_id, role, status) VALUES (_firm, _member.user_id, 'staff', 'active')
-      ON CONFLICT (firm_id, user_id) DO NOTHING;
+    INSERT INTO public.firm_members (firm_id, user_id, role, status)
+      SELECT _firm, _member.user_id, 'staff', 'active'
+       WHERE NOT EXISTS (SELECT 1 FROM public.firm_members m WHERE m.firm_id = _firm AND m.user_id = _member.user_id);
     INSERT INTO public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
     VALUES (_me, _firm, 'practice_team_member_joined_new_organisation', 'firm', _firm::text,
             jsonb_build_object('firm_id', _firm, 'user_id', _member.user_id, 'role', 'staff'));
@@ -4167,4 +4169,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: 3610354332328376c2f47f9e85a3cca808db7023b8576a990ae8c3e7651c17d8
+-- catalogue-fingerprint: e30734e933acfcb02c604b31e46b7dff3452dbbaeec844031739ddbc26beeacd
