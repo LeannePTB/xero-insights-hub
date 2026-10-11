@@ -264,7 +264,7 @@ export function seriesFor(ctx: OverviewContext, clientId: string): ClientSeries 
   return { anchor, byDate, avgMonthlyRevenue };
 }
 
-export type FigureKey = keyof DayFigures;
+export type FigureKey = Exclude<keyof DayFigures, "protectedAccounts">;
 
 /** A move of one figure over `days` ending at the anchor, with the prior-month routine check. */
 export function moveFor(s: ClientSeries, key: FigureKey, days: number): MoveResult {
