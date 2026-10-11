@@ -97,7 +97,7 @@ export async function readSnapshot(opts: {
 
   let query = supabase
     .from("xero_snapshots")
-    .select("payload, payload_version, as_at, fetched_at, complete")
+    .select("client_id, payload, payload_version, as_at, fetched_at, complete")
     .eq("tenant_id", tenantId)
     .eq("report_key", reportKey)
     .eq("params_hash", paramsHash)
@@ -134,7 +134,7 @@ export async function readSnapshot(opts: {
 
   return {
     payload: reportKey === 'accounts'
-      ? await (await import('./bank-classifications.server')).classifiedAccounts(supabase, tenantId, data.payload, clientId ?? undefined)
+      ? await (await import('./bank-classifications.server')).classifiedAccounts(supabase, tenantId, data.payload, clientId ?? data.client_id)
       : data.payload,
     source: {
       mode: "snapshot",

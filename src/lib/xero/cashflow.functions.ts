@@ -144,7 +144,7 @@ export const getCashflow = createServerFn({ method: "POST" })
 
     // 1) Current bank account balances
     const accountsRes = await xeroGet<{ Accounts?: XeroAccount[] }>(conn, "Accounts", {
-      where: 'Class=="ASSET"&&Type=="BANK"&&Status=="ACTIVE"',
+      where: 'Type=="BANK"&&Status=="ACTIVE"',
     });
     const { classifiedAccounts } = await import('./bank-classifications.server');
     const effectiveAccounts = await classifiedAccounts(context.supabase, data.tenantId, accountsRes);
@@ -163,41 +163,16 @@ export const getCashflow = createServerFn({ method: "POST" })
       });
     }
 
-    // Get closing balances from a BankSummary. Xero rejects BankSummary windows
-    // longer than 365 days, so keep the most recent 365 days.
-    const balToDate = new Date();
-    const balFromDate = clampTo365Days(
-      new Date(balToDate.getFullYear(), balToDate.getMonth() - 12, 1),
-      balToDate,
-    );
-    let totalCash = 0;
-    try {
-      const balSummary = await xeroGet<any>(conn, "Reports/BankSummary", {
-        fromDate: toISO(balFromDate),
-        toDate: toISO(balToDate),
-      });
-
-      // Parse closing balances per account from the report.
-      const reports = balSummary?.Reports ?? [];
-      for (const r of reports) {
-        const rows = r?.Rows ?? [];
-        for (const section of rows) {
-          const sectionRows = section?.Rows ?? [];
-          for (const row of sectionRows) {
-            if (row?.RowType !== "Row") continue;
-            const cells = row?.Cells ?? [];
-            if (cells.length >= 5) {
-              const accountId = cells.flatMap((cell: any) => cell.Attributes ?? []).find((attribute: any) => attribute.Id === 'account')?.Value;
-              const closing = Number(cells[4]?.Value ?? 0) || 0;
-              const match = accounts.find((a) => a.accountId === accountId);
-              if (match) { match.balance = closing; totalCash += closing; }
-            }
-          }
-        }
-      }
-    } catch {
-      // ignore — leave balances at 0
-    }
+    // Use the same ID-resolved Balance Sheet source as the overview, not
+    // statement balances or name matches in BankSummary.
+    const balances = await xeroGet<any>(conn, 'Reports/BalanceSheet', { date: toISO(new Date()) });
+    const cash = analyseBalanceSheet(balances, effectiveAccounts).cashAtBank;
+    if (cash.status !== 'assessed' && cash.status !== 'absent') throw new Error('Cash at bank could not be assessed.');
+    const totalCash = cash.total;
+    // Account IDs, rather than names, resolve the per-account displayed balances.
+    const { balanceSheetBankBalances } = await import('./bank-classifications');
+    const byId = balanceSheetBankBalances(balances);
+    for (const account of accounts) account.balance = byId.get(account.accountId.toLowerCase()) ?? 0;
 
     // 2) Period actuals — break into months for the trend
     const fromD = new Date(data.fromDate);

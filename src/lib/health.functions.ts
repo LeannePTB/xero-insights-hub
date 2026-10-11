@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAal2 } from "@/lib/auth/require-aal2";
 import * as metrics from "@/lib/metrics/core";
+import { analyseBalanceSheet } from './xero/tax-lines';
 
 export type HealthBand = "strong" | "watch" | "urgent";
 
