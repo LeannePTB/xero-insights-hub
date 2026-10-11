@@ -239,6 +239,13 @@
       "when": 1791688578461,
       "tag": "0033_admin_onboard_organisation_from_xero",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1791688886368,
+      "tag": "0034_admin_onboard_member_insert_without_conflict_clause",
+      "breakpoints": true
     }
   ]
 }
