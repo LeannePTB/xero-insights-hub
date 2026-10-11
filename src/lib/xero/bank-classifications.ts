@@ -1,6 +1,6 @@
 import type { XeroAccountRef } from './tax-lines';
 
-export type BankClassification = 'bank' | 'credit_card';
+export type BankClassification = 'bank' | 'credit_card' | 'excluded';
 export type BankClassificationRow = { account_id: string; classification: BankClassification };
 
 /** Account-row balances only; summary rows never have an account ID. */
@@ -21,12 +21,15 @@ export function balanceSheetBankBalances(payload: any): Map<string, number> {
   return balances;
 }
 
-/** ID-keyed metadata overlay; never mutates Xero's payload or matches names. */
+/** ID-keyed metadata overlay; never mutates Xero's payload or matches names.
+ *  Excluded accounts are dropped from the result so they count in neither
+ *  cash at bank nor credit-card debt. */
 export function applyBankClassifications<T extends XeroAccountRef>(accounts: T[], rows: BankClassificationRow[]): T[] {
   const byId = new Map(rows.map(row => [row.account_id.toLowerCase(), row.classification]));
-  return accounts.map(account => {
+  return accounts.flatMap(account => {
     const choice = byId.get(String(account.AccountID ?? '').toLowerCase());
-    if (!choice || account.Type?.toUpperCase() !== 'BANK' || account.Status?.toUpperCase() !== 'ACTIVE') return account;
-    return { ...account, BankAccountType: choice === 'credit_card' ? 'CREDITCARD' : 'BANK', Class: 'ASSET' };
+    if (!choice || account.Type?.toUpperCase() !== 'BANK' || account.Status?.toUpperCase() !== 'ACTIVE') return [account];
+    if (choice === 'excluded') return [];
+    return [{ ...account, BankAccountType: choice === 'credit_card' ? 'CREDITCARD' : 'BANK', Class: 'ASSET' }];
   });
 }
