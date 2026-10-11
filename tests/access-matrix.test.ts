@@ -539,6 +539,75 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   if (r.startsWith("server fn:")) return "unsupported";
   if (r === "admin_firm_overview") return "unsupported"; // a view; not dumped into the fixture
 
+  if (r.startsWith("admin_onboard")) {
+    // System Admin "Start from a Xero file" (11 Oct 2026). The fixture drops
+    // column defaults and constraints, so the ones the definer relies on are
+    // restored here inside the rolled-back transaction — test-copy fidelity only.
+    const P_MINE = "ab000001-1111-4111-8111-111111111111";
+    const P_OTHER = "ab000002-1111-4111-8111-111111111111";
+    const P_EXPIRED = "ab000003-1111-4111-8111-111111111111";
+    const me = CONTEXT[row.role].uid;
+    const tenants = `'[{"tenantId":"new-1","tenantName":"New One"},{"tenantId":"new-2","tenantName":"New Two"},{"tenantId":"new-3","tenantName":"New Three"},{"tenantId":"${TENANT_A}","tenantName":"File A"}]'::jsonb`;
+    await seedThenActAs(row.role, `
+      alter table public.firms alter column id set default gen_random_uuid();
+      alter table public.subscriptions alter column id set default gen_random_uuid();
+      alter table public.firm_members alter column id set default gen_random_uuid();
+      alter table public.clients alter column id set default gen_random_uuid();
+      alter table public.clients alter column overview_hidden set default false;
+      alter table public.xero_connections alter column id set default gen_random_uuid();
+      alter table public.xero_connections alter column enc_version set default 0;
+      alter table public.client_xero_orgs alter column id set default gen_random_uuid();
+      alter table public.audit_log alter column id set default gen_random_uuid();
+      alter table public.audit_log alter column at set default now();
+      alter table public.xero_pending_onboards alter column id set default gen_random_uuid();
+      alter table public.xero_pending_onboards alter column expires_at set default now() + interval '30 minutes';
+      create unique index if not exists fm_firm_user_key on public.firm_members (firm_id, user_id);
+      create unique index if not exists org_subscription_options_firm_key on public.org_subscription_options (firm_id);
+      insert into public.xero_pending_onboards (id, user_id, access_token_enc, refresh_token_enc, token_expires_at, tenants, expires_at) values
+        ('${P_OTHER}', '${U.supportActive}', 'a', 'r', now() + interval '30 minutes', ${tenants}, now() + interval '30 minutes'),
+        ('${P_EXPIRED}', '${U.superAdmin}', 'a', 'r', now() + interval '30 minutes', ${tenants}, now() - interval '1 minute')
+        ${me && me === U.superAdmin ? `, ('${P_MINE}', '${me}', 'a', 'r', now() + interval '30 minutes', ${tenants}, now() + interval '30 minutes')` : ""};
+    `);
+    const call = (pending: string, first: string, extra: string[], limit = 2) =>
+      probe(`select * from public.admin_onboard_organisation_from_xero('${pending}'::uuid, '${first}', array[${extra.map((e) => `'${e}'`).join(",")}]::text[], 'Matrix Org', ${limit}, 'bookkeeping', false, false, false, false, null)`);
+    const ok = (p: { ok: boolean; rows: number }) => (p.ok && p.rows > 0 ? "allow" : "deny");
+
+    if (r === "admin_onboard: start the Xero sign-in (oauth state)") {
+      return ok(await probe(`insert into public.xero_oauth_states (state, user_id, code_verifier, flow) values ('matrix-onboard', ${me ? `'${me}'` : "null"}, 'v', 'admin_onboard')`));
+    }
+    if (r === "admin_onboard: callback stores the pending record for the state's user") {
+      await db.exec("set local role postgres");
+      return ok(await probe(`insert into public.xero_pending_onboards (user_id, access_token_enc, refresh_token_enc, token_expires_at, tenants) values (${me ? `'${me}'` : "null"}, 'a', 'r', now(), '[]'::jsonb)`));
+    }
+    if (r === "admin_onboard: list files on their own pending record") return ok(await probe(`select * from public.admin_onboard_candidates('${P_MINE}'::uuid)`));
+    if (r === "admin_onboard: list files on another person's pending record") return ok(await probe(`select * from public.admin_onboard_candidates('${P_OTHER}'::uuid)`));
+    if (r === "admin_onboard: create the organisation from their own pending record") {
+      const p = await call(P_MINE, "new-1", ["new-2"]);
+      if (!p.ok) return "deny";
+      await db.exec("set local role postgres");
+      const check = await db.query<{ clients: number; links: number; pending: number; members: number }>(`
+        select (select count(*)::int from public.clients c join public.firms f on f.id = c.firm_id where f.name = 'Matrix Org') as clients,
+               (select count(*)::int from public.client_xero_orgs l join public.xero_connections x on x.id = l.xero_connection_id where x.tenant_id in ('new-1','new-2')) as links,
+               (select count(*)::int from public.xero_pending_onboards where id = '${P_MINE}') as pending,
+               (select count(*)::int from public.firm_members m join public.firms f on f.id = m.firm_id where f.name = 'Matrix Org' and m.user_id = '${U.ownerA}') as members`);
+      const c = check.rows[0];
+      // Two clients, two links, the record consumed, the practice team added.
+      return c?.clients === 2 && c.links === 2 && c.pending === 0 && c.members === 1 ? "allow" : "deny";
+    }
+    if (r === "admin_onboard: create from another person's pending record") return ok(await call(P_OTHER, "new-1", []));
+    if (r === "admin_onboard: create from an expired pending record") return ok(await call(P_EXPIRED, "new-1", []));
+    if (r === "admin_onboard: reuse a consumed pending record") {
+      const first = await call(P_MINE, "new-1", []);
+      if (!first.ok) return "allow"; // the first use must work; fail the row loudly
+      return ok(await call(P_MINE, "new-2", []));
+    }
+    if (r === "admin_onboard: more files than the clients bought") return ok(await call(P_MINE, "new-1", ["new-2", "new-3"], 2));
+    if (r === "admin_onboard: a file already linked in the app") return ok(await call(P_MINE, "new-1", [TENANT_A]));
+    if (r === "admin_onboard: a file not in this authorisation") return ok(await call(P_MINE, "new-1", ["not-authorised"]));
+    if (r === "admin_onboard: create the organisation (non-super-admin caller)") return ok(await call(P_OTHER, "new-1", []));
+    return "unsupported";
+  }
+
   if (r.startsWith("trixie_threads:") || r.startsWith("trixie_messages:") || r === "delete_all_my_trixie_threads()") {
     // Saved Trixie chats: owner only, and hidden once the owner can no longer
     // read the client or organisation. Threads are seeded as postgres.

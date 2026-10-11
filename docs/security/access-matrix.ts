@@ -2320,6 +2320,28 @@ export const MATRIX: MatrixRow[] = [
     layers: ["live"],
     note: "app_private.assert_aal2() runs before anything is read, so an aal1 session is refused with MFA_REQUIRED even when the person would otherwise qualify.",
   },
+  // ---- System Admin "Start from a Xero file" (11 Oct 2026, Stage 1) ----
+  ...rows(["super_admin_no_membership"], [
+    "admin_onboard: start the Xero sign-in (oauth state)",
+    "admin_onboard: callback stores the pending record for the state's user",
+    "admin_onboard: list files on their own pending record",
+    "admin_onboard: create the organisation from their own pending record",
+  ], ["execute"], "allow", "Path C — super admin creates organisations; the guard is in the database", ["pglite"]),
+  ...rows(["org_owner", "org_staff", "other_org_member", "client_viewer", "standing_viewer", "business_owner", "aal1_member", "anonymous"], [
+    "admin_onboard: start the Xero sign-in (oauth state)",
+    "admin_onboard: callback stores the pending record for the state's user",
+    "admin_onboard: create the organisation (non-super-admin caller)",
+  ], ["execute"], "deny", "PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control", ["pglite"]),
+  ...rows(["super_admin_no_membership"], [
+    "admin_onboard: list files on another person's pending record",
+    "admin_onboard: create from another person's pending record",
+    "admin_onboard: create from an expired pending record",
+    "admin_onboard: reuse a consumed pending record",
+    "admin_onboard: more files than the clients bought",
+    "admin_onboard: a file already linked in the app",
+    "admin_onboard: a file not in this authorisation",
+  ], ["execute"], "deny", "PK 4 — pending id and tenant ids are filters: own, unexpired, single use, within the cap, not already linked", ["pglite"]),
+
   // ---- Saved Trixie chats (11 Oct 2026): owner only; hidden once access goes ----
   ...rows(["org_staff"], ["trixie_threads: own client thread", "trixie_messages: own client thread"], ["read"], "allow", "Owner decision 11 Oct 2026 — a person reads only their own Trixie chats", ["pglite"]),
   ...rows(["org_staff"], ["trixie_threads: create own thread"], ["insert"], "allow", "Owner decision 11 Oct 2026", ["pglite"]),
