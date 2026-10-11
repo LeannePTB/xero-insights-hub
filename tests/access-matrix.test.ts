@@ -412,6 +412,7 @@ const TARGET: Record<string, Record<string, string>> = {
 
 /** Primary key column used for the row-scoped read/update/delete probe. */
 const PK: Record<string, string> = {
+  client_bank_account_classifications: 'client_id',
   tier_settings: "tier",
   security_attestations: "check_key",
   // Keyed by (tenant_id, day); the probe scopes on the tenant, which is unique

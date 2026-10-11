@@ -27,7 +27,7 @@ describe("cash at bank and net cash", () => {
     assert.equal(result.creditCardDebt.total, 3554.32);
     assert.equal(Math.round((result.cashAtBank.total - result.creditCardDebt.total) * 100), 89053);
     assert.equal(accounts.Accounts[2].BankAccountType, 'BANK');
-    assert.equal(analyseBalanceSheet(report, accounts).cashAtBank.total, 890.5300000000002);
+    assert.equal(Math.round(analyseBalanceSheet(report, accounts).cashAtBank.total * 100), 89053);
     assert.equal(balanceSheetBankBalances(report).get('card'), -3554.32);
   });
   it('does not guess from names, negative balances or unknown IDs; reset restores Xero', () => {

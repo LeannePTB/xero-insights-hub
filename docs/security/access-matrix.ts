@@ -222,12 +222,12 @@ export const MATRIX: MatrixRow[] = [
     'Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification.', ['pglite'],
   ),
   ...rows(
-    ['org_owner', 'org_staff', 'business_owner'],
+    ['org_owner', 'org_staff'],
     ['save_client_bank_account_classification()'], ['execute'], 'allow',
     'Existing user_can_write_client predicate; account and tenant validated against exact-client snapshots.', ['pglite'],
   ),
   ...rows(
-    ['anonymous', 'aal1_member', 'idle_session_member', 'other_org_member', 'client_viewer', 'standing_viewer', 'support_grant_active', 'support_grant_expired', 'support_grant_revoked', 'super_admin_no_membership', 'suspended_member', 'removed_member'],
+    ['anonymous', 'aal1_member', 'idle_session_member', 'other_org_member', 'business_owner', 'client_viewer', 'standing_viewer', 'support_grant_active', 'support_grant_expired', 'support_grant_revoked', 'super_admin_no_membership', 'suspended_member', 'removed_member'],
     ['save_client_bank_account_classification()'], ['execute'], 'deny',
     'AAL2 and the unchanged client write predicate; no platform, viewer or support write grant.', ['pglite'],
   ),
@@ -236,6 +236,7 @@ export const MATRIX: MatrixRow[] = [
     ['save_client_bank_account_classification() for another client', 'save_client_bank_account_classification() with another tenant', 'save_client_bank_account_classification() with unknown account', 'save_client_bank_account_classification() with invalid classification'],
     ['execute'], 'deny', 'IDs are filters, never grants; strict account validation.', ['pglite'],
   ),
+  ...rows(['business_owner', 'client_viewer', 'standing_viewer'], ['client_bank_account_classifications'], ['read'], 'allow', 'Existing exact-client read predicate only; relationship and standing access remain read-only.', ['pglite']),
   // ---------------------------------------------------------------- deny-all
   ...rows(
     NO_DATA_ROLES,
