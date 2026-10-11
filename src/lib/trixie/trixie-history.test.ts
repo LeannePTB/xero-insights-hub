@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { autoTitle, threadPathname, threadScopeFor, visibleReply } from "./trixie-history";
 
 describe("saved Trixie chats", () => {
