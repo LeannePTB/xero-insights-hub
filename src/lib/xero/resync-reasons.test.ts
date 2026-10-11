@@ -1,4 +1,6 @@
-import { describe, expect, test } from "bun:test";
+import { describe, test } from "node:test";
+import assert from "node:assert/strict";
+const expect = (v: unknown) => ({ toBe: (e: unknown) => assert.equal(v, e) });
 import { outcomeFromFailure, resyncEstimateMinutes, RESYNC_REASON } from "./resync-reasons";
 
 describe("re-sync outcomes", () => {
