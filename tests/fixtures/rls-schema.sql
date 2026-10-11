@@ -1274,6 +1274,28 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.revoke_client_access(_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _client uuid; _firm uuid; _user uuid;
+begin
+  perform app_private.assert_aal2();
+  select client_id, user_id into _client, _user from public.client_access where id = _id;
+  if _client is null then return; end if;
+  if not app_private.can_manage_viewers_for_client(auth.uid(), _client) then
+    raise exception 'You cannot manage access for this client.';
+  end if;
+  delete from public.client_access where id = _id;
+  select firm_id into _firm from public.clients where id = _client;
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (auth.uid(), _firm, 'client_viewer_revoked', 'client', _client::text,
+          jsonb_build_object('user_id', _user, 'scope', 'client'));
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.assert_super_admin()
  RETURNS void
  LANGUAGE plpgsql
@@ -1424,6 +1446,27 @@ AS $function$
         )
     )
   ) end
+$function$
+;
+CREATE OR REPLACE FUNCTION public.revoke_firm_viewer_access(_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _firm uuid; _user uuid;
+begin
+  perform app_private.assert_aal2();
+  select firm_id, user_id into _firm, _user from public.firm_viewer_access where id = _id;
+  if _firm is null then return; end if;
+  if not app_private.can_manage_client_viewers(auth.uid(), _firm) then
+    raise exception 'You cannot manage viewers for this organisation.';
+  end if;
+  delete from public.firm_viewer_access where id = _id;
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (auth.uid(), _firm, 'standing_viewer_revoked', 'firm', _firm::text,
+          jsonb_build_object('user_id', _user, 'scope', 'all_clients'));
+end;
 $function$
 ;
 CREATE OR REPLACE FUNCTION public.admin_add_practice_member(_user_id uuid)
@@ -1620,6 +1663,40 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.grant_client_access(_client_id uuid, _user_id uuid, _tier text, _relationship client_access_relationship DEFAULT NULL::client_access_relationship, _inviter_label text DEFAULT NULL::text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _firm uuid; _label text;
+begin
+  perform app_private.assert_aal2();
+  if not app_private.can_manage_viewers_for_client(auth.uid(), _client_id) then
+    raise exception 'You cannot manage access for this client.';
+  end if;
+  _label := nullif(btrim(_inviter_label), '');
+  if _label is not null and (char_length(_label) > 80 or _label ~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$') then
+    raise exception 'INVALID_INVITER_LABEL' using errcode = '22023';
+  end if;
+  select firm_id into _firm from public.clients where id = _client_id;
+
+  insert into public.user_roles (user_id, role) values (_user_id, 'client_viewer')
+  on conflict (user_id, role) do nothing;
+  insert into public.client_access (client_id, user_id, tier, relationship, inviter_label)
+  values (_client_id, _user_id, _tier, _relationship, _label)
+  on conflict (client_id, user_id) do update
+    set tier = excluded.tier,
+        relationship = excluded.relationship,
+        inviter_label = coalesce(excluded.inviter_label, public.client_access.inviter_label);
+
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (auth.uid(), _firm, 'client_viewer_granted', 'client', _client_id::text,
+          jsonb_build_object('user_id', _user_id, 'tier', _tier, 'scope', 'client',
+                             'relationship', _relationship, 'inviter_label', _label));
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.set_client_access_relationship(_id uuid, _relationship client_access_relationship)
  RETURNS void
  LANGUAGE plpgsql
@@ -1641,6 +1718,40 @@ begin
   values (auth.uid(), _firm, 'client_viewer_relationship_changed', 'client', _client::text,
           jsonb_build_object('user_id', _user, 'previous_relationship', _previous,
                              'relationship', _relationship));
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.grant_firm_viewer_access(_firm_id uuid, _user_id uuid, _tier dashboard_tier, _inviter_label text DEFAULT NULL::text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _id uuid; _label text;
+begin
+  perform app_private.assert_aal2();
+  if not app_private.can_manage_client_viewers(auth.uid(), _firm_id) then
+    raise exception 'You cannot manage viewers for this organisation.';
+  end if;
+  _label := nullif(btrim(_inviter_label), '');
+  if _label is not null and (char_length(_label) > 80 or _label ~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$') then
+    raise exception 'INVALID_INVITER_LABEL' using errcode = '22023';
+  end if;
+  insert into public.user_roles (user_id, role) values (_user_id, 'client_viewer')
+  on conflict (user_id, role) do nothing;
+  insert into public.firm_viewer_access (firm_id, user_id, tier, granted_by, inviter_label)
+  values (_firm_id, _user_id, _tier, auth.uid(), _label)
+  on conflict (firm_id, user_id) do update
+    set tier = excluded.tier,
+        inviter_label = coalesce(excluded.inviter_label, public.firm_viewer_access.inviter_label),
+        updated_at = now()
+  returning id into _id;
+
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (auth.uid(), _firm_id, 'standing_viewer_granted', 'firm', _firm_id::text,
+          jsonb_build_object('user_id', _user_id, 'tier', _tier, 'scope', 'all_clients',
+                             'relationship', 'external_adviser', 'inviter_label', _label));
+  return _id;
 end;
 $function$
 ;
@@ -2822,6 +2933,72 @@ BEGIN
                              'traction_team_added', coalesce(_add_practice_team, true)));
 
   RETURN QUERY SELECT _firm, _clients, _wanted;
+END;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.set_viewer_scope(_firm_id uuid, _user_id uuid, _scope text, _client_ids uuid[])
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  _valid uuid[];
+  _row record;
+  _standing uuid;
+BEGIN
+  PERFORM app_private.assert_aal2();
+  IF auth.uid() IS NULL OR NOT app_private.can_manage_client_viewers(auth.uid(), _firm_id) THEN
+    RAISE EXCEPTION 'NOT_PERMITTED' USING errcode = 'insufficient_privilege';
+  END IF;
+  IF _scope NOT IN ('all_clients', 'selected') THEN
+    RAISE EXCEPTION 'INVALID_SCOPE' USING errcode = '22023';
+  END IF;
+  SELECT id INTO _standing FROM public.firm_viewer_access WHERE firm_id = _firm_id AND user_id = _user_id;
+  IF _standing IS NULL AND NOT EXISTS (
+      SELECT 1 FROM public.client_access ca JOIN public.clients c ON c.id = ca.client_id
+       WHERE c.firm_id = _firm_id AND ca.user_id = _user_id AND ca.relationship = 'external_adviser') THEN
+    RAISE EXCEPTION 'NOT_A_VIEWER' USING errcode = 'no_data_found';
+  END IF;
+
+  IF _scope = 'all_clients' THEN
+    IF _standing IS NULL THEN
+      PERFORM public.grant_firm_viewer_access(_firm_id, _user_id, 'multi_company'::public.dashboard_tier, NULL);
+    END IF;
+    FOR _row IN SELECT ca.id FROM public.client_access ca JOIN public.clients c ON c.id = ca.client_id
+                 WHERE c.firm_id = _firm_id AND ca.user_id = _user_id AND ca.relationship = 'external_adviser' LOOP
+      PERFORM public.revoke_client_access(_row.id);
+    END LOOP;
+    INSERT INTO public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+    VALUES (auth.uid(), _firm_id, 'viewer_scope_changed', 'firm', _firm_id::text,
+            jsonb_build_object('user_id', _user_id, 'scope', 'all_clients'));
+    RETURN 0;
+  END IF;
+
+  SELECT coalesce(array_agg(c.id), '{}') INTO _valid FROM public.clients c
+   WHERE c.firm_id = _firm_id AND c.id = ANY(coalesce(_client_ids, '{}'));
+  IF array_length(_valid, 1) IS NULL THEN
+    RAISE EXCEPTION 'NO_CLIENTS' USING errcode = '22023';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.client_access ca WHERE ca.user_id = _user_id AND ca.client_id = ANY(_valid)
+              AND ca.relationship IS DISTINCT FROM 'external_adviser') THEN
+    RAISE EXCEPTION 'OTHER_RELATIONSHIP' USING errcode = '22023';
+  END IF;
+  FOR _row IN SELECT unnest(_valid) AS cid LOOP
+    PERFORM public.grant_client_access(_row.cid, _user_id, 'multi_company', 'external_adviser'::public.client_access_relationship, NULL);
+  END LOOP;
+  FOR _row IN SELECT ca.id FROM public.client_access ca JOIN public.clients c ON c.id = ca.client_id
+               WHERE c.firm_id = _firm_id AND ca.user_id = _user_id AND ca.relationship = 'external_adviser'
+                 AND NOT (ca.client_id = ANY(_valid)) LOOP
+    PERFORM public.revoke_client_access(_row.id);
+  END LOOP;
+  IF _standing IS NOT NULL THEN
+    PERFORM public.revoke_firm_viewer_access(_standing);
+  END IF;
+  INSERT INTO public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  VALUES (auth.uid(), _firm_id, 'viewer_scope_changed', 'firm', _firm_id::text,
+          jsonb_build_object('user_id', _user_id, 'scope', 'selected', 'client_count', array_length(_valid, 1)));
+  RETURN array_length(_valid, 1);
 END;
 $function$
 ;

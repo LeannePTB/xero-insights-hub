@@ -46,7 +46,8 @@ fns as (
          'can_manage_client_income_tax_instalments','save_client_income_tax_instalment',
          'set_client_overview_hidden','set_firm_overview_hidden','overview_hidden_items',
          'save_client_bank_account_classification','delete_all_my_trixie_threads',
-         'admin_onboard_candidates','admin_onboard_organisation_from_xero'))
+         'admin_onboard_candidates','admin_onboard_organisation_from_xero',
+         'set_viewer_scope','grant_client_access','grant_firm_viewer_access','revoke_client_access','revoke_firm_viewer_access'))
     )
 ),
 stmts as (
