@@ -70,6 +70,7 @@ create table public.audit_log (id uuid, actor_user_id uuid, firm_id uuid, action
 create table public.audit_runs (id uuid, tenant_id text, run_at timestamp with time zone, run_by uuid, summary jsonb, duration_ms integer, error text);
 create table public.billing_events (id uuid, firm_id uuid, stripe_event_id text, type text, payload jsonb, occurred_at timestamp with time zone, client_id uuid);
 create table public.client_access (id uuid, client_id uuid, user_id uuid, tier text, created_at timestamp with time zone, updated_at timestamp with time zone, relationship client_access_relationship, inviter_label text);
+create table public.client_bank_account_classifications (client_id uuid, tenant_id text, account_id uuid, classification text, updated_by uuid, updated_at timestamp with time zone);
 create table public.client_cards (client_id uuid, cards text[], created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_cost_classifications (id uuid, client_id uuid, tenant_id text, account_name text, classification text, created_at timestamp with time zone, updated_at timestamp with time zone, is_wages boolean);
 create table public.client_income_tax_instalments (id uuid, client_id uuid, tenant_id text, period_start date, period_end date, amount numeric(14,2), created_by uuid, updated_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
@@ -2647,6 +2648,30 @@ BEGIN
   IF NOT app_private.me_is_super_admin() THEN RAISE EXCEPTION 'Forbidden'; END IF;
 END; $function$
 ;
+CREATE OR REPLACE FUNCTION public.save_client_bank_account_classification(_client_id uuid, _tenant_id text, _account_id uuid, _classification text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE v_firm_id uuid; v_previous text;
+BEGIN
+ PERFORM app_private.assert_aal2();
+ IF auth.uid() IS NULL OR NOT app_private.user_can_write_client(auth.uid(), _client_id) THEN RAISE EXCEPTION 'Not authorised'; END IF;
+ PERFORM public.assert_tenant_belongs_to_client(_client_id, _tenant_id);
+ IF _classification IS NOT NULL AND _classification NOT IN ('bank','credit_card') THEN RAISE EXCEPTION 'Invalid classification'; END IF;
+ IF NOT EXISTS (SELECT 1 FROM public.xero_snapshots s CROSS JOIN LATERAL jsonb_array_elements(s.payload->'Accounts') a WHERE s.client_id = _client_id AND s.tenant_id = _tenant_id AND s.report_key = 'accounts' AND s.complete AND a->>'AccountID' = _account_id::text AND upper(a->>'Type') = 'BANK' AND upper(a->>'Status') = 'ACTIVE') THEN RAISE EXCEPTION 'Account unavailable'; END IF;
+ SELECT firm_id INTO v_firm_id FROM public.clients WHERE id = _client_id;
+ SELECT classification INTO v_previous FROM public.client_bank_account_classifications WHERE client_id = _client_id AND tenant_id = _tenant_id AND account_id = _account_id FOR UPDATE;
+ IF _classification IS NULL THEN
+ DELETE FROM public.client_bank_account_classifications WHERE client_id = _client_id AND tenant_id = _tenant_id AND account_id = _account_id;
+ ELSE
+ INSERT INTO public.client_bank_account_classifications (client_id, tenant_id, account_id, classification, updated_by) VALUES (_client_id, _tenant_id, _account_id, _classification, auth.uid()) ON CONFLICT (client_id, tenant_id, account_id) DO UPDATE SET classification = excluded.classification, updated_by = auth.uid(), updated_at = now();
+ END IF;
+ INSERT INTO public.audit_log(actor_user_id, firm_id, action, target_type, target_id, meta) VALUES (auth.uid(), v_firm_id, 'client_bank_account_classification_changed', 'client', _client_id::text, jsonb_build_object('tenant_id', _tenant_id, 'account_id', _account_id, 'previous', v_previous, 'classification', _classification));
+END;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2719,6 +2744,7 @@ alter table public.audit_log enable row level security;
 alter table public.audit_runs enable row level security;
 alter table public.billing_events enable row level security;
 alter table public.client_access enable row level security;
+alter table public.client_bank_account_classifications enable row level security;
 alter table public.client_cards enable row level security;
 alter table public.client_cost_classifications enable row level security;
 alter table public.client_income_tax_instalments enable row level security;
@@ -2847,6 +2873,14 @@ grant SELECT on table public.client_access to service_role;
 grant TRIGGER on table public.client_access to service_role;
 grant TRUNCATE on table public.client_access to service_role;
 grant UPDATE on table public.client_access to service_role;
+grant SELECT on table public.client_bank_account_classifications to authenticated;
+grant DELETE on table public.client_bank_account_classifications to service_role;
+grant INSERT on table public.client_bank_account_classifications to service_role;
+grant REFERENCES on table public.client_bank_account_classifications to service_role;
+grant SELECT on table public.client_bank_account_classifications to service_role;
+grant TRIGGER on table public.client_bank_account_classifications to service_role;
+grant TRUNCATE on table public.client_bank_account_classifications to service_role;
+grant UPDATE on table public.client_bank_account_classifications to service_role;
 grant SELECT on table public.client_cards to authenticated;
 grant DELETE on table public.client_cards to service_role;
 grant INSERT on table public.client_cards to service_role;
@@ -3494,6 +3528,8 @@ create policy "super_admin reads billing events" on public.billing_events as per
 create policy "manage client access by firm (read)" on public.client_access as permissive for select to authenticated using (app_private.user_can_manage_client(auth.uid(), client_id));
 create policy mfa_aal2_required on public.client_access as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "viewers read own access" on public.client_access as permissive for select to authenticated using ((user_id = auth.uid()));
+create policy client_bank_classifications_read on public.client_bank_account_classifications as permissive for select to authenticated using (app_private.user_can_read_client(auth.uid(), client_id));
+create policy mfa_aal2_required on public.client_bank_account_classifications as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "client cards readable by client read access" on public.client_cards as permissive for select to authenticated using ((app_private.is_aal2() AND app_private.user_can_read_client(auth.uid(), client_id)));
 create policy mfa_aal2_required on public.client_cards as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "Manage cost classifications by firm (delete)" on public.client_cost_classifications as permissive for delete to authenticated using ((EXISTS ( SELECT 1
@@ -3876,4 +3912,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 7bca757f92cb1a57e3f9e0c87b5015d8f8f0c4955d887677365ae54da9ece93c
+-- catalogue-fingerprint: cfd591a4aef84245ade328fdaefc0098d91dfc5c38b4abdbdacb88a9d904fdfb
