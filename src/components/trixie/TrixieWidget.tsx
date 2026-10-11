@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { deleteMyTrixieThread, getMyTrixieThread, listMyTrixieThreads, type TrixieThreadSummary } from "@/lib/trixie/trixie-threads.functions";
+import { deleteMyTrixieThread, getMyTrixieThread, listMyTrixieThreads, type TrixieStoredMessage, type TrixieThreadSummary } from "@/lib/trixie/trixie-threads.functions";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
@@ -113,7 +113,7 @@ export function TrixieWidget() {
     setLoaded({
       key: thread.id,
       threadId: thread.id,
-      messages: thread.messages.map((m) => ({ id: m.id, role: m.role, parts: [{ type: "text", text: m.content }], metadata: { sources: m.sources } })),
+      messages: thread.messages.map((m: TrixieStoredMessage) => ({ id: m.id, role: m.role, parts: [{ type: "text", text: m.content }], metadata: { sources: m.sources } })),
     });
   }, [getThread]);
 

@@ -227,7 +227,7 @@ function TrixieChatsSection() {
     onError: () => toast.error("Your chats could not be deleted."),
   });
   return (
-    <section className="mt-8 max-w-xl space-y-3 rounded-lg border p-5">
+    <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] space-y-4">
       <h2 className="text-base font-semibold">Trixie chats</h2>
       <p className="text-sm text-muted-foreground">
         Your chats with Trixie are saved so you can come back to them. Only you can see them. Deleting removes every chat you have had with Trixie, including chats about clients you can no longer see.
