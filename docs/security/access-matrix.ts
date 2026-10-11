@@ -100,6 +100,7 @@ export const CLIENT_DATA_TABLES = [
   "client_income_tax_instalments",
   "client_rental_properties",
   "client_statutory_accounts",
+  "client_bank_account_classifications",
   "client_subscriptions",
   "client_reports",
   "reconciliation_snapshots",
@@ -211,10 +212,14 @@ const SERVER_WRITTEN_TABLES = [
 const MEMBER_MANAGED_TABLES = CLIENT_DATA_TABLES.filter(
   (t) =>
     !(SERVER_WRITTEN_TABLES as readonly string[]).includes(t) &&
-    !["clients", "client_subscriptions", "report_cache", "client_access", "client_income_tax_instalments", "client_rental_properties"].includes(t),
+    !["clients", "client_subscriptions", "report_cache", "client_access", "client_income_tax_instalments", "client_rental_properties", "client_bank_account_classifications"].includes(t),
 );
 
 export const MATRIX: MatrixRow[] = [
+  ...rows(
+    ROLE_LABELS as unknown as Role[],
+    [], [], 'deny', 'Unused', ['pglite'],
+  ),
   // ---------------------------------------------------------------- deny-all
   ...rows(
     NO_DATA_ROLES,
