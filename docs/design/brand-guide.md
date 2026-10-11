@@ -21,7 +21,7 @@ Use the following values supplied from the official sheet's **swatches and logo 
 ## App roles and accessibility
 
 - Primary: Royal blue. Strong/active states and light-theme headings: Navy.
-- Links and focus: Mid blue. Dark small-text links use Light blue because Mid blue fails 4.5:1 on the dark surfaces; focus remains Mid blue and is tested at 3:1.
+- Links and focus: Mid blue in light mode. Dark links/focus use Light blue because Mid blue fails 4.5:1 text contrast and only reaches 2.55:1 against dark muted surfaces for focus (below 3:1).
 - Accent: Blue, with near-black text (white and navy fail small-text AA on Blue).
 - Highlight: Light blue. Body text: near-black in light mode; light text in dark mode.
 - Wordmark grey stays #939598 in artwork. It fails AA on light surfaces, so small muted text uses #62666C in light mode; dark mode retains #AEB6C1 for contrast on muted surfaces.

@@ -52,8 +52,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <img
                   src={brand.logoLight}
                   alt={brand.productName}
-                  className="h-12 w-auto max-w-32 shrink-0 object-contain"
+                  className="h-12 w-auto max-w-32 shrink-0 object-contain dark:hidden"
                 />
+                {brand.logoDark !== brand.logoLight ? <img src={brand.logoDark} alt={brand.productName} className="hidden h-12 w-auto max-w-32 shrink-0 object-contain dark:block" /> : <span className="hidden text-lg font-semibold text-foreground dark:block">{brand.productName}</span>}
               </Link>
             )}
           </header>

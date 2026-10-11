@@ -59,6 +59,7 @@ import {
   type Workspace,
 } from "@/lib/nav/sidebar-nav";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
+import taMonogram from "@/assets/traction-ta-monogram.png";
 
 const ICONS: Record<NavIcon, LucideIcon> = {
   building: Building2,
@@ -158,6 +159,7 @@ export function AppSidebar({ badges = {} }: { badges?: Record<string, number> })
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="gap-2 overflow-hidden">
+        <img src={taMonogram} alt="Traction Advisory TA" className="hidden h-8 w-8 shrink-0 object-contain group-data-[collapsible=icon]:block" />
         <WorkspaceSwitcher
           workspace={workspace}
           canSeeSystem={canSeeSystem}
