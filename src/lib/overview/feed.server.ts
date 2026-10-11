@@ -39,8 +39,8 @@ function money(n: number | null): string {
 
 // The rule lives in ./reconciliation so the overview table can share it;
 // re-exported here for existing imports and tests.
-export { bankReconciledStale } from "./reconciliation";
-// (bank-not-reconciled feed item disabled — see note in buildFeed)
+export { bankReconciledStale } from "./bank-reconciliation";
+import { bankReconWarning } from "./bank-reconciliation";
 
 export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; cleared: FeedEvent[]; notes: string[] } {
   const events: FeedEvent[] = [];
@@ -141,9 +141,14 @@ export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; cleared:
       events.push({ ...base, eventKey: "data:stale", kind: "data", severity: 1, headline: "Snapshot out of date", before: null, after: now.detail, date: ctx.today, href: settingsHref });
     }
 
-    // "Bank not reconciled" is switched off: the signal counted coded-but-never-
-    // reconciled lines on closed/archived accounts, so it reported years-old
-    // dates for files reconciled to today. Re-enable only once proven correct.
+    // Bank not reconciled: per in-scope account, from the nightly key figures.
+    // Missing or unclear data shows nothing.
+    if (kAnchor && conns.some((x) => x.status === "connected")) {
+      const w = bankReconWarning(kf.get(kAnchor)?.bank_reconciliation, kAnchor);
+      if (w) {
+        events.push({ ...base, eventKey: "data:bank_not_reconciled", kind: "data", severity: 1, headline: "Bank not reconciled recently", before: null, after: w.text, date: kAnchor, href: `/clients/${c.client_id}/settings/tax-reporting` });
+      }
+    }
 
     // Monthly report not sent by the 15th business day.
     const due = nthBusinessDay(ctx.today, REPORT_NOT_SENT.businessDay);
