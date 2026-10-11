@@ -18,8 +18,14 @@ export type ProtectedShare = {
 
 export const NO_CASH_TO_COMPARE = "No cash at bank to compare";
 
+export const ATO_REFUND_DUE = "ATO refund due — nothing to protect";
+
 export function protectedShareOfCash(protectedMoney: number, cashAtBank: number): ProtectedShare {
   const t = R01_PROTECTED_MONEY;
+  if (protectedMoney < 0) {
+    // A net refund is owed by the ATO: never show a negative percentage.
+    return { ratio: null, pct: null, level: null, tooltip: ATO_REFUND_DUE };
+  }
   if (!(cashAtBank > 0)) {
     // Owing something with no cash at bank is the worst case for the health
     // rule, but no percentage is shown.

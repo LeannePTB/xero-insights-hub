@@ -586,7 +586,9 @@ export type ProtectedMoneyComponent =
       label: string;
       status: "resolved";
       amount: number;
-      accounts: { name: string; amount: number }[];
+      /** Every matched account with its Balance Sheet balance as Xero sends it,
+       *  and whether it was counted (see `countsTowardProtected`). */
+      accounts: { name: string; amount: number; counted: boolean }[];
     }
   | {
       key: ProtectedMoneyComponentKey;
@@ -624,6 +626,18 @@ const PROTECTED_MONEY_LABELS: Record<ProtectedMoneyComponentKey, string> = {
  *  total, it simply is not split. Superannuation is owed to employees' funds,
  *  not the ATO, and is never part of this component.
  */
+/**
+ * Sign rule for one statutory liability line. On a liability account a
+ * positive balance is money owed. A negative (debit) balance can only reduce
+ * protected money when it is a genuine refund owed BY the ATO — a GST account
+ * in credit after a BAS refund. A debit on a PAYG, super or combined ATO
+ * clearing/suspense account is unallocated payments or a contra, not a
+ * refund, so it is shown but never netted off money owed.
+ */
+export function countsTowardProtected(line: { amount: number; category: TaxLineCategory }): boolean {
+  return line.amount >= 0 || line.category === "gst";
+}
+
 export function buildProtectedMoney(
   asAtDate: string,
   lines: { name: string; amount: number; category: TaxLineCategory }[],
@@ -652,8 +666,8 @@ export function buildProtectedMoney(
       key,
       label,
       status: "resolved",
-      amount: matched.reduce((s, l) => s + l.amount, 0),
-      accounts: matched.map((l) => ({ name: l.name, amount: l.amount })),
+      amount: matched.filter(countsTowardProtected).reduce((s, l) => s + l.amount, 0),
+      accounts: matched.map((l) => ({ name: l.name, amount: l.amount, counted: countsTowardProtected(l) })),
     });
   }
 
@@ -662,8 +676,8 @@ export function buildProtectedMoney(
       key: "ato-combined",
       label: PROTECTED_MONEY_LABELS["ato-combined"],
       status: "resolved",
-      amount: combined.reduce((s, l) => s + l.amount, 0),
-      accounts: combined.map((l) => ({ name: l.name, amount: l.amount })),
+      amount: combined.filter(countsTowardProtected).reduce((s, l) => s + l.amount, 0),
+      accounts: combined.map((l) => ({ name: l.name, amount: l.amount, counted: countsTowardProtected(l) })),
     });
   }
 
