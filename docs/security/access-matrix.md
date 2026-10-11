@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1922**. Known failures: **0**.
+Rows: **1925**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -1025,6 +1025,7 @@ None.
 | admin_assert_can_sign_out_user(their own account) | execute | DENY | pglite | PK 1 — the caller uses Sign out my other devices for themselves |  |
 | Trixie: client figures | execute | DENY | live | PK 3 / Path C | System Admin receives platform how-to scope only; super admin alone is never passed to user_can_read_client as a financial-data grant. |
 | Trixie: platform how-to and administration | execute | ALLOW | live | Path C / PK 2 | The separate platform allowance applies; admin writers each assert aal2 and me_is_super_admin and expose metadata only. |
+| Trixie: spend overview, usage alerts and alert thresholds | execute | ALLOW | live | Path C / PK 2 | admin_trixie_spend_overview, admin_trixie_alerts, acknowledge_trixie_alert and the alert settings functions assert aal2 and me_is_super_admin; they return Trixie spend and question counts only, never prompts, answers or client figures. |
 
 ## Support-grant holder, grant expired
 
@@ -1436,6 +1437,8 @@ None.
 | security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | user_can_write_client_scenario() for a client in their organisation | execute | ALLOW | pglite | PK section 2 path A — membership or client ownership still writes scenario exclusions, unchanged by Batch 3 |  |
+| Trixie: spend overview, usage alerts and alert thresholds | execute | DENY | live | Path C (platform metadata only) / PK 6 | Every Trixie alert reader and writer refuses a caller who is not a super admin. |
+| Trixie system jobs (evaluate_trixie_alerts, mark_trixie_alert_emailed, trixie_monthly_summary, expire_trixie_reservations, purge_trixie_usage) | execute | DENY | live | PK 7 — system contexts only | EXECUTE is granted to service_role only; the scheduled route authenticates with a constant-time bearer comparison. |
 
 ## Organisation staff (own organisation)
 
