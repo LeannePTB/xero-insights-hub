@@ -1,6 +1,7 @@
 import { liveSource, type SnapshotSource } from "./snapshot-source";
 import { createServerFn } from "@tanstack/react-start";
 import { requireAal2 } from "@/lib/auth/require-aal2";
+import { analyseBalanceSheet } from './tax-lines';
 
 export type CashflowMonth = {
   label: string; // e.g. "Apr 2026"
@@ -145,7 +146,9 @@ export const getCashflow = createServerFn({ method: "POST" })
     const accountsRes = await xeroGet<{ Accounts?: XeroAccount[] }>(conn, "Accounts", {
       where: 'Class=="ASSET"&&Type=="BANK"&&Status=="ACTIVE"',
     });
-    const bankAccounts = accountsRes.Accounts ?? [];
+    const { classifiedAccounts } = await import('./bank-classifications.server');
+    const effectiveAccounts = await classifiedAccounts(context.supabase, data.tenantId, accountsRes);
+    const bankAccounts = (effectiveAccounts.Accounts ?? []).filter((account: any) => account.BankAccountType !== 'CREDITCARD' && account.Class === 'ASSET');
 
     const accounts: BankAccountBalance[] = [];
     for (const acc of bankAccounts) {
@@ -184,11 +187,10 @@ export const getCashflow = createServerFn({ method: "POST" })
             if (row?.RowType !== "Row") continue;
             const cells = row?.Cells ?? [];
             if (cells.length >= 5) {
-              const accountName = String(cells[0]?.Value ?? "").trim();
+              const accountId = cells.flatMap((cell: any) => cell.Attributes ?? []).find((attribute: any) => attribute.Id === 'account')?.Value;
               const closing = Number(cells[4]?.Value ?? 0) || 0;
-              const match = accounts.find((a) => a.name === accountName);
-              if (match) match.balance = closing;
-              totalCash += closing;
+              const match = accounts.find((a) => a.accountId === accountId);
+              if (match) { match.balance = closing; totalCash += closing; }
             }
           }
         }

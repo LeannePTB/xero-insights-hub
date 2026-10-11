@@ -157,7 +157,7 @@ function walkBsRows(
   }
 }
 
-function summariseBs(report: any) {
+function summariseBs(report: any, accountsPayload: any) {
   const leaves: { section: string; name: string; amount: number }[] = [];
   walkBsRows(report?.Rows, "", leaves);
   let cash = 0;
@@ -194,7 +194,9 @@ function summariseBs(report: any) {
       currentLiabilities += l.amount;
     }
   }
-  return { cash, receivables, badDebts, currentAssets, currentLiabilities, bankAccounts };
+  const analysis = analyseBalanceSheet(report, accountsPayload);
+  if (analysis.cashAtBank.status !== 'assessed' && analysis.cashAtBank.status !== 'absent') throw new Error('Cash at bank could not be assessed.');
+  return { cash: analysis.cashAtBank.total, receivables, badDebts, currentAssets, currentLiabilities, bankAccounts: analysis.cashAtBank.accounts };
 }
 
 
@@ -607,10 +609,13 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
 
 
 
+    const { classifiedAccounts } = await import('./xero/bank-classifications.server');
+    const accountSnapshot = await snap<any>('accounts', {});
+    const accountsPayload = await classifiedAccounts(context.supabase, data.tenantId, accountSnapshot ?? await xeroGet<any>(conn, 'Accounts'), data.clientId);
     const pnl = summarisePnl(pnlRes?.Reports?.[0] ?? {});
     const priorPnl = summarisePnl(priorPnlRes?.Reports?.[0] ?? {});
-    const bs = summariseBs(bsRes?.Reports?.[0] ?? {});
-    const bsStart = summariseBs(bsStartRes?.Reports?.[0] ?? {});
+    const bs = summariseBs(bsRes?.Reports?.[0] ?? {}, accountsPayload);
+    const bsStart = bsStartRes ? summariseBs(bsStartRes?.Reports?.[0] ?? {}, accountsPayload) : { cash: bs.cash };
     const liabilities = sumLiabilities(bsRes?.Reports?.[0] ?? {});
     const ap = summariseOutstandingInvoices(apInvRes?.Invoices, asOfDate);
     const ar = summariseOutstandingInvoices(arInvRes?.Invoices, asOfDate);
