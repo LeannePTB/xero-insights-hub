@@ -3486,6 +3486,14 @@ export type Database = {
         Args: { _make: boolean; _user_id: string }
         Returns: boolean
       }
+      admin_trixie_alert_settings: {
+        Args: never
+        Returns: {
+          daily_spike_floor_usd: number
+          daily_spike_multiplier: number
+          spend_alert_thresholds_usd: number[]
+        }[]
+      }
       admin_trixie_alerts: {
         Args: { _limit?: number }
         Returns: {
@@ -4193,6 +4201,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      save_trixie_alert_settings: {
+        Args: { _multiplier: number; _thresholds: number[] }
+        Returns: boolean
+      }
       save_trixie_article: {
         Args: {
           _active: boolean
@@ -4438,6 +4450,7 @@ export type Database = {
           warning_threshold: number
         }[]
       }
+      trixie_cost_guard: { Args: never; Returns: number }
       trixie_monthly_summary: {
         Args: { _month?: string }
         Returns: {
