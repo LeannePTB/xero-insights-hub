@@ -2,7 +2,7 @@
 - [x] Remove Unreconciled since and Last Xero login from both overview views; build OK, 23 focused tests and full security gate pass.
 - [x] Add explicit in-app bank/credit-card account classification in Client settings → Tax & reporting, scoped to client/Xero file/account ID. Shared overview, snapshot, health, cash-flow and report calculations apply it; no name guessing or Xero rewrite. Real-user AAL2 save/readback remains unverified; no Positive Traction override was saved by tooling.
 - [x] Build Trixie Phase 1: session-only contextual help, caller-scoped figure citations, fair-use controls, System Admin management, and 13-month metadata retention.
-- [ ] Refresh platform logo presentation, semantic brand palette and compact typography; verify contrast, navigation and security checks.
+- [ ] Apply official style-sheet palette and circular TA monogram; add staff/platform brand help; verify contrast and full security checks.
 - [x] Add independent organisation White label identity and align authenticated pages with one left-aligned container. Email identity is name-only; private email-logo embedding remains deferred because no safe provider attachment path is available.
 - [x] Redesign System Admin Organisations and organisation detail; remove warm warning colours site-wide without changing access rules. Typecheck, 16 focused tests and the full security gate passed; authenticated visual review remains blocked by interactive second factor.
 - [x] Tidy System Admin titles and remove orange admin markers; automatic typecheck/build passed and all 8 navigation tests passed; guards unchanged.

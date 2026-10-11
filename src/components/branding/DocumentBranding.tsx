@@ -12,7 +12,8 @@ export function DocumentBranding() {
       icon.rel = "icon";
       document.head.appendChild(icon);
     }
-    icon.href = brand.favicon ?? "/favicon.png";
-  }, [brand.favicon, brand.productName]);
+    icon.href = brand.whiteLabelEnabled ? (brand.favicon ?? "/favicon.png") : "/favicon.png";
+    icon.type = "image/png";
+  }, [brand.favicon, brand.productName, brand.whiteLabelEnabled]);
   return null;
 }

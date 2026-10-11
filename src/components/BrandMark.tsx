@@ -3,7 +3,7 @@ import { DEFAULT_BRANDING, usePlatformBranding } from "@/hooks/usePlatformBrandi
 
 type Props = {
   className?: string;
-  /** Use on dark backgrounds — renders the name in light text instead of wrapping the logo in a pill. */
+  /** Use approved dark artwork; never put the colour logo on a dark surface. */
   onDark?: boolean;
   /** Tailwind height class for the logo image. Defaults to h-9. */
   logoHeightClass?: string;
@@ -16,9 +16,9 @@ export function BrandMark({ className = "", onDark = false, logoHeightClass = "h
     <Link to="/" className={`flex items-center gap-3 ${className}`} aria-label={`${brand.productName} Dashboards`}>
       {hasCustomLogo ? (
         onDark ? (
-          <span className="rounded-md bg-brand-surface px-2 py-1 shadow-sm">
-            <img src={brand.logoLight} alt={brand.productName} className={`${logoHeightClass} max-w-full w-auto object-contain`} />
-          </span>
+          brand.logoDark !== brand.logoLight && brand.logoDark !== DEFAULT_BRANDING.logoDark ?
+            <img src={brand.logoDark} alt={brand.productName} className={`${logoHeightClass} max-w-full w-auto object-contain`} /> :
+            <span className="text-lg font-semibold text-primary-foreground">{brand.productName}</span>
         ) : (
           <img src={brand.logoLight} alt={brand.productName} className={`${logoHeightClass} max-w-full w-auto object-contain`} />
         )
