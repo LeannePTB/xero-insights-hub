@@ -539,6 +539,78 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   if (r.startsWith("server fn:")) return "unsupported";
   if (r === "admin_firm_overview") return "unsupported"; // a view; not dumped into the fixture
 
+  if (r.startsWith("trixie_threads:") || r.startsWith("trixie_messages:") || r === "delete_all_my_trixie_threads()") {
+    // Saved Trixie chats: owner only, and hidden once the owner can no longer
+    // read the client or organisation. Threads are seeded as postgres.
+    const T_STAFF = "e7000001-1111-4111-8111-111111111111";
+    const T_SELF = "e7000002-1111-4111-8111-111111111111";
+    const T_NEW = "e7000003-1111-4111-8111-111111111111";
+    const me = CONTEXT[row.role].uid ?? U.staffA;
+    const selfClient = r.includes("another client") ? CLIENT_B : CLIENT_A;
+    const selfWorkspace = r.includes("organisation thread") ? "organisation" : "client";
+    await seedThenActAs(row.role, `
+      insert into public.trixie_threads (id, user_id, firm_id, client_id, workspace, title) values
+        ('${T_STAFF}', '${U.staffA}', '${ORG_A}', '${CLIENT_A}', 'client', 'Staff chat');
+      insert into public.trixie_messages (id, thread_id, user_id, role, content) values
+        (gen_random_uuid(), '${T_STAFF}', '${U.staffA}', 'user', 'question');
+      ${me !== U.staffA ? `insert into public.trixie_threads (id, user_id, firm_id, client_id, workspace, title) values
+        ('${T_SELF}', '${me}', '${ORG_A}', ${selfWorkspace === "client" ? `'${selfClient}'` : "null"}, '${selfWorkspace}', 'My chat');
+      insert into public.trixie_messages (id, thread_id, user_id, role, content) values
+        (gen_random_uuid(), '${T_SELF}', '${me}', 'user', 'question');` : ""}
+    `);
+    const own = me === U.staffA ? T_STAFF : T_SELF;
+    if (r === "delete_all_my_trixie_threads()") {
+      const p = await probe(`select public.delete_all_my_trixie_threads()`);
+      if (!p.ok) return "deny";
+      await db.exec("set local role postgres");
+      const left = await db.query<{ mine: number; others: number }>(`
+        select count(*) filter (where user_id = '${me}')::int as mine,
+               count(*) filter (where user_id <> '${me}')::int as others
+          from public.trixie_threads`);
+      // Must remove every own thread and leave everyone else's untouched.
+      return left.rows[0]?.mine === 0 && (me === U.staffA || left.rows[0]?.others === 1) ? "allow" : "deny";
+    }
+    if (r === "trixie_threads: another person's thread") {
+      if (row.operation === "delete") {
+        await probe(`delete from public.trixie_threads where id = '${T_STAFF}'`);
+        await db.exec("set local role postgres");
+        const still = await db.query(`select 1 from public.trixie_threads where id = '${T_STAFF}'`);
+        return still.rows.length === 0 ? "allow" : "deny";
+      }
+      const p = await probe(`select 1 from public.trixie_threads where id = '${T_STAFF}'`);
+      return p.ok && p.rows > 0 ? "allow" : "deny";
+    }
+    if (r === "trixie_messages: another person's thread") {
+      if (row.operation === "insert") {
+        const p = await probe(`insert into public.trixie_messages (thread_id, user_id, role, content) values ('${T_STAFF}', '${me}', 'user', 'x')`);
+        return p.ok && p.rows > 0 ? "allow" : "deny";
+      }
+      const p = await probe(`select 1 from public.trixie_messages where thread_id = '${T_STAFF}'`);
+      return p.ok && p.rows > 0 ? "allow" : "deny";
+    }
+    if (r === "trixie_threads: create a thread for another person") {
+      const p = await probe(`insert into public.trixie_threads (id, user_id, firm_id, client_id, workspace, title) values ('${T_NEW}', '${U.ownerA}', '${ORG_A}', '${CLIENT_A}', 'client', 'x')`);
+      return p.ok && p.rows > 0 ? "allow" : "deny";
+    }
+    if (r === "trixie_threads: create own thread") {
+      const p = await probe(`insert into public.trixie_threads (id, user_id, firm_id, client_id, workspace, title) values ('${T_NEW}', '${me}', '${ORG_A}', '${CLIENT_A}', 'client', 'x')`);
+      return p.ok && p.rows > 0 ? "allow" : "deny";
+    }
+    if (r === "trixie_threads: delete own thread") {
+      const p = await probe(`delete from public.trixie_threads where id = '${own}'`);
+      return p.ok && p.rows > 0 ? "allow" : "deny";
+    }
+    if (r.startsWith("trixie_messages: own")) {
+      const p = await probe(`select 1 from public.trixie_messages where thread_id = '${own}'`);
+      return p.ok && p.rows > 0 ? "allow" : "deny";
+    }
+    if (r.startsWith("trixie_threads: own")) {
+      const p = await probe(`select 1 from public.trixie_threads where id = '${own}'`);
+      return p.ok && p.rows > 0 ? "allow" : "deny";
+    }
+    return "unsupported";
+  }
+
   if (r.startsWith('save_client_bank_account_classification()')) {
     await seedThenActAs(row.role, `insert into public.xero_snapshots (id,client_id,firm_id,tenant_id,report_key,params_hash,params,source_endpoint,payload,complete) values (gen_random_uuid(),'${CLIENT_A}','${ORG_A}','${TENANT_A}','accounts','bank-test','{}','Accounts','{"Accounts":[{"AccountID":"a0000001-1111-4111-8111-111111111111","Type":"BANK","Status":"ACTIVE"}]}',true)`);
     const client = r.includes('another client') ? CLIENT_B : CLIENT_A;
