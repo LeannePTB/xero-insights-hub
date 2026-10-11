@@ -22,3 +22,4 @@
 - Trixie alerting runs as one scheduled public route calling service-role-only database functions, because alert evaluation needs every organisation's usage and no signed-in caller exists.
 - Trixie spend is priced in TypeScript from recorded token counts (`src/lib/trixie/trixie-cost.ts`), so the per-question cost guard and the spend reports use one rate table.
 - Bank-reconciliation warnings come only from per-account dates in `client_key_figures.bank_reconciliation`, scoped by the same bank-account settings overlay as cash and a recent-line window (`src/lib/overview/bank-reconciliation.ts`), because file-wide oldest-line dates surfaced closed accounts and years-old leftovers; missing data shows nothing.
+- Protected money is compared with cash at bank only through `src/lib/health/protected-money-share.ts`, because the health rule, Overview, reports and Trixie must agree on one definition.
