@@ -40,7 +40,7 @@ function money(n: number | null): string {
 // The rule lives in ./reconciliation so the overview table can share it;
 // re-exported here for existing imports and tests.
 export { bankReconciledStale } from "./reconciliation";
-import { bankReconciledStale, unreconciledSinceFor, UNRECONCILED_SINCE_RULE_FROM } from "./reconciliation";
+// (bank-not-reconciled feed item disabled — see note in buildFeed)
 
 export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; cleared: FeedEvent[]; notes: string[] } {
   const events: FeedEvent[] = [];

@@ -278,7 +278,7 @@ async function readKeyFigures(ctx: TrixieContext) {
   const cards = new Set<string>((allowed ?? []) as string[]);
   const { data: row, error } = await (ctx.supabase as any)
     .from("client_key_figures")
-    .select("as_at,cash,credit_card_debt,debtors_total,debtors_overdue,creditors,protected_money,revenue_mtd,net_profit_mtd,updated_at,bank_reconciled_to,last_xero_login_at")
+    .select("as_at,cash,credit_card_debt,debtors_total,debtors_overdue,creditors,protected_money,revenue_mtd,net_profit_mtd,updated_at,last_xero_login_at")
     .eq("client_id", ctx.clientId)
     .order("as_at", { ascending: false })
     .limit(1)
@@ -300,7 +300,6 @@ async function readKeyFigures(ctx: TrixieContext) {
   return {
     available: !!row,
     asAt,
-    bankReconciledTo: row?.bank_reconciled_to ?? null,
     figures: rows.filter((r) => r[2]).map(([label, value]) => ({ label, value: value == null ? null : Number(value), missing: value == null })),
     sources: row ? ([{ label: "Client key figures (overview)", asAt, href: `/clients/${ctx.clientId}` }] as Source[]) : [],
   };

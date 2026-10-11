@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Eye, EyeOff, Loader2, Search } from "lucide-react";
+import { Eye, EyeOff, Loader2, Search } from "lucide-react";
 import { getClientOverview, setOverviewAlert, setClientOverviewHidden, setFirmOverviewHidden, getHiddenOverviewItems, type OverviewRow, type FeedEvent } from "@/lib/overview/overview.functions";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
