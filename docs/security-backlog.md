@@ -1535,9 +1535,9 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 
 ## 8 Oct 2026 — Credit card debt and net cash (CLOSED)
 - `analyseBalanceSheet` now also extracts credit card debt: Xero accounts typed BANK with Class LIABILITY, matched on account ID. `total` is the amount owed as a positive number; an overpaid card contributes nil. Cash at bank is unchanged (asset bank accounts only).
-- R01 protected-money check now compares against net cash (cash at bank less credit card debt); when card debt absorbs the cash entirely the finding is critical. The detail sentence names the card debt when present. This changes badges and the monthly report wording for clients with credit cards — owner-approved.
-- Additive column `client_key_figures.credit_card_debt` (nullable numeric); the table's existing RLS, aal2 guard and SELECT policy cover it — no new access path, no policy, grant or function changes.
-- Overview: new "Net cash" column; the Protected money percentage is now a share of net cash. Read-only presentation of data the viewer already sees.
+- R01 protected-money check now compares against net cash (cash at bank less credit card debt); when card debt absorbs the cash entirely the finding is critical. The detail sentence names the card debt when present. This changes badges and the monthly report wording for clients with credit cards — owner-approved. **Superseded 11 Oct 2026: protected money is compared with cash at bank (owner decision).**
+- Additive column `client_key_figures.credit_card_debt` (nullable numeric); the table's existing RLS, aal2 guard and SELECT policy cover it — no new access path, no policy, grant or function changes. **Superseded 11 Oct 2026: protected money is compared with cash at bank (owner decision).**
+- Overview: new "Net cash" column; the Protected money percentage is now a share of net cash. Read-only presentation of data the viewer already sees. **Superseded 11 Oct 2026: protected money is compared with cash at bank (owner decision).**
 - Tests: 4 new cases in `rules.test.ts` (net-cash comparison, card-absorbs-cash critical, overpaid card ignored, card never counted as cash). Checks: `bun run security:check` (123 tests, 18 live checks, all pass); rules tests 53 pass; typecheck clean.
 
 ## 8 Oct 2026 — Xero App Store certification, work item 2: user-visible Xero sync status (CLOSED)
@@ -1723,3 +1723,7 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 ## 2026-10-11 — Bank-not-reconciled signal rebuilt per account (owner decision 11 Oct, 10:55)
 - Classification: not security-relevant to access (no policy, grant, function or access path changed). One additive nullable column `client_key_figures.bank_reconciliation` (existing table-level read grant and RLS apply); written only by the registered nightly key-figures system job. Snapshot catalogue: `bank_unreconciled_oldest` replaced by 90-day `bank_unreconciled_recent` (BankTransactions) and `payments_unreconciled_recent` (Payments), up to 3 pages each.
 - Known limit: Xero's Accounting API only shows lines already coded in Xero; raw uncoded feed lines are invisible, so an account can read as reconciled while uncoded statement lines wait.
+
+## 2026-10-11 — Protected money measured against cash at bank (owner decision 11 Oct, 11:12)
+- Not security-relevant: presentation and health-rule arithmetic only; no policy, grant, function or access path changed. One shared rule `src/lib/health/protected-money-share.ts` used by R01 (badges, verdicts, monthly report findings), the Overview and Trixie. No cash at bank → no percentage ("No cash at bank to compare"); R01 still treats owing money with no cash at bank as critical.
+- OPEN: live Trixie article "Reading the Overview and seven-day changes" still says net cash; needs a super admin to save the corrected wording through the audited editor.

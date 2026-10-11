@@ -27,6 +27,7 @@ import {
   R06_DEBTORS,
   REQUIRED_REPORT_KEYS,
 } from "./rule-thresholds";
+import { protectedShareOfCash } from "./protected-money-share";
 
 export type RuleSeverity = "critical" | "warning" | "watch";
 
@@ -263,32 +264,19 @@ export function ruleProtectedMoneyVsCash(
 
   const t = R01_PROTECTED_MONEY;
   // Severity is driven by the Balance Sheet accrual exactly as it was before
-  // the lodged-and-owing split existed. Including the lodged amount in the
-  // numerator is a separate decision and is deliberately not made here.
+  // the lodged-and-owing split existed. Compared with CASH AT BANK (owner
+  // decision 11 Oct 2026), through the one shared rule.
   const total = protectedMoney.total;
   const cashAmount = cash as number;
-  // Cash already spoken for by a credit card bill is not available to cover
-  // GST, PAYG or super, so the comparison is against cash less card debt.
-  const cardDebt = analysed.creditCardDebt.status === "assessed" ? analysed.creditCardDebt.total : 0;
-  const netCash = cashAmount - cardDebt;
-  const ratio = netCash > 0 ? total / netCash : Infinity;
-  const cardPhrase = cardDebt > 0 ? ` less ${money(cardDebt)} of credit card debt` : "";
-  const availablePhrase = cardDebt > 0 ? ` (${money(netCash)} available)` : "";
-
-
-
-  let severity: RuleSeverity | null = null;
-  let title = "";
-  if (ratio >= t.criticalRatio) {
-    severity = "critical";
-    title = "Protected money exceeds cash at bank";
-  } else if (ratio >= t.warningRatio) {
-    severity = "warning";
-    title = "Protected money is close to cash at bank";
-  } else if (ratio >= t.watchRatio) {
-    severity = "watch";
-    title = "Protected money is over half of cash at bank";
-  }
+  const severity: RuleSeverity | null = protectedShareOfCash(total, cashAmount).level;
+  const title =
+    severity === "critical"
+      ? "Protected money exceeds cash at bank"
+      : severity === "warning"
+        ? "Protected money is close to cash at bank"
+        : severity === "watch"
+          ? "Protected money is over half of cash at bank"
+          : "";
 
   if (!severity) {
     // An unmatched component is not a zero. If the rule would otherwise stay
@@ -321,7 +309,7 @@ export function ruleProtectedMoneyVsCash(
     finding: {
       ruleId: "R01",
       title,
-      detail: `${money(total)} of GST, PAYG withholding and superannuation is accruing toward the next lodgement against ${money(cashAmount)} cash at bank${cardPhrase}${availablePhrase}.${splitSentence}${gap}`,
+      detail: `${money(total)} of GST, PAYG withholding and superannuation is accruing toward the next lodgement against ${money(cashAmount)} cash at bank.${splitSentence}${gap}`,
       severity,
       consequenceScore: t.consequence[severity],
       daysToConsequence: null,

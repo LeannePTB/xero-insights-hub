@@ -2,6 +2,7 @@
 // caller (RLS applies). Zero Xero calls: this module must never import
 // `@/lib/xero/api.server`.
 
+import { protectedShareOfCash } from "@/lib/health/protected-money-share";
 import { bankReconWarning, parseStored } from "./bank-reconciliation";
 import { addDays, addMonths, endOfMonth, startOfFinancialYear, sydneyDate } from "@/lib/sydney-time";
 import { VERDICT_REPORT_KEYS } from "@/lib/health/rule-thresholds";
@@ -331,7 +332,10 @@ export async function buildOverview(
       netCash,
       cashChange7d: m7.state === "evaluated" ? m7.change : null,
       cashBigMove: m7.state === "evaluated" && m7.big,
-      protectedPctOfCash: netCash !== null && netCash > 0 && prot !== null ? (prot / netCash) * 100 : null,
+      ...(() => {
+        const share = cash !== null && prot !== null ? protectedShareOfCash(prot, cash) : null;
+        return { protectedPctOfCash: share?.pct ?? null, protectedLevel: share?.level ?? null, protectedTooltip: share?.tooltip ?? null };
+      })(),
       netProfitMtd: today?.netProfitMtd ?? null,
       debtorsOverduePct,
       lastReportSentAt: ctx.lastSent.get(c.client_id) ?? null,

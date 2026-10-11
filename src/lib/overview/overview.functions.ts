@@ -29,8 +29,11 @@ export type OverviewRow = {
   netCash: number | null;
   cashChange7d: number | null;
   cashBigMove: boolean;
-  /** Protected money as a share of net cash (cash at bank less credit card debt). */
+  /** Protected money as a share of cash at bank (shared rule); null when no cash at bank. */
   protectedPctOfCash: number | null;
+  protectedLevel: "critical" | "warning" | "watch" | null;
+  /** Tooltip from the shared rule; null when protected money or cash is unavailable. */
+  protectedTooltip: string | null;
   netProfitMtd: number | null;
   debtorsOverduePct: number | null;
   lastReportSentAt: string | null;

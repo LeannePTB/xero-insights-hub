@@ -1,3 +1,4 @@
+import { protectedShareOfCash } from "@/lib/health/protected-money-share";
 import { parseStored } from "@/lib/overview/bank-reconciliation";
 import { tool, type ToolSet } from "ai";
 import { z } from "zod";
@@ -302,6 +303,10 @@ async function readKeyFigures(ctx: TrixieContext) {
     available: !!row,
     asAt,
     figures: rows.filter((r) => r[2]).map(([label, value]) => ({ label, value: value == null ? null : Number(value), missing: value == null })),
+    // Protected money vs cash at bank, from the one shared rule.
+    protectedShareOfCashAtBank: cards.has("cashflow") && row?.protected_money != null && row?.cash != null
+      ? (() => { const sh = protectedShareOfCash(Number(row.protected_money), Number(row.cash)); return { percent: sh.pct === null ? null : Math.round(sh.pct), meaning: sh.tooltip }; })()
+      : null,
     // Per-account reconciled-to dates (in-scope accounts only); dates, not figures.
     bankReconciliation: cards.has("cashflow") ? (parseStored(row?.bank_reconciliation)?.accounts.map((a) => ({ account: a.name, reconciledTo: a.reconciledTo })) ?? null) : null,
     sources: row ? ([{ label: "Client key figures (overview)", asAt, href: `/clients/${ctx.clientId}` }] as Source[]) : [],
