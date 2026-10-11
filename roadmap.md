@@ -1,4 +1,6 @@
 # Roadmap
+- [x] Remove Unreconciled since and Last Xero login from both overview views; build OK, 23 focused tests and full security gate pass.
+- [ ] Resolve Positive Traction's disputed cash amount — latest overnight Xero reports show $639.92 including a -$3,554.32 account typed BANK/BANK rather than CREDITCARD. Await owner confirmation of expected bank balance/account; do not infer subtype from the name or rewrite Xero settings. Real-user overview readback blocked by MFA.
 - [x] Build Trixie Phase 1: session-only contextual help, caller-scoped figure citations, fair-use controls, System Admin management, and 13-month metadata retention.
 - [ ] Refresh platform logo presentation, semantic brand palette and compact typography; verify contrast, navigation and security checks.
 - [x] Add independent organisation White label identity and align authenticated pages with one left-aligned container. Email identity is name-only; private email-logo embedding remains deferred because no safe provider attachment path is available.
