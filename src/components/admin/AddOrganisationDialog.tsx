@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { adminCreateOrganisation } from "@/lib/invites.functions";
@@ -10,6 +10,8 @@ import { Loader2, UserPlus, Copy, Check, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { AddClientFromXeroButton } from "@/components/admin/AddClientFromXeroButton";
 import { PackageFields, packagePayload, useOrganisationPackage } from "@/components/admin/OrganisationPackageFields";
+import { AddOrganisationFromXero, restorePackage } from "@/components/admin/AddOrganisationFromXero";
+import { FileSpreadsheet, PencilLine } from "lucide-react";
 
 /** Super-admin dialog that creates an organisation and optionally its owner login. */
 export function AddOrganisationDialog({
@@ -32,6 +34,30 @@ export function AddOrganisationDialog({
   const [ownerName, setOwnerName] = useState("");
   const [password, setPassword] = useState("");
   const pkg = useOrganisationPackage(open);
+  const [mode, setMode] = useState<null | "manual" | "xero">(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  // Back from Xero: /system?onboard=<opaque id>. The id is only a handle — the
+  // database returns its files to the person who started the sign-in, and only
+  // while it is unexpired and unused.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("onboard");
+    const xeroError = params.get("xero_error");
+    if (!id && !xeroError) return;
+    params.delete("onboard");
+    params.delete("xero_error");
+    const qs = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+    if (xeroError) { toast.error(xeroError); return; }
+    if (id && /^[0-9a-f-]{36}$/i.test(id)) {
+      restorePackage(pkg);
+      setPendingId(id);
+      setMode("xero");
+      setOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { limitNum } = pkg;
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [done, setDone] = useState<null | { mode: "password" | "invite" | "none"; email?: string | null; password?: string; inviteUrl?: string; emailStatus?: string | null; firmId?: string }>(null);
@@ -79,6 +105,7 @@ export function AddOrganisationDialog({
     setOwnerMode("none"); setEmail(""); setOwnerName("");
     setPassword(""); setDone(null); setCopied(false); setErrorMsg(null);
     pkg.reset();
+    setMode(null); setPendingId(null);
   }
 
   function generatePassword() {
@@ -113,6 +140,29 @@ export function AddOrganisationDialog({
             Capture what they are buying and how they want it set up. Everything here is written in one step — if any part fails, no organisation is created.
           </DialogDescription>
         </DialogHeader>
+
+        {mode === null && !done ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button type="button" onClick={() => setMode("manual")} className="rounded-lg border border-border p-4 text-left hover:bg-muted/50">
+              <PencilLine className="mb-2 h-5 w-5 text-primary" />
+              <p className="text-sm font-medium">Set up manually</p>
+              <p className="text-xs text-muted-foreground">Type the name and package, then connect Xero files later.</p>
+            </button>
+            <button type="button" onClick={() => setMode("xero")} className="rounded-lg border border-border p-4 text-left hover:bg-muted/50">
+              <FileSpreadsheet className="mb-2 h-5 w-5 text-primary" />
+              <p className="text-sm font-medium">Start from a Xero file</p>
+              <p className="text-xs text-muted-foreground">Pick the package, sign in to Xero, and the files you tick become the organisation and its clients.</p>
+            </button>
+          </div>
+        ) : mode === "xero" ? (
+          <AddOrganisationFromXero
+            pkg={pkg}
+            pendingId={pendingId}
+            onBack={() => { setPendingId(null); setMode(null); }}
+            onFinished={() => { onCreated?.(); setOpen(false); reset(); }}
+          />
+        ) : (
+        <>
 
         {!done ? (
           <div className="space-y-5">
@@ -222,6 +272,8 @@ export function AddOrganisationDialog({
             </>
           )}
         </DialogFooter>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );
