@@ -1719,3 +1719,7 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - OPEN (low): an unused pending record's grant is not revoked at Xero when it expires; only the ciphertext is deleted. Revoking the refresh token could disconnect the same login's other files, so it was not done.
 - OPEN: signed-in end-to-end run (real Xero consent) not performed — MFA blocks tooling.
 - OPEN: Trixie article "Adding an organisation from a Xero file" not saved — the audited `save_trixie_article` path needs an aal2 super-admin session.
+
+## 2026-10-11 — Bank-not-reconciled signal rebuilt per account (owner decision 11 Oct, 10:55)
+- Classification: not security-relevant to access (no policy, grant, function or access path changed). One additive nullable column `client_key_figures.bank_reconciliation` (existing table-level read grant and RLS apply); written only by the registered nightly key-figures system job. Snapshot catalogue: `bank_unreconciled_oldest` replaced by 90-day `bank_unreconciled_recent` (BankTransactions) and `payments_unreconciled_recent` (Payments), up to 3 pages each.
+- Known limit: Xero's Accounting API only shows lines already coded in Xero; raw uncoded feed lines are invisible, so an account can read as reconciled while uncoded statement lines wait.
