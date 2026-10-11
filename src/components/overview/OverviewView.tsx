@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { PageContainer } from "@/components/PageContainer";
+import { ResyncHeader, ResyncRowControl, useResyncQueue } from "@/components/overview/ResyncControls";
 
 
 type Bucket = OverviewRow["bucket"];
@@ -66,6 +67,9 @@ export function OverviewView({ firmId }: { firmId?: string }) {
   }
 
   const rows = q.data?.rows ?? [];
+  const queue = useResyncQueue();
+  const resyncIds = rows.filter((r) => r.canResync).map((r) => r.clientId);
+  const lastSynced = rows.reduce<string | null>((m, r) => (r.freshAsAt && (!m || r.freshAsAt > m) ? r.freshAsAt : m), null);
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
     for (const r of rows) c[r.bucket] = (c[r.bucket] ?? 0) + 1;
@@ -87,11 +91,14 @@ export function OverviewView({ firmId }: { firmId?: string }) {
 
   return (
     <PageContainer as="div" width="full" className="space-y-6">
-      <div>
-        <h1 className="text-lg font-semibold">Client overview</h1>
-        <p className="text-sm text-muted-foreground">
-          Every client you look after, worst first. Figures come from the overnight Xero snapshot.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-lg font-semibold">Client overview</h1>
+          <p className="text-sm text-muted-foreground">
+            Every client you look after, worst first. Figures come from the overnight Xero snapshot.
+          </p>
+        </div>
+        <ResyncHeader clientIds={resyncIds} lastSynced={lastSynced} queue={queue} />
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -150,7 +157,7 @@ export function OverviewView({ firmId }: { firmId?: string }) {
             </thead>
             <tbody>
               {groups.map((g) => (
-                <GroupRows key={g.name ?? "all"} name={g.name} rows={g.rows} onOpen={(id) => navigate({ to: "/clients/$clientId", params: { clientId: id } })} onHideClient={(id) => toggleHide("client", id, true)} onHideFirm={(id) => toggleHide("organisation", id, true)} busyHide={busyHide} />
+                <GroupRows key={g.name ?? "all"} name={g.name} rows={g.rows} onOpen={(id) => navigate({ to: "/clients/$clientId", params: { clientId: id } })} onHideClient={(id) => toggleHide("client", id, true)} onHideFirm={(id) => toggleHide("organisation", id, true)} busyHide={busyHide} queue={queue} />
               ))}
             </tbody>
           </table>
@@ -190,7 +197,7 @@ export function OverviewView({ firmId }: { firmId?: string }) {
   );
 }
 
-function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide }: { name: string | null; rows: OverviewRow[]; onOpen: (id: string) => void; onHideClient: (id: string) => void; onHideFirm: (id: string) => void; busyHide: string | null }) {
+function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide, queue }: { name: string | null; rows: OverviewRow[]; onOpen: (id: string) => void; onHideClient: (id: string) => void; onHideFirm: (id: string) => void; busyHide: string | null; queue: ReturnType<typeof useResyncQueue> }) {
   return (
     <>
       {name && (
@@ -275,6 +282,8 @@ function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide }: {
           <td className="p-3">{date(r.lastReportSentAt)}</td>
           <td className="p-3 text-muted-foreground">{date(r.freshAsAt)}</td>
           <td className="p-3">
+            <div className="flex items-center gap-3">
+            {r.canResync && <ResyncRowControl clientId={r.clientId} queue={queue} />}
             <button
               type="button"
               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
@@ -287,6 +296,7 @@ function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide }: {
             >
               <EyeOff className="h-3.5 w-3.5" />
             </button>
+            </div>
           </td>
         </tr>
         );
