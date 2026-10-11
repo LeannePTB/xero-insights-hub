@@ -45,7 +45,7 @@ fns as (
          'set_overview_alert_state','user_can_write_firm',
          'can_manage_client_income_tax_instalments','save_client_income_tax_instalment',
          'set_client_overview_hidden','set_firm_overview_hidden','overview_hidden_items',
-         'save_client_bank_account_classification'))
+         'save_client_bank_account_classification','delete_all_my_trixie_threads'))
     )
 ),
 stmts as (

@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **2057**. Known failures: **0**.
+Rows: **2090**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -332,6 +332,7 @@ None.
 | security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | server fn: getClientOrgTrial | execute | DENY | live | PK 2 — MFA is enforced on the server | app_private.assert_aal2() runs before anything is read, so an aal1 session is refused with MFA_REQUIRED even when the person would otherwise qualify. |
+| trixie_threads: own client thread | read | DENY | pglite | PK 2 — the aal2 guard |  |
 | Trixie | execute | DENY | live | PK 2 — MFA is enforced on the server | The route validates the aal claim and every database function directly calls app_private.assert_aal2(). |
 
 ## Active member on aal2, signed in today, with no recorded activity for more than 30 minutes
@@ -564,6 +565,10 @@ None.
 | security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | user_can_write_client_scenario() for a client in their organisation | execute | ALLOW | pglite | PK section 2 path A — membership or client ownership still writes scenario exclusions, unchanged by Batch 3 |  |
+| trixie_threads: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
+| trixie_messages: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
+| trixie_threads: another person's thread | delete | DENY | pglite | PK 1 / PK 3 / PK 5 — nobody deletes another person's chats |  |
+| trixie_messages: another person's thread | insert | DENY | pglite | PK 1 — nobody writes into another person's chat |  |
 | Trixie: spend overview, usage alerts and alert thresholds | execute | DENY | live | Path C (platform metadata only) / PK 6 | Every Trixie alert reader and writer refuses a caller who is not a super admin. |
 | Trixie system jobs (evaluate_trixie_alerts, mark_trixie_alert_emailed, trixie_monthly_summary, expire_trixie_reservations, purge_trixie_usage) | execute | DENY | live | PK 7 — system contexts only | EXECUTE is granted to service_role only; the scheduled route authenticates with a constant-time bearer comparison. |
 
@@ -753,6 +758,12 @@ None.
 | admin_assert_can_sign_out_user(another person) | execute | DENY | pglite | Invariant 3/6 — only a super admin may sign another person out |  |
 | server fn: getClientSetupChecklist for a client in another organisation | execute | DENY | live | PK 4 (a caller-supplied client_id is a FILTER, never a GRANT) | assertClientDataAccessForClient runs first, and every read inside setup-checklist.server.ts goes through context.supabase, so RLS scopes the clients, client_statutory_accounts, client_cost_classifications and xero_snapshots reads. public.client_setup_account_counts is SECURITY INVOKER, so it counts only rows the caller may already read. |
 | server fn: getClientOrgTrial for a client in their organisation | execute | ALLOW | live | Path A — members see their own organisation's billing state | app_private.has_firm_access (active membership) admits the caller; the same row a super admin sees on the purchase card is what the banner renders. |
+| trixie_threads: own client thread | read | ALLOW | pglite | Owner decision 11 Oct 2026 — a person reads only their own Trixie chats |  |
+| trixie_messages: own client thread | read | ALLOW | pglite | Owner decision 11 Oct 2026 — a person reads only their own Trixie chats |  |
+| trixie_threads: create own thread | insert | ALLOW | pglite | Owner decision 11 Oct 2026 |  |
+| trixie_threads: delete own thread | delete | ALLOW | pglite | Owner decision 11 Oct 2026 |  |
+| delete_all_my_trixie_threads() | execute | ALLOW | pglite | Owner decision 11 Oct 2026 — removes only the caller's chats |  |
+| trixie_threads: create a thread for another person | insert | DENY | pglite | PK 4 — the owner column is the caller, never supplied |  |
 | Trixie: reserve and read figures for a client in their organisation | execute | ALLOW | live | Path A / PK 2 / PK 4 | reserve_trixie_usage asserts aal2 and resolves the organisation from the exact readable client; figure reads remain caller-RLS and card-scoped. |
 
 ## Active member of a DIFFERENT organisation
@@ -915,6 +926,8 @@ None.
 | security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | user_can_write_client_scenario() for a client outside their organisation | execute | DENY | pglite | PK 1 / PK 4 — membership in another organisation writes nothing here |  |
+| trixie_threads: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
+| trixie_messages: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
 
 ## Organisation A's owner, reading organisation B
 
@@ -1125,6 +1138,9 @@ None.
 | unreconciled_lines | delete | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
 | user_can_write_client_scenario() for the client they can read | execute | DENY | pglite | PK rule 11 — the read predicate is gone from the scenario write check |  |
 | server fn: getClientOrgTrial | execute | DENY | live | Path D — an external adviser never sees billing, plan or organisation-level data | A client_access row with relationship = 'external_adviser' (or NULL) does not match the business_owner predicate and the caller is not a member, so no rows are returned. |
+| trixie_threads: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
+| trixie_messages: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
+| trixie_threads: own client thread | read | ALLOW | pglite | Path D / E — own chat about the exact client they can read |  |
 | Trixie: reserve and read figures for their exact client | execute | ALLOW | live | Path D / PK 2 / PK 4 | The client id is re-checked by user_can_read_client; the response is read-only, viewer-worded, and limited to visible client cards. |
 
 ## Business owner — one specific client (client_access with relationship = 'business_owner', self-service)
@@ -1158,6 +1174,11 @@ None.
 | me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
 | server fn: getClientOrgTrial for their own client | execute | ALLOW | live | Path E — the business owner may see their client's plan and billing | public.client_org_trial asserts aal2, then returns the organisation's live trial (end date, days remaining, ending-soon flag) only when the caller is an active member of the client's organisation or holds a client_access row with relationship = 'business_owner' for that exact client. Only trial metadata is returned — never purchase detail, never another organisation. |
 | server fn: getClientOrgTrial for a client that is not theirs | execute | DENY | live | PK 4 (a caller-supplied client_id is a FILTER, never a GRANT) | Neither predicate holds — no membership of that organisation and no business_owner row for that client — so the function returns no rows and the banner never renders. |
+| trixie_threads: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
+| trixie_messages: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
+| trixie_messages: another person's thread | insert | DENY | pglite | PK 1 — nobody writes into another person's chat |  |
+| trixie_threads: own client thread | read | ALLOW | pglite | Path D / E — own chat about the exact client they can read |  |
+| trixie_threads: own thread about another client | read | DENY | pglite | Path E — a business owner's chats show only for their own client |  |
 | Trixie: reserve and read figures for their exact client | execute | ALLOW | live | Path E / PK 2 / PK 4 | The existing exact-client business-owner read predicate admits the client; Trixie adds no write or organisation access. |
 
 ## External adviser — All clients (firm_viewer_access on one organisation, read-only; user-facing name only, the key is unchanged)
@@ -1274,6 +1295,8 @@ None.
 | unreconciled_lines | update | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
 | unreconciled_lines | delete | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
 | server fn: getClientOrgTrial | execute | DENY | live | Path D — an external adviser never sees billing, plan or organisation-level data | firm_viewer_access is not consulted by the function; without membership or a business_owner row the result is empty. |
+| trixie_threads: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
+| trixie_messages: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
 
 ## Support-grant holder, active, non-member organisation
 
@@ -1441,6 +1464,10 @@ None.
 | security_attestations | delete | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
 | server fn: acknowledgeSetupItem (record a setup decision) | execute | DENY | live | PK 5 (support grants are READ-ONLY) | The acknowledgement is an UPDATE on public.clients through context.supabase, so the clients write policies (app_private.user_can_manage_client) decide. A support grant is read-only, so the update matches no row and the function raises 'You cannot change this client.' Reading the checklist stays allowed, like other client reads under a grant. |
 | server fn: getClientOrgTrial | execute | DENY | live | PK 5 / Path B — a support grant is read-only client data, never billing state | app_private.has_firm_access counts active firm_members rows only, so a support grant does not satisfy it; without a business_owner row the function returns nothing. |
+| trixie_threads: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
+| trixie_messages: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
+| trixie_threads: another person's thread | delete | DENY | pglite | PK 1 / PK 3 / PK 5 — nobody deletes another person's chats |  |
+| trixie_messages: another person's thread | insert | DENY | pglite | PK 1 — nobody writes into another person's chat |  |
 
 ## Support-grant holder, grant expired
 
@@ -1882,6 +1909,9 @@ None.
 | security_attestations | delete | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
 | admin_assert_can_sign_out_user(another person) | execute | ALLOW | pglite | Path C — platform operations; aal2 + super admin, audited, no client data |  |
 | admin_assert_can_sign_out_user(their own account) | execute | DENY | pglite | PK 1 — the caller uses Sign out my other devices for themselves |  |
+| trixie_threads: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
+| trixie_messages: another person's thread | read | DENY | pglite | PK 1 / PK 3 — chats are owner-only; super admin, support, adviser and business owner see none |  |
+| trixie_threads: another person's thread | delete | DENY | pglite | PK 1 / PK 3 / PK 5 — nobody deletes another person's chats |  |
 | Trixie: client figures | execute | DENY | live | PK 3 / Path C | System Admin receives platform how-to scope only; super admin alone is never passed to user_can_read_client as a financial-data grant. |
 | Trixie: platform how-to and administration | execute | ALLOW | live | Path C / PK 2 | The separate platform allowance applies; admin writers each assert aal2 and me_is_super_admin and expose metadata only. |
 | Trixie: spend overview, usage alerts and alert thresholds | execute | ALLOW | live | Path C / PK 2 | admin_trixie_spend_overview, admin_trixie_alerts, acknowledge_trixie_alert and the alert settings functions assert aal2 and me_is_super_admin; they return Trixie spend and question counts only, never prompts, answers or client figures. |
@@ -2157,6 +2187,9 @@ None.
 | server fn: transfer ownership | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 | the organisation's clients after removal | read | DENY | pglite, live | PK 2 path A — membership must be ACTIVE |  |
+| trixie_threads: own thread after access removed | read | DENY | pglite | PK 9 — access removed hides the chat; never shown with old figures |  |
+| trixie_messages: own thread after access removed | read | DENY | pglite | PK 9 — access removed hides the chat; never shown with old figures |  |
+| trixie_threads: own organisation thread after access removed | read | DENY | pglite | PK 9 — access removed hides the chat; never shown with old figures |  |
 
 ## Live smoke-suite test account (confined to ZZ Security Test Org, banned outside a run)
 

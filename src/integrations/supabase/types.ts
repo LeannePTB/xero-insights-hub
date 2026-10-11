@@ -2615,6 +2615,51 @@ export type Database = {
         }
         Relationships: []
       }
+      trixie_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+          sources: Json
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          sources?: Json
+          thread_id: string
+          user_id?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          sources?: Json
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trixie_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "trixie_threads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trixie_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trixie_org_limits: {
         Row: {
           firm_id: string
@@ -2695,6 +2740,68 @@ export type Database = {
           warning_threshold?: number
         }
         Relationships: []
+      }
+      trixie_threads: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          firm_id: string | null
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+          workspace: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          firm_id?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          workspace: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          firm_id?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          workspace?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trixie_threads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trixie_threads_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "trixie_threads_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trixie_threads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trixie_usage: {
         Row: {
@@ -3729,6 +3836,7 @@ export type Database = {
         Args: { _from_client_id: string; _to_client_ids: string[] }
         Returns: number
       }
+      delete_all_my_trixie_threads: { Args: never; Returns: number }
       delete_client_rental_property: { Args: { _id: string }; Returns: boolean }
       delete_client_report: {
         Args: { _reason?: string; _report_id: string }

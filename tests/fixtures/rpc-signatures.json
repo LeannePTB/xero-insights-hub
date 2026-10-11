@@ -359,6 +359,12 @@
     },
     {
         "args": [
+        ],
+        "name": "delete_all_my_trixie_threads",
+        "required": 0
+    },
+    {
+        "args": [
             "_id"
         ],
         "name": "delete_client_rental_property",

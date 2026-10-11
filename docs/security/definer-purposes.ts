@@ -9,6 +9,7 @@
  * Keys are `schema.name` — overloads share one purpose.
  */
 export const DEFINER_PURPOSES: Record<string, string> = {
+  "public.delete_all_my_trixie_threads": "Deletes every saved Trixie chat owned by the aal2 caller, including chats hidden because their access was removed; never another person's.",
   "public.save_client_bank_account_classification": "Saves or resets an exact client/file/account classification after caller-scoped AAL2 write and account ownership checks, with an audit event.",
   "public.trixie_access_context": "Resolves the caller's exact Trixie scope, audience and allowance after aal2 and database access checks.",
   "public.reserve_trixie_usage": "Atomically reserves one Trixie question against the caller-scoped monthly allowance.",

@@ -13,6 +13,8 @@ import { ArrowLeft, Loader2, KeyRound, Eye, EyeOff, LogOut } from "lucide-react"
 import { recordSignOutOtherDevices } from "@/lib/session-activity.functions";
 import { toast } from "sonner";
 import { PageContainer } from "@/components/PageContainer";
+import { deleteAllMyTrixieThreads } from "@/lib/trixie/trixie-threads.functions";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/settings/account")({
   head: () => ({ meta: [{ title: "Account — Traction Advisory" }] }),
@@ -208,7 +210,45 @@ function AccountSettings() {
             Update password
           </Button>
         </section>
+        <TrixieChatsSection />
       </PageContainer>
     </div>
+  );
+}
+
+function TrixieChatsSection() {
+  const deleteAll = useServerFn(deleteAllMyTrixieThreads);
+  const mut = useMutation({
+    mutationFn: () => deleteAll(),
+    onSuccess: (r) => {
+      try { window.localStorage.removeItem("trixie.activeThread"); } catch { /* storage unavailable */ }
+      toast.success(r.deleted === 1 ? "1 chat deleted." : `${r.deleted} chats deleted.`);
+    },
+    onError: () => toast.error("Your chats could not be deleted."),
+  });
+  return (
+    <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] space-y-4">
+      <h2 className="text-base font-semibold">Trixie chats</h2>
+      <p className="text-sm text-muted-foreground">
+        Your chats with Trixie are saved so you can come back to them. Only you can see them. Deleting removes every chat you have had with Trixie, including chats about clients you can no longer see.
+      </p>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="destructive" disabled={mut.isPending}>
+            {mut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Delete all my chats
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete all your Trixie chats?</AlertDialogTitle>
+            <AlertDialogDescription>This permanently removes every saved chat. It cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => mut.mutate()}>Delete all</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </section>
   );
 }

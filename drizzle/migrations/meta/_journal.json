@@ -218,6 +218,20 @@
       "when": 1791685840979,
       "tag": "0030_trixie_knowledge_candidates",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1791687343356,
+      "tag": "0031_trixie_chat_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791687582874,
+      "tag": "0032_trixie_threads_read_recheck",
+      "breakpoints": true
     }
   ]
 }
