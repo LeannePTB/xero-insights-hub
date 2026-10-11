@@ -561,7 +561,6 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       alter table public.audit_log alter column at set default now();
       alter table public.xero_pending_onboards alter column id set default gen_random_uuid();
       alter table public.xero_pending_onboards alter column expires_at set default now() + interval '30 minutes';
-      create unique index if not exists fm_firm_user_key on public.firm_members (firm_id, user_id);
       create unique index if not exists org_subscription_options_firm_key on public.org_subscription_options (firm_id);
       insert into public.xero_pending_onboards (id, user_id, access_token_enc, refresh_token_enc, token_expires_at, tenants, expires_at) values
         ('${P_OTHER}', '${U.supportActive}', 'a', 'r', now() + interval '30 minutes', ${tenants}, now() + interval '30 minutes'),
