@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { analyseBalanceSheet } from "./tax-lines";
+import { applyBankClassifications, balanceSheetBankBalances } from './bank-classifications';
 
 function balances(cardBalance: number, cardStatus = "ACTIVE") {
   const accounts = { Accounts: [
@@ -15,6 +16,27 @@ function balances(cardBalance: number, cardStatus = "ACTIVE") {
 }
 
 describe("cash at bank and net cash", () => {
+  it('explicit account-ID classification produces the requested cash and net cash without changing Xero', () => {
+    const accounts = { Accounts: ['astro', 'gst', 'card'].map(AccountID => ({ AccountID, Type: 'BANK', BankAccountType: 'BANK', Class: 'ASSET', Status: 'ACTIVE' })) };
+    const report = { Rows: [{ RowType: 'Section', Rows: [
+      ...[['astro', '2444.85'], ['gst', '2000'], ['card', '-3554.32']].map(([id, value]) => ({ RowType: 'Row', Cells: [{ Value: 'Same name', Attributes: [{ Id: 'account', Value: id }] }, { Value: value }] })),
+      { RowType: 'SummaryRow', Cells: [{ Value: 'Total Bank' }, { Value: '890.53' }] },
+    ] }] };
+    const result = analyseBalanceSheet(report, accounts, undefined, [{ account_id: 'CARD', classification: 'credit_card' }]);
+    assert.equal(result.cashAtBank.total, 4444.85);
+    assert.equal(result.creditCardDebt.total, 3554.32);
+    assert.equal(Math.round((result.cashAtBank.total - result.creditCardDebt.total) * 100), 89053);
+    assert.equal(accounts.Accounts[2].BankAccountType, 'BANK');
+    assert.equal(analyseBalanceSheet(report, accounts).cashAtBank.total, 890.5300000000002);
+    assert.equal(balanceSheetBankBalances(report).get('card'), -3554.32);
+  });
+  it('does not guess from names, negative balances or unknown IDs; reset restores Xero', () => {
+    const accounts = [{ AccountID: 'bank', Name: 'Credit Card', Type: 'BANK', BankAccountType: 'BANK', Class: 'ASSET', Status: 'ACTIVE' }];
+    assert.equal(applyBankClassifications(accounts, [ { account_id: 'unknown', classification: 'credit_card' } ])[0].BankAccountType, 'BANK');
+    assert.equal(applyBankClassifications(accounts, [ { account_id: 'bank', classification: 'credit_card' } ])[0].BankAccountType, 'CREDITCARD');
+    assert.equal(applyBankClassifications(accounts, [])[0].BankAccountType, 'BANK');
+    assert.equal(applyBankClassifications([{ ...accounts[0], Status: 'ARCHIVED' }], [ { account_id: 'bank', classification: 'credit_card' } ])[0].BankAccountType, 'BANK');
+  });
   it("cash at bank is bank money only, excluding asset-class credit cards", () => {
     const result = balances(-20000);
     assert.equal(result.cashAtBank.status, "assessed");
