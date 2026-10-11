@@ -98,55 +98,48 @@ export const revokeStandingViewer = createServerFn({ method: "POST" })
   });
 
 /**
- * Replace a person's standing grant with specific per-client grants — the only
- * remedy when an owner wants to stop someone seeing one client while keeping
- * the rest. There is deliberately no "exclusion" row type.
+ * One Viewer type, two scopes. Switches a person between "All clients" and
+ * "Selected clients" in ONE database transaction (`public.set_viewer_scope`),
+ * which re-checks aal2 and can_manage_client_viewers, keeps only client ids
+ * that belong to this organisation, never touches a Business Owner row, and
+ * audits the change. Switching All -> Selected removes the rest immediately.
  */
+export const setViewerScope = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator(
+    (i: { firmId: string; userId: string; scope: "all_clients" | "selected"; clientIds: string[] }) => i,
+  )
+  .handler(async ({ data, context }) => {
+    if (data.scope !== "all_clients" && data.scope !== "selected") {
+      throw new Error("Choose which clients this person should see.");
+    }
+    const clientIds = Array.from(new Set(data.clientIds ?? []));
+    if (data.scope === "selected" && clientIds.length === 0) throw new Error("Tick at least one client.");
+    const { data: n, error } = await (context.supabase as any).rpc("set_viewer_scope", {
+      _firm_id: data.firmId,
+      _user_id: data.userId,
+      _scope: data.scope,
+      _client_ids: data.scope === "selected" ? clientIds : [],
+    });
+    if (error) throw new Error(explain(error.message));
+    return { ok: true, clients: (n as number | null) ?? 0 };
+  });
+
+/** Kept for the "hide one client" shortcut; now the same atomic database call. */
 export const switchStandingToSelected = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { firmId: string; userId: string; clientIds: string[] }) => i)
   .handler(async ({ data, context }) => {
     const clientIds = Array.from(new Set(data.clientIds ?? []));
     if (clientIds.length === 0) throw new Error("Tick at least one client.");
-
-    const { data: canManage } = await (context.supabase as any).rpc("me_can_manage_firm_viewers", {
+    const { data: n, error } = await (context.supabase as any).rpc("set_viewer_scope", {
       _firm_id: data.firmId,
+      _user_id: data.userId,
+      _scope: "selected",
+      _client_ids: clientIds,
     });
-    if (canManage !== true) throw new Error("You cannot manage viewers for this organisation.");
-
-    // The ids are re-checked against this organisation, never trusted.
-    const { data: clients, error: cErr } = await (context.supabase as any)
-      .from("clients")
-      .select("id")
-      .eq("firm_id", data.firmId)
-      .in("id", clientIds);
-    if (cErr) throw new Error(cErr.message);
-    const valid = ((clients ?? []) as any[]).map((c) => c.id as string);
-    if (valid.length === 0) throw new Error("Those clients are no longer available.");
-
-    for (const clientId of valid) {
-      const { error } = await (context.supabase as any).rpc("grant_client_access", {
-        _client_id: clientId,
-        _user_id: data.userId,
-        _tier: EXTERNAL_ADVISER_PASS_THROUGH_TIER,
-        _relationship: "external_adviser",
-      });
-      if (error) throw new Error(explain(error.message));
-    }
-
-    // Standing grant last: if anything above failed, the person keeps the wider
-    // access rather than silently losing all of it.
-    const { data: standing } = await (context.supabase as any).rpc("firm_viewers", {
-      _firm_id: data.firmId,
-    });
-    const row = ((standing ?? []) as any[]).find((r) => r.user_id === data.userId);
-    if (row) {
-      const { error } = await (context.supabase as any).rpc("revoke_firm_viewer_access", {
-        _id: row.id,
-      });
-      if (error) throw new Error(explain(error.message));
-    }
-    return { ok: true, clients: valid.length };
+    if (error) throw new Error(explain(error.message));
+    return { ok: true, clients: (n as number | null) ?? 0 };
   });
 
 export type ViewerInvite = {
@@ -243,7 +236,7 @@ export const inviteViewer = createServerFn({ method: "POST" })
       throw new Error("Tick at least one client.");
     }
     if (data.relationship === "business_owner" && data.scope !== "selected") {
-      throw new Error("A Business owner must be given selected-client access.");
+      throw new Error("A Business Owner must be given selected-client access.");
     }
 
     // Authorisation BEFORE any privileged step (rule 7).
@@ -351,7 +344,7 @@ export const inviteViewer = createServerFn({ method: "POST" })
         idempotencyKey: `viewer-invite-${data.firmId}-${token.slice(0, 8)}`,
         templateData: {
           inviteUrl,
-          role: data.relationship === "business_owner" ? "business owner" : "external adviser",
+          role: data.relationship === "business_owner" ? "Business Owner" : "Viewer",
           firmName: firm?.name ?? null,
           inviterName: null,
         },
@@ -372,5 +365,9 @@ function explain(message: string): string {
   if (/SESSION_IDLE/i.test(message))
     return "You were signed out after 30 minutes of inactivity. Please sign in again.";
   if (/MFA_REQUIRED/i.test(message)) return "Please verify your second factor and try again.";
+  if (/NOT_A_VIEWER/i.test(message)) return "That person is not a Viewer of this organisation.";
+  if (/NO_CLIENTS/i.test(message)) return "Those clients are no longer available.";
+  if (/OTHER_RELATIONSHIP/i.test(message))
+    return "One of those clients already has this person as a Business Owner. Remove that first.";
   return message;
 }
