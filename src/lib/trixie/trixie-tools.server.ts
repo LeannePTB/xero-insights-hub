@@ -1,3 +1,4 @@
+import { parseStored } from "@/lib/overview/bank-reconciliation";
 import { tool, type ToolSet } from "ai";
 import { z } from "zod";
 import type { TrixieContext } from "./trixie-context.server";
@@ -278,7 +279,7 @@ async function readKeyFigures(ctx: TrixieContext) {
   const cards = new Set<string>((allowed ?? []) as string[]);
   const { data: row, error } = await (ctx.supabase as any)
     .from("client_key_figures")
-    .select("as_at,cash,credit_card_debt,debtors_total,debtors_overdue,creditors,protected_money,revenue_mtd,net_profit_mtd,updated_at,last_xero_login_at")
+    .select("as_at,cash,credit_card_debt,debtors_total,debtors_overdue,creditors,protected_money,revenue_mtd,net_profit_mtd,updated_at,last_xero_login_at,bank_reconciliation")
     .eq("client_id", ctx.clientId)
     .order("as_at", { ascending: false })
     .limit(1)
@@ -301,6 +302,8 @@ async function readKeyFigures(ctx: TrixieContext) {
     available: !!row,
     asAt,
     figures: rows.filter((r) => r[2]).map(([label, value]) => ({ label, value: value == null ? null : Number(value), missing: value == null })),
+    // Per-account reconciled-to dates (in-scope accounts only); dates, not figures.
+    bankReconciliation: cards.has("cashflow") ? (parseStored(row?.bank_reconciliation)?.accounts.map((a) => ({ account: a.name, notReconciledSince: a.reconciledTo })) ?? null) : null,
     sources: row ? ([{ label: "Client key figures (overview)", asAt, href: `/clients/${ctx.clientId}` }] as Source[]) : [],
   };
 }
