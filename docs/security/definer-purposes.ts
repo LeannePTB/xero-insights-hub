@@ -9,6 +9,8 @@
  * Keys are `schema.name` — overloads share one purpose.
  */
 export const DEFINER_PURPOSES: Record<string, string> = {
+  "public.admin_onboard_candidates": "Lists the Xero files on the aal2 super admin's own unexpired pending onboard record, flagging files already in the app.",
+  "public.admin_onboard_organisation_from_xero": "Atomically creates an organisation, its clients and Xero links from the aal2 super admin's own single-use pending onboard record, within the client cap and never reusing a linked file; audited.",
   "public.delete_all_my_trixie_threads": "Deletes every saved Trixie chat owned by the aal2 caller, including chats hidden because their access was removed; never another person's.",
   "public.save_client_bank_account_classification": "Saves or resets an exact client/file/account classification after caller-scoped AAL2 write and account ownership checks, with an audit event.",
   "public.trixie_access_context": "Resolves the caller's exact Trixie scope, audience and allowance after aal2 and database access checks.",
