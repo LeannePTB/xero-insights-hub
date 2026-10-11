@@ -228,5 +228,5 @@ Source evidence:
 - `src/routes/_authenticated/system.organisations.$firmId.tsx`
 - `src/routes/_authenticated/system.trixie.tsx`
 - `src/routes/_authenticated/system.xero.tsx`
-- `src/lib/trixie/trixie-jobs.server.ts`
+- `src/lib/trixie/trixie-alerts.server.ts`
 
