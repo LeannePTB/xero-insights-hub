@@ -30,7 +30,7 @@ function parseAmount(v: string | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function summarise(report: any): PnlReport {
+export function summarisePnl(report: any): PnlReport {
   const out: PnlReport = {
     reportName: report?.ReportName ?? "Profit and Loss",
     reportDate: report?.ReportDate ?? "",
@@ -122,7 +122,7 @@ export const getProfitAndLoss = createServerFn({ method: "POST" })
     const { liveSource } = await import("./snapshot-source");
     // Profit & loss is fetched from Xero on every load; say so with real
     // provenance rather than letting the card infer it from a query time.
-    return { ...summarise(report), basis, source: liveSource("disabled") };
+    return { ...summarisePnl(report), basis, source: liveSource("disabled") };
   });
 
 export type TaxLiabilities = {
