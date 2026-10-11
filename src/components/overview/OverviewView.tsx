@@ -265,7 +265,7 @@ function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide, que
               {r.cashChange7d === null ? "—" : `${r.cashChange7d >= 0 ? "+" : ""}${money(r.cashChange7d)}`}
             </span>
           </td>
-          <td className={`p-3 text-right tabular-nums ${r.protectedPctOfCash === null ? "" : r.protectedPctOfCash > 100 ? "font-semibold text-destructive" : "font-medium text-success"}`} title={staleTitle ? staleTitle : r.protectedPctOfCash === null ? undefined : r.protectedPctOfCash > 100 ? "Tax and super owed is more than net cash." : "Net cash covers tax and super owed."}>
+          <td className={`p-3 text-right tabular-nums ${r.protectedLevel === "critical" && r.protectedPctOfCash !== null ? "font-semibold text-destructive" : r.protectedLevel && r.protectedPctOfCash !== null ? "font-medium text-info" : r.protectedPctOfCash !== null ? "font-medium text-success" : ""}`} title={staleTitle ? staleTitle : (r.protectedTooltip ?? undefined)}>
             <span className="inline-flex items-center justify-end gap-1">
               {staleMark}
               {pct(r.protectedPctOfCash)}
