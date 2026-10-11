@@ -2674,6 +2674,22 @@ BEGIN
 END;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.delete_all_my_trixie_threads()
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare n integer;
+begin
+  perform app_private.assert_aal2();
+  if auth.uid() is null then raise exception 'NOT_AUTHENTICATED'; end if;
+  delete from public.trixie_threads where user_id = auth.uid();
+  get diagnostics n = row_count;
+  return n;
+end
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql

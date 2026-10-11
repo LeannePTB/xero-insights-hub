@@ -561,7 +561,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const own = me === U.staffA ? T_STAFF : T_SELF;
     if (r === "delete_all_my_trixie_threads()") {
       const p = await probe(`select public.delete_all_my_trixie_threads()`);
-      if (!p.ok) { console.log("DELALL", p.error); return "deny"; }
+      if (!p.ok) return "deny";
       await db.exec("set local role postgres");
       const left = await db.query<{ mine: number; others: number }>(`
         select count(*) filter (where user_id = '${me}')::int as mine,
