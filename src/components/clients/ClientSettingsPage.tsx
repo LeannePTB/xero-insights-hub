@@ -773,6 +773,7 @@ const SETTINGS_SECTION_BY_TITLE: Record<string, ClientSettingsSection> = {
   "Profit & Loss basis": "tax-reporting",
   "How often this client lodges": "tax-reporting",
   "How this client codes GST, PAYG and super": "tax-reporting",
+  "Bank accounts & credit cards": "tax-reporting",
   "What you really need to bring in": "costs",
   "Danger zone": "danger",
 };

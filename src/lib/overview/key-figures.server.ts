@@ -50,7 +50,9 @@ export async function writeKeyFigures(target: { clientId: string; firmId: string
 
   const bs = latest.get("balance_sheet");
   if (bs?.complete) {
-    const a = analyseBalanceSheet(bs.payload, latest.get("accounts")?.payload, overrides);
+    const { classifiedAccounts } = await import('@/lib/xero/bank-classifications.server');
+    const accounts = await classifiedAccounts(db, target.tenantId, latest.get('accounts')?.payload, target.clientId);
+    const a = analyseBalanceSheet(bs.payload, accounts, overrides);
     if (a.cashAtBank.status === "assessed") fig.cash = a.cashAtBank.total;
     if (a.creditCardDebt.status === "assessed") fig.credit_card_debt = a.creditCardDebt.total;
     if (a.taxLines.status === "assessed")

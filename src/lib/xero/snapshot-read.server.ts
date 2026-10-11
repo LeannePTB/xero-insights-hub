@@ -133,7 +133,9 @@ export async function readSnapshot(opts: {
   }
 
   return {
-    payload: data.payload,
+    payload: reportKey === 'accounts'
+      ? await (await import('./bank-classifications.server')).classifiedAccounts(supabase, tenantId, data.payload, clientId ?? undefined)
+      : data.payload,
     source: {
       mode: "snapshot",
       // Stored as a Sydney start-of-day timestamptz. Render the SYDNEY
