@@ -1,9 +1,9 @@
 /** Server-safe mirror of the light-theme semantic tokens in styles.css. */
 export const presentation = {
-  navy: "#002A5F", primary: "#054492", link: "#005CAB", mid: "#1D6CB5",
-  sky: "#0091D5", cyan: "#00B5EE", grey: "#939598",
-  surface: "#FFFFFF", background: "#F7F9FC", text: "#002A5F",
-  muted: "#62666C", border: "#CFD9E5", infoSurface: "#E3F3FC",
+  navy: "#082E5E", primary: "#28468E", link: "#426CB2", mid: "#426CB2",
+  sky: "#1E90D1", cyan: "#4EB4EB", grey: "#939598",
+  surface: "#FFFFFF", background: "#F7F9FC", text: "#080909",
+  muted: "#62666C", border: "#CFD9E5", infoSurface: "#E8F4FC",
   success: "#18734B", destructive: "#B42332",
 } as const;
 
