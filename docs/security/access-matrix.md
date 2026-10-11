@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **2054**. Known failures: **0**.
+Rows: **2057**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -1046,6 +1046,7 @@ None.
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| client_bank_account_classifications | read | ALLOW | pglite | Existing exact-client read predicate only; relationship and standing access remain read-only. |  |
 | firms | update | DENY | pglite, live | Spec §4; no UPDATE grant for authenticated — organisation name, logo and default cards are changed by server code, never by a direct REST write |  |
 | clients | read | ALLOW | pglite, live | Spec §3 client viewer |  |
 | client_notes | read | ALLOW | pglite, live | Spec §3 client viewer |  |
@@ -1133,11 +1134,12 @@ None.
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
-| save_client_bank_account_classification() | execute | ALLOW | pglite | Existing user_can_write_client predicate; account and tenant validated against exact-client snapshots. |  |
+| save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
 | save_client_bank_account_classification() for another client | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
 | save_client_bank_account_classification() with another tenant | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
 | save_client_bank_account_classification() with unknown account | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
 | save_client_bank_account_classification() with invalid classification | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
+| client_bank_account_classifications | read | ALLOW | pglite | Existing exact-client read predicate only; relationship and standing access remain read-only. |  |
 | client_income_tax_instalments | read | ALLOW | pglite, live | Path A / Path E — authorised readers can see exact-client tax instalments; aal2 required |  |
 | client_income_tax_instalments | insert | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
 | client_income_tax_instalments | update | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
@@ -1166,6 +1168,7 @@ None.
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| client_bank_account_classifications | read | ALLOW | pglite | Existing exact-client read predicate only; relationship and standing access remain read-only. |  |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
 | set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
