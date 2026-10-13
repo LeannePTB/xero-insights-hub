@@ -101,7 +101,7 @@ function AdvisorSettings() {
   const inviteMut = useMutation({
     mutationFn: () => inviteFn({ data: { email } }),
     onSuccess: ({ invited }) => {
-      toast.success(invited ? "Invite email sent" : "Advisor access granted");
+      toast.success(invited ? "Invite email sent" : "System Administrator access granted");
       setEmail("");
       qc.invalidateQueries({ queryKey: ["advisors"] });
       qc.invalidateQueries({ queryKey: ["advisors-pending"] });
@@ -112,7 +112,7 @@ function AdvisorSettings() {
   const createPwMut = useMutation({
     mutationFn: () => createPwFn({ data: { email, password } }),
     onSuccess: () => {
-      toast.success(`Advisor created — ${email}`);
+      toast.success(`System Administrator created — ${email}`);
       setLastCreated({ email, password });
       setEmail("");
       setPassword("");
@@ -152,7 +152,7 @@ function AdvisorSettings() {
   const revokeMut = useMutation({
     mutationFn: (userId: string) => revokeFn({ data: { userId } }),
     onSuccess: () => {
-      toast.success("Advisor removed");
+      toast.success("System Administrator removed");
       qc.invalidateQueries({ queryKey: ["advisors"] });
     },
     onError: (e: any) => toast.error(e.message),
@@ -227,7 +227,7 @@ function AdvisorSettings() {
   if (ctxQ.isLoading) {
     return <div className="grid min-h-screen place-items-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…</div>;
   }
-  if (!ctxQ.data?.isPlatformStaff) return <p className="p-6 text-sm text-destructive">Advisors only.</p>;
+  if (!ctxQ.data?.isPlatformStaff) return <p className="p-6 text-sm text-destructive">System Administrators only.</p>;
 
   const advisors = listQ.data?.advisors ?? [];
   const viewerIsSuperAdmin = listQ.data?.viewerIsSuperAdmin ?? false;
@@ -246,7 +246,7 @@ function AdvisorSettings() {
         </p>
 
         <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-          <h2 className="mb-3 font-display text-lg font-semibold">Add an advisor</h2>
+          <h2 className="mb-3 font-display text-lg font-semibold">Add a System Administrator</h2>
           <div className="mb-3 inline-flex rounded-md border border-border p-0.5 text-xs">
             <button
               type="button"
@@ -269,7 +269,7 @@ function AdvisorSettings() {
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
                   type="email"
-                  placeholder="advisor@example.com"
+                  placeholder="admin@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="flex-1"
@@ -280,7 +280,7 @@ function AdvisorSettings() {
                 </Button>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                If the email isn't registered yet, they'll receive an invite link. Existing users are upgraded to advisor immediately.
+                If the email isn't registered yet, they'll receive an invite link. Existing users are upgraded to System Administrator immediately.
               </p>
             </>
           ) : (
@@ -288,7 +288,7 @@ function AdvisorSettings() {
               <div className="flex flex-col gap-2">
                 <Input
                   type="email"
-                  placeholder="advisor@example.com"
+                  placeholder="admin@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
@@ -315,7 +315,7 @@ function AdvisorSettings() {
                   className="self-start"
                 >
                   {createPwMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
-                  Create advisor
+                  Create System Administrator
                 </Button>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
@@ -323,7 +323,7 @@ function AdvisorSettings() {
               </p>
               {lastCreated && (
                 <div className="mt-3 rounded-md border border-border bg-muted/40 p-3 text-xs">
-                  <div className="mb-2 font-medium text-foreground">New advisor credentials</div>
+                  <div className="mb-2 font-medium text-foreground">New System Administrator credentials</div>
                   <div className="font-mono text-foreground">{lastCreated.email}</div>
                   <div className="font-mono text-foreground">{lastCreated.password}</div>
                   <Button
@@ -350,7 +350,7 @@ function AdvisorSettings() {
 
         <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
           <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="font-display text-lg font-semibold">Current advisors</h2>
+            <h2 className="font-display text-lg font-semibold">Current System Administrators</h2>
 
             {pendingCount > 0 && (
               <Button
@@ -376,7 +376,7 @@ function AdvisorSettings() {
           {listQ.isLoading ? (
             <div className="text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading…</div>
           ) : advisors.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No advisors yet.</p>
+            <p className="text-sm text-muted-foreground">No System Administrators yet.</p>
           ) : (
             <ul className="space-y-1.5">
               {advisors.map((a) => {
@@ -518,12 +518,12 @@ function AdvisorSettings() {
                         size="sm"
                         onClick={() => {
                           const msg = a.is_self
-                            ? `Remove your own advisor access? You'll be signed out immediately.`
-                            : `Remove advisor access for ${a.email ?? a.display_name ?? a.user_id}?`;
+                            ? `Remove your own System Administrator access? You'll be signed out immediately.`
+                            : `Remove System Administrator access for ${a.email ?? a.display_name ?? a.user_id}?`;
                           if (confirm(msg)) revokeMut.mutate(a.user_id);
                         }}
                         disabled={revokeMut.isPending}
-                        title={a.is_self ? "Remove your own advisor access (you'll be signed out)" : "Remove advisor access"}
+                        title={a.is_self ? "Remove your own System Administrator access (you'll be signed out)" : "Remove System Administrator access"}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -574,7 +574,7 @@ function AdvisorSettings() {
               </button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Setting a password signs the advisor in with the new credentials immediately — share securely.
+              Setting a password signs them in with the new credentials immediately — share securely.
             </p>
           </div>
           <DialogFooter>
