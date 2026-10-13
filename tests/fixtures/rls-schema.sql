@@ -1176,6 +1176,22 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.client_for_tenant(_tenant_id text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _client uuid;
+begin
+  perform app_private.assert_aal2();
+  _client := app_private.client_for_tenant(_tenant_id);
+  if _client is null then return null; end if;
+  if not app_private.user_can_read_client(auth.uid(), _client) then return null; end if;
+  return _client;
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION app_private.canonical_widget(_widget text)
  RETURNS text
  LANGUAGE sql
@@ -1227,6 +1243,46 @@ AS $function$
   ), '{}'::text[])
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.assert_widget_access(_tenant_id text, _widget text)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _row record;
+begin
+  perform app_private.assert_aal2();
+  select * into _row from public.effective_tier_for_tenant(_tenant_id);
+
+  if not _row.is_staff and _row.tier is null then
+    raise exception 'You don''t have access to this organisation.' using errcode = 'raise_exception';
+  end if;
+
+  if app_private.setting_bool('card_model_v2') then
+    if _row.client_id is null then
+      raise exception 'You don''t have access to this organisation.' using errcode = 'raise_exception';
+    end if;
+    if not exists (
+      select 1 from unnest(app_private.client_cards_v2(_row.client_id)) as w
+      where app_private.canonical_widget(w) = app_private.canonical_widget(_widget)
+    ) then
+      raise exception 'This widget is not enabled for your dashboard.' using errcode = 'raise_exception';
+    end if;
+    return true;
+  end if;
+
+  if _row.is_staff then return true; end if;
+
+  if not exists (
+    select 1 from unnest(app_private.effective_widgets_for_client(_row.client_id, _row.tier)) as w
+    where app_private.canonical_widget(w) = app_private.canonical_widget(_widget)
+  ) then
+    raise exception 'This widget is not enabled for your dashboard.' using errcode = 'raise_exception';
+  end if;
+  return true;
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.assert_tenant_belongs_to_client(_client_id uuid, _tenant_id text)
  RETURNS boolean
  LANGUAGE plpgsql
@@ -1258,6 +1314,18 @@ begin
   perform app_private.assert_aal2();
   if _uid is null then return false; end if;
   return app_private.user_can_write_client(_uid, _client_id);
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.me_is_super_admin()
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  return app_private.me_is_super_admin();
 end;
 $function$
 ;
@@ -2749,6 +2817,43 @@ CREATE OR REPLACE FUNCTION public.set_org_trial(_firm_id uuid, _advisory boolean
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$ DECLARE _ending boolean; BEGIN PERFORM app_private.assert_aal2(); PERFORM public.assert_super_admin(); _ending:=NOT coalesce(_advisory,false) AND NOT coalesce(_consolidation,false) AND NOT coalesce(_branding,false) AND NOT coalesce(_white_label,false); IF NOT _ending THEN IF _ends_at IS NULL OR _ends_at<=now() OR _ends_at>now()+interval '120 days' THEN RAISE EXCEPTION 'INVALID_TRIAL_END' USING errcode='check_violation'; END IF; IF coalesce(_consolidation,false) AND NOT coalesce(_advisory,false) THEN RAISE EXCEPTION 'CONSOLIDATION_REQUIRES_ADVISORY' USING errcode='check_violation'; END IF; IF coalesce(_branding,false) AND NOT coalesce(_advisory,false) THEN RAISE EXCEPTION 'BRANDING_REQUIRES_ADVISORY' USING errcode='check_violation'; END IF; IF nullif(btrim(_reason),'') IS NULL THEN RAISE EXCEPTION 'REASON_REQUIRED' USING errcode='check_violation'; END IF; END IF; INSERT INTO public.org_subscription_options(firm_id,trial_advisory_enabled,trial_consolidation_enabled,trial_branding_enabled,trial_white_label_enabled,trial_ends_at) VALUES(_firm_id,coalesce(_advisory,false),coalesce(_consolidation,false),coalesce(_branding,false),coalesce(_white_label,false),CASE WHEN _ending THEN NULL ELSE _ends_at END) ON CONFLICT(firm_id) DO UPDATE SET trial_advisory_enabled=excluded.trial_advisory_enabled,trial_consolidation_enabled=excluded.trial_consolidation_enabled,trial_branding_enabled=excluded.trial_branding_enabled,trial_white_label_enabled=excluded.trial_white_label_enabled,trial_ends_at=excluded.trial_ends_at,advisory_enabled=CASE WHEN coalesce(_advisory,false) THEN false ELSE org_subscription_options.advisory_enabled END,consolidation_enabled=CASE WHEN coalesce(_consolidation,false) THEN false ELSE org_subscription_options.consolidation_enabled END,branding_enabled=CASE WHEN coalesce(_branding,false) THEN false ELSE org_subscription_options.branding_enabled END,white_label_enabled=CASE WHEN coalesce(_white_label,false) THEN false ELSE org_subscription_options.white_label_enabled END,updated_at=now(); INSERT INTO public.audit_log(actor_user_id,firm_id,action,target_type,target_id,meta) VALUES(auth.uid(),_firm_id,CASE WHEN _ending THEN 'org_trial_ended' ELSE 'org_trial_set' END,'firm',_firm_id::text,jsonb_build_object('advisory',coalesce(_advisory,false),'consolidation',coalesce(_consolidation,false),'branding',coalesce(_branding,false),'white_label',coalesce(_white_label,false),'ends_at',CASE WHEN _ending THEN NULL ELSE _ends_at END,'reason',nullif(btrim(_reason),''))); END $function$
+;
+CREATE OR REPLACE FUNCTION public.trixie_access_context(_client_id uuid DEFAULT NULL::uuid, _firm_id uuid DEFAULT NULL::uuid, _system boolean DEFAULT false)
+ RETURNS TABLE(enabled boolean, mode text, audience text, firm_id uuid, client_id uuid, model text, monthly_allowance integer, warning_threshold integer, used integer)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE u uuid:=auth.uid(); f uuid; m text; a text; en boolean:=true; mdl text:='openai/gpt-6-astra'; dl integer:=100; pl integer:=100; w integer:=80; lim integer; n integer;
+BEGIN PERFORM app_private.assert_aal2(); IF u IS NULL THEN RAISE EXCEPTION 'Forbidden'; END IF;
+ SELECT s.enabled,s.model,s.default_monthly_allowance,s.platform_monthly_allowance,s.warning_threshold INTO en,mdl,dl,pl,w FROM public.trixie_settings s WHERE s.singleton;
+ en:=COALESCE(en,true); mdl:=COALESCE(mdl,'openai/gpt-6-astra'); w:=COALESCE(w,80);
+ IF _system THEN IF NOT app_private.me_is_super_admin() THEN RAISE EXCEPTION 'Forbidden'; END IF; m:='platform'; a:='platform'; lim:=pl;
+ ELSIF _client_id IS NOT NULL THEN IF NOT app_private.user_can_read_client(u,_client_id) THEN RAISE EXCEPTION 'Forbidden'; END IF;
+  SELECT c.firm_id INTO f FROM public.clients c WHERE c.id=_client_id; IF f IS NULL THEN RAISE EXCEPTION 'Client unavailable'; END IF; m:='client';
+  IF EXISTS(SELECT 1 FROM public.firm_members x WHERE x.firm_id=f AND x.user_id=u AND x.status='active') THEN a:='staff'; ELSE a:='viewer'; END IF;
+  SELECT l.monthly_allowance INTO lim FROM public.trixie_org_limits l WHERE l.firm_id=f; IF NOT FOUND THEN lim:=dl; END IF;
+ ELSIF _firm_id IS NOT NULL THEN IF NOT EXISTS(SELECT 1 FROM public.firm_members x WHERE x.firm_id=_firm_id AND x.user_id=u AND x.status='active') THEN RAISE EXCEPTION 'Forbidden'; END IF;
+  f:=_firm_id;m:='organisation';a:='staff';SELECT l.monthly_allowance INTO lim FROM public.trixie_org_limits l WHERE l.firm_id=f;IF NOT FOUND THEN lim:=dl;END IF;
+ ELSE SELECT x.firm_id INTO f FROM public.firm_members x WHERE x.user_id=u AND x.status='active' ORDER BY x.created_at LIMIT 1;
+  IF f IS NOT NULL THEN m:='general';a:='staff';SELECT l.monthly_allowance INTO lim FROM public.trixie_org_limits l WHERE l.firm_id=f;IF NOT FOUND THEN lim:=dl;END IF;
+  ELSIF app_private.me_is_super_admin() THEN m:='platform';a:='platform';lim:=pl; ELSE RAISE EXCEPTION 'No Trixie workspace is available'; END IF;
+ END IF;
+ SELECT count(*)::integer INTO n FROM public.trixie_usage q WHERE q.requested_at>=date_trunc('month',now()) AND q.status IN('reserved','completed') AND ((m='platform' AND q.firm_id IS NULL) OR (m<>'platform' AND q.firm_id=f));
+ RETURN QUERY SELECT en,m,a,f,_client_id,mdl,lim,w,COALESCE(n,0); END; $function$
+;
+CREATE OR REPLACE FUNCTION public.reserve_trixie_usage(_client_id uuid DEFAULT NULL::uuid, _firm_id uuid DEFAULT NULL::uuid, _system boolean DEFAULT false)
+ RETURNS TABLE(reservation_id uuid, enabled boolean, mode text, audience text, firm_id uuid, client_id uuid, model text, monthly_allowance integer, warning_threshold integer, used integer)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE c record; rid uuid; lk text;
+BEGIN PERFORM app_private.assert_aal2(); SELECT * INTO c FROM public.trixie_access_context(_client_id,_firm_id,_system); IF NOT c.enabled THEN RAISE EXCEPTION 'Trixie is currently switched off'; END IF;
+ lk:=COALESCE(c.firm_id::text,'platform'); PERFORM pg_advisory_xact_lock(hashtextextended('trixie:'||lk,0)); SELECT * INTO c FROM public.trixie_access_context(_client_id,_firm_id,_system);
+ IF c.monthly_allowance IS NOT NULL AND c.used>=c.monthly_allowance THEN RAISE EXCEPTION 'TRIXIE_LIMIT_REACHED'; END IF;
+ INSERT INTO public.trixie_usage(user_id,firm_id,client_id,model) VALUES(auth.uid(),c.firm_id,c.client_id,c.model) RETURNING id INTO rid;
+ RETURN QUERY SELECT rid,c.enabled,c.mode,c.audience,c.firm_id,c.client_id,c.model,c.monthly_allowance,c.warning_threshold,c.used+1; END; $function$
 ;
 CREATE OR REPLACE FUNCTION app_private.assert_trixie_maintenance()
  RETURNS void

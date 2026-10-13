@@ -212,3 +212,77 @@ describe("every attributed table: Organisation B rows are invisible outside Orga
     });
   });
 });
+
+/**
+ * Trixie may read a Xero file only inside the organisation the person is
+ * signed into. Her scope comes from public.trixie_access_context (the database
+ * check every Trixie request makes first); her file list is then read as the
+ * caller from client_xero_orgs, and every figure passes assert_widget_access.
+ */
+describe("Trixie never reaches another organisation's Xero file", () => {
+  async function trixieScope(uid: string, clientId: string | null, firmId: string | null, system = false) {
+    await db.exec("savepoint t");
+    try {
+      const r = await db.query<{ mode: string; firm_id: string | null; client_id: string | null }>(
+        `select mode, firm_id, client_id from public.trixie_access_context($1, $2, $3)`,
+        [clientId, firmId, system],
+      );
+      await db.exec("release savepoint t");
+      return r.rows[0] ?? null;
+    } catch {
+      await db.exec("rollback to savepoint t");
+      return "refused" as const;
+    }
+  }
+
+  it("Org A owner, Org A staff and outsiders are refused a Trixie session on Org B's client", async () => {
+    for (const uid of [OWNER_A, STAFF_A, NOBODY, SUPER]) {
+      expect(await asUser(uid, () => trixieScope(uid, CLIENT_B, null)), uid).toBe("refused");
+    }
+  });
+
+  it("Org A owner and outsiders are refused a Trixie session on Org B itself", async () => {
+    for (const uid of [OWNER_A, STAFF_A, NOBODY, SUPER]) {
+      expect(await asUser(uid, () => trixieScope(uid, null, ORG_B)), uid).toBe("refused");
+    }
+  });
+
+  it("System Admin Trixie scope carries no organisation or client", async () => {
+    const scope = await asUser(SUPER, () => trixieScope(SUPER, null, null, true));
+    expect(scope).toMatchObject({ mode: "platform", firm_id: null, client_id: null });
+  });
+
+  it("Org A owner's Trixie scope on their own client resolves to Org A only", async () => {
+    const scope = await asUser(OWNER_A, () => trixieScope(OWNER_A, CLIENT_A, null));
+    expect(scope).toMatchObject({ mode: "client", firm_id: ORG_A, client_id: CLIENT_A });
+  });
+
+  it("Trixie's Xero file list for an Org A client never includes Org B's file", async () => {
+    const tenants = await asUser(OWNER_A, async () => {
+      const r = await db.query<{ tenant_id: string }>(
+        `select x.tenant_id from public.client_xero_orgs o join public.xero_connections x on x.id = o.xero_connection_id
+          where o.client_id = $1 or o.client_id = $2`,
+        [CLIENT_A, CLIENT_B],
+      );
+      return r.rows.map((t) => t.tenant_id);
+    });
+    expect(tenants).toEqual([TENANT_A]);
+  });
+
+  it("the card gate refuses Org B's Xero file to Org A", async () => {
+    await asUser(OWNER_A, async () => {
+      await db.exec("savepoint w");
+      let refused = false;
+      try {
+        const r = await db.query<{ ok: boolean }>(`select public.assert_widget_access($1, 'cashflow') as ok`, [TENANT_B]);
+        refused = r.rows[0]?.ok !== true;
+        await db.exec("release savepoint w");
+      } catch {
+        refused = true;
+        await db.exec("rollback to savepoint w");
+      }
+      expect(refused).toBe(true);
+    });
+  });
+});
+
