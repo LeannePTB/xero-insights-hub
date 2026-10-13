@@ -50,3 +50,21 @@ Order as approved: smallest first.
 - Payments/self-serve Stripe signup and ops housekeeping (support contact, monitoring) — parked for a later plan.
 - Xero App Store billing API (you use Stripe).
 - The debtor-ageing defect and key-figures retention decisions (awaiting your call).
+
+---
+
+## Status — 13 Oct 2026
+
+**Workstream A — done, except the owner-only items.**
+- `/privacy` and `/terms` built and linked from the sign-in page (both footers) and the security page; verified rendering in a browser. The privacy policy carries the agreed Singapore disclosure wording and sub-processor list. Contact addresses (`privacy@`, `hello@tractionadvisory.com.au`) are placeholders for the owner to confirm.
+- `docs/security/incident-register.md` created (empty, with format).
+- Restore test record: NOT done — the test itself needs the owner's Lovable Cloud access. Still open in `docs/security/backup-and-restore.md`.
+
+**Workstream B — all three code items were already built and verified in earlier turns:**
+- Client-visible Xero sync status: `getClientXeroSyncStatus` (aal2, caller-scoped RLS reads, plain-English reasons) rendered by `XeroSyncStatusCard` in client settings → Xero. One gap fixed this turn: overview data-feed events (Xero disconnected, overnight refresh failed, snapshot out of date) now link to `/clients/:id/settings/xero` instead of the general settings page.
+- Connection cleanup routine: `cleanupXeroConnections` + cron route `/api/public/xero/connection-cleanup`, registered in `admin-client-register.md`, dry-run until `XERO_CONNECTION_CLEANUP_LIVE="true"`. Owner decision pending: review a dry-run report, then enable live detaches.
+- Sign Up with Xero (`/api/public/xero/signup`, flow='signup', identity only, pre-fills request access) and Sign in with Xero (button on `/auth`, flow='signin', verified-email match, MFA still required) — both live; the sign-in button verified rendering.
+
+**Remaining (owner, not code):** Xero developer portal checklist (app name, launcher login URL, official button artwork, submit); engagement-letter disclosure wording; privacy-adviser APP 8 check; restore test; enabling live connection detaches after reviewing a dry run.
+
+**Verification this turn:** `bunx tsgo` clean; build OK; `bun run security:check` 215 tests and 18 live checks, 0 failures, known-failure list unchanged. (The full `bun test src tests` parallel run shows a pre-existing PGlite `window.location` flake in `rls-isolation.test.ts`; the file passes standalone and inside `security:check`.)
