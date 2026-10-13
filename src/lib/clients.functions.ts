@@ -859,7 +859,7 @@ export const createClientViewerWithPassword = createServerFn({ method: "POST" })
       _role: "advisor",
     });
     if (isAdvisor !== true) {
-      throw new Error("Only advisors can create client viewers.");
+      throw new Error("Only System Administrators can create client viewers.");
     }
 
     const { optionalInviterLabelSchema } = await import("@/lib/access-labels");
