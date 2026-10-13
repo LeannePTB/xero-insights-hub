@@ -121,6 +121,7 @@ Tests/dependencies/records:
 ## Verification
 - Automatic compilation: build OK after the header changes.
 - Four rendered-component tests pass: one header/banner and one logo with page actions; action updates and unmount cleanup; independent parent/child action cleanup; standalone Sign out and floating fallback registration.
-- Security regression suite: 198 tests pass, live access checks 18 passed / 0 failed / 0 inconclusive; catalogue fingerprint and registered database rules unchanged.
+- Application tests: 198 passed, 0 failed across 26 files (including navigation tests).
+- Security regression suite: 198 tests pass, 1,973 access proofs pass with zero known failures; live access checks 18 passed / 0 failed / 0 inconclusive; catalogue fingerprint and registered database rules unchanged.
 - Real signed-in Overview: navigation reached /auth/mfa-verify. Interactive two-factor verification blocks live authenticated visual checking; no bypass was used. Tests above use mocked branding/account reads and are not claimed as real-user end-to-end verification.
 - No menus, permissions, server functions, database objects, financial calculations, page titles or colour tokens were changed. Only the requested shell background now uses the existing card token.

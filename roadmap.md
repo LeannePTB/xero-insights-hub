@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Consolidate shell headers, audit every route and verify action cleanup plus standalone header behaviour.
+- [x] Consolidate shell headers; all 79 route sources audited; rendered header/action/standalone tests and compilation pass. Real-user visual verification remains blocked by MFA.
 - [x] Remove Unreconciled since and Last Xero login from both overview views; build OK, 23 focused tests and full security gate pass.
 - [x] Add explicit in-app bank/credit-card account classification in Client settings → Tax & reporting, scoped to client/Xero file/account ID. Shared overview, snapshot, health, cash-flow and report calculations apply it; no name guessing or Xero rewrite. Real-user AAL2 save/readback remains unverified; no Positive Traction override was saved by tooling.
 - [x] Build Trixie Phase 1: session-only contextual help, caller-scoped figure citations, fair-use controls, System Admin management, and 13-month metadata retention.
