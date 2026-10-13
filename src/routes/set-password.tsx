@@ -95,7 +95,7 @@ function SetPasswordPage() {
             <div className="mt-6 space-y-3 text-sm">
               <p className="text-destructive">This link is invalid or has expired.</p>
               <p className="text-muted-foreground">
-                Ask your advisor to resend your invite, or request a password reset on the sign-in page.
+                Ask Traction Advisory to resend your invite, or request a password reset on the sign-in page.
               </p>
               <Button variant="outline" className="w-full" onClick={() => navigate({ to: "/auth" })}>
                 Go to sign in
