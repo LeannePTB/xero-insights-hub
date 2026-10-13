@@ -7,7 +7,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, Download, FileText, Loader2, Mail, RefreshCw, Trash2 } from "lucide-react";
 import { ViewToggle } from "@/components/dashboard/ViewToggle";
 import { toast } from "sonner";
-import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { getClient } from "@/lib/clients.functions";
 import { getMyContext } from "@/lib/roles.functions";
@@ -196,7 +195,6 @@ function ReportsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader />
       <PageContainer>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
