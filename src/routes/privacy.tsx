@@ -52,10 +52,10 @@ function PrivacyPage() {
           <p>
             Questions about this policy or your information:{" "}
             <a
-              href="mailto:privacy@tractionadvisory.com.au"
+              href="mailto:security@tractionadvisory.com.au"
               className="font-medium text-foreground underline underline-offset-2"
             >
-              privacy@tractionadvisory.com.au
+              security@tractionadvisory.com.au
             </a>
             .
           </p>
