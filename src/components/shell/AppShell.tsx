@@ -2,7 +2,11 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
-import { InAppShellContext, ShellHeaderActionsProvider, useShellHeaderActions } from "./shell-context";
+import {
+  InAppShellContext,
+  ShellHeaderActionsProvider,
+  useShellHeaderActions,
+} from "./shell-context";
 import { HeaderAccountActions } from "@/components/HeaderAccountActions";
 import { useWorkspaceBranding } from "@/hooks/useWorkspaceBranding";
 import { DEFAULT_BRANDING } from "@/hooks/usePlatformBranding";
@@ -54,28 +58,37 @@ function ShellHeader() {
   const hasLogo = brand.logoLight !== DEFAULT_BRANDING.logoLight;
   const actions = useShellHeaderActions();
   return (
-          <header data-app-header className="sticky top-0 z-40 shrink-0 border-b border-border/60 bg-card">
-            <div className="flex min-h-16 flex-wrap items-center gap-3 px-4 py-2 sm:flex-nowrap sm:py-0">
-            <SidebarTrigger />
-            {hasLogo && (
-              <Link
-                to="/"
-                aria-label={brand.productName}
-                 className="flex min-w-0 items-center gap-3"
-              >
-                {/* The logo already contains the wordmark — no duplicate text. */}
-                <img
-                  src={brand.logoLight}
-                  alt={brand.productName}
-                  className="h-12 w-auto max-w-32 shrink-0 object-contain dark:hidden"
-                />
-                {brand.logoDark !== brand.logoLight ? <img src={brand.logoDark} alt={brand.productName} className="hidden h-12 w-auto max-w-32 shrink-0 object-contain dark:block" /> : <span className="hidden text-lg font-semibold text-foreground dark:block">{brand.productName}</span>}
-              </Link>
+    <header
+      data-app-header
+      className="sticky top-0 z-40 shrink-0 border-b border-border/60 bg-card"
+    >
+      <div className="flex min-h-16 flex-wrap items-center gap-3 px-4 py-2 sm:flex-nowrap sm:py-0">
+        <SidebarTrigger />
+        {hasLogo && (
+          <Link to="/" aria-label={brand.productName} className="flex min-w-0 items-center gap-3">
+            {/* The logo already contains the wordmark — no duplicate text. */}
+            <img
+              src={brand.logoLight}
+              alt={brand.productName}
+              className="h-12 w-auto max-w-32 shrink-0 object-contain dark:hidden"
+            />
+            {brand.logoDark !== brand.logoLight ? (
+              <img
+                src={brand.logoDark}
+                alt={brand.productName}
+                className="hidden h-12 w-auto max-w-32 shrink-0 object-contain dark:block"
+              />
+            ) : (
+              <span className="hidden text-lg font-semibold text-foreground dark:block">
+                {brand.productName}
+              </span>
             )}
-            <div className="ml-auto min-w-0 max-w-full [&>div]:flex-wrap sm:[&>div]:flex-nowrap">
-              <HeaderAccountActions actions={actions} />
-            </div>
-            </div>
-          </header>
+          </Link>
+        )}
+        <div className="ml-auto min-w-0 max-w-full [&>div]:flex-wrap sm:[&>div]:flex-nowrap">
+          <HeaderAccountActions actions={actions} />
+        </div>
+      </div>
+    </header>
   );
 }

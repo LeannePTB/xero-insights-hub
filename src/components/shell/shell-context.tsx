@@ -1,11 +1,27 @@
-import { Fragment, createContext, useCallback, useContext, useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import {
+  Fragment,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 /** True when the page is inside AppShell (whose sidebar carries Sign out). */
 export const InAppShellContext = createContext(false);
 export const useInAppShell = () => useContext(InAppShellContext);
 
-type HeaderActionsSlot = { actions: ReactNode; register: (id: string, actions: ReactNode) => () => void };
-const ShellHeaderActionsContext = createContext<HeaderActionsSlot>({ actions: null, register: () => () => {} });
+type HeaderActionsSlot = {
+  actions: ReactNode;
+  register: (id: string, actions: ReactNode) => () => void;
+};
+const ShellHeaderActionsContext = createContext<HeaderActionsSlot>({
+  actions: null,
+  register: () => () => {},
+});
 
 /** Mounted AppHeaders contribute actions, never another bar or logo. */
 export function ShellHeaderActionsProvider({ children }: { children: ReactNode }) {
@@ -20,8 +36,18 @@ export function ShellHeaderActionsProvider({ children }: { children: ReactNode }
       });
     };
   }, []);
-  const value = useMemo(() => ({ actions: Array.from(slots, ([id, action]) => <Fragment key={id}>{action}</Fragment>), register }), [slots, register]);
-  return <ShellHeaderActionsContext.Provider value={value}>{children}</ShellHeaderActionsContext.Provider>;
+  const value = useMemo(
+    () => ({
+      actions: Array.from(slots, ([id, action]) => <Fragment key={id}>{action}</Fragment>),
+      register,
+    }),
+    [slots, register],
+  );
+  return (
+    <ShellHeaderActionsContext.Provider value={value}>
+      {children}
+    </ShellHeaderActionsContext.Provider>
+  );
 }
 
 export const useShellHeaderActions = () => useContext(ShellHeaderActionsContext).actions;
@@ -48,7 +74,11 @@ export function HeaderPresenceProvider({ children }: { children: ReactNode }) {
     setCount((c) => c + 1);
     return () => setCount((c) => c - 1);
   };
-  return <HeaderPresenceContext.Provider value={{ count, register }}>{children}</HeaderPresenceContext.Provider>;
+  return (
+    <HeaderPresenceContext.Provider value={{ count, register }}>
+      {children}
+    </HeaderPresenceContext.Provider>
+  );
 }
 
 export function useRegisterHeader() {
