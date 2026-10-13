@@ -5,7 +5,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, Download, FileText, Loader2, Mail, RefreshCw, Trash2 } from "lucide-react";
-import { ViewToggle } from "@/components/dashboard/ViewToggle";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getClient } from "@/lib/clients.functions";
