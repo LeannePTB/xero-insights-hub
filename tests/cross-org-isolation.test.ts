@@ -50,6 +50,25 @@ const B_VALUES: Record<string, string> = {
 /** Tables with no organisation/client/person attribute: nothing to leak across organisations. */
 const NOT_SEEDABLE: Record<string, string> = {};
 
+/**
+ * Platform-operations metadata a System Administrator may read across
+ * organisations (Project Knowledge, access path C). Each is metadata only.
+ */
+const PATH_C_METADATA = new Set([
+  "firms", // organisation list
+  "firm_members", // member list (owner-approved Path C item)
+  "access_invites", // invites
+  "subscriptions", // plans
+  "client_subscriptions", // plan/billing state, no figures
+  "billing_events", // billing events
+  "audit_log", // super-admin-only security log
+  "user_roles", // roles
+  "practice_team", // Traction Advisory team list
+  "firm_support_access", // support grant approvals
+  "xero_api_errors", // Xero telemetry
+  "xero_rate_limits", // Xero quota telemetry
+]);
+
 let db: PGlite;
 let attributed: { table: string; cols: string[] }[] = [];
 const seedErrors: string[] = [];
@@ -177,7 +196,12 @@ describe("every attributed table: Organisation B rows are invisible outside Orga
           if (n > 0) leaks.push(`${table} (${n})`);
         }
       });
-      expect(leaks).toEqual([]);
+      // Path C (platform operations): a System Administrator may read
+      // metadata only — never client figures, notes, snapshots, reports,
+      // Xero data or conversations. The exact set is pinned so any new
+      // table a System Administrator can read fails here until reviewed.
+      const allowed = uid === SUPER ? PATH_C_METADATA : new Set<string>();
+      expect(leaks.map((l) => l.split(" ")[0]).filter((t) => !allowed.has(t!))).toEqual([]);
     });
   }
 
