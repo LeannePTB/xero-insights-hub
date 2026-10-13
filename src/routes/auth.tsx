@@ -19,6 +19,7 @@ import { siteUrl } from "@/lib/site-origin";
 import { useSignOut } from "@/lib/use-sign-out";
 import {
   clearIdleDeadline,
+  postAuthDestination,
   signOutMessage,
   takeSignOutReason,
   type SignOutReason,
@@ -44,7 +45,8 @@ async function routeAfterAuth(navigate: (opts: { to: string; replace?: boolean }
     await navigate({ to: "/auth/mfa-verify", replace: true });
     return;
   }
-  await navigate({ to: "/dashboard", replace: true });
+  // Back to the page they were on when the session ended, else the dashboard.
+  await navigate({ to: postAuthDestination(), replace: true });
 }
 
 function AuthPage() {

@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { clearIdleDeadline, markSessionEnded } from "@/lib/session-cutoff";
+import { clearIdleDeadline, markSessionEnded, writeReturnTo } from "@/lib/session-cutoff";
 
 /**
  * One place that turns a server "SESSION_IDLE" answer into a clean ending.
@@ -31,6 +31,8 @@ export function endSessionAndSignIn() {
   ending = true;
   clearIdleDeadline();
   markSessionEnded();
+  // Return them to this page after they sign back in (13 Oct 2026).
+  writeReturnTo(window.location.pathname + window.location.search);
   void (async () => {
     try {
       await supabase.auth.signOut();

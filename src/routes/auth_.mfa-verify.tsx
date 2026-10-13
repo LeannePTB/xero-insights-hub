@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, ShieldCheck } from "lucide-react";
+import { postAuthDestination } from "@/lib/session-cutoff";
 
 export const Route = createFileRoute("/auth_/mfa-verify")({
   ssr: false,
@@ -35,7 +36,7 @@ function MfaVerifyPage() {
       }
       const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (aal?.currentLevel === "aal2") {
-        navigate({ to: "/dashboard", replace: true });
+        navigate({ to: postAuthDestination() as "/dashboard", replace: true });
         return;
       }
       setFactorId(verified.id);
@@ -56,7 +57,7 @@ function MfaVerifyPage() {
       });
       if (verify.error) throw verify.error;
       toast.success("Verified");
-      navigate({ to: "/dashboard", replace: true });
+      navigate({ to: postAuthDestination() as "/dashboard", replace: true });
     } catch (e: any) {
       const raw = e?.message ?? "Invalid code";
       const msg = /invalid/i.test(raw)

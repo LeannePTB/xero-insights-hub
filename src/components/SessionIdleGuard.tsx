@@ -22,6 +22,7 @@ import {
   markSignedOutIdle,
   readIdleDeadline,
   writeIdleDeadline,
+  writeReturnTo,
 } from "@/lib/session-cutoff";
 
 /**
@@ -64,6 +65,8 @@ export function SessionIdleGuard() {
     endingRef.current = true;
     clearIdleDeadline();
     markSignedOutIdle();
+    // Return them to this page after they sign back in (13 Oct 2026).
+    writeReturnTo(window.location.pathname + window.location.search);
     try {
       channelRef.current?.postMessage({ type: "expired" });
     } catch {}
