@@ -5,7 +5,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, Download, FileText, Loader2, Mail, RefreshCw, Trash2 } from "lucide-react";
-import { ViewToggle } from "@/components/dashboard/ViewToggle";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getClient } from "@/lib/clients.functions";
@@ -207,7 +206,6 @@ function ReportsPage() {
                 : <>{client?.name ?? "Client"} · a snapshot of your business for the period, prepared by {workspaceBrand.productName}.</>}
             </p>
           </div>
-          <ViewToggle clientId={clientId} active="reports" />
         </div>
 
         {/* Preview — sits directly under the page title so the period, version and
