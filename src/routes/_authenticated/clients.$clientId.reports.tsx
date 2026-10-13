@@ -207,7 +207,6 @@ function ReportsPage() {
                 : <>{client?.name ?? "Client"} · a snapshot of your business for the period, prepared by {workspaceBrand.productName}.</>}
             </p>
           </div>
-          <ViewToggle clientId={clientId} active="reports" />
         </div>
 
         {/* Preview — sits directly under the page title so the period, version and
