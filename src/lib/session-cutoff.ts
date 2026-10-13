@@ -83,6 +83,45 @@ export function signOutMessage(reason: SignOutReason): string {
   return reason === "idle" ? IDLE_SIGN_OUT_MESSAGE : SESSION_ENDED_MESSAGE;
 }
 
+/**
+ * Where to send someone back to after they sign in again (owner decision,
+ * 13 October 2026): when a session ends by INACTIVITY — browser-counted or
+ * server-refused — remember the page they were on, so signing back in returns
+ * them there instead of always landing on the dashboard. A deliberate Sign out
+ * never sets this.
+ *
+ * Presentation only, never a grant: the value is a same-origin path, validated
+ * on read, and every destination route keeps its own server-side guard.
+ */
+export const RETURN_TO_KEY = "ta:return-to";
+
+function isSafeReturnPath(path: string): boolean {
+  // Same-origin absolute path only: no "//host", no scheme, no backslashes.
+  return /^\/[^\\/]/.test(path) && !path.startsWith("//");
+}
+
+export function writeReturnTo(path: string) {
+  try {
+    if (isSafeReturnPath(path)) window.localStorage.setItem(RETURN_TO_KEY, path);
+  } catch {}
+}
+
+/** Read once and clear. Returns null when nothing safe is stored. */
+export function takeReturnTo(): string | null {
+  try {
+    const raw = window.localStorage.getItem(RETURN_TO_KEY);
+    window.localStorage.removeItem(RETURN_TO_KEY);
+    return raw && isSafeReturnPath(raw) ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The page to land on after a successful sign-in (incl. its MFA step). */
+export function postAuthDestination(): string {
+  return takeReturnTo() ?? "/dashboard";
+}
+
 export function readIdleDeadline(): number | null {
   try {
     const raw = Number(window.localStorage.getItem(IDLE_DEADLINE_KEY));
