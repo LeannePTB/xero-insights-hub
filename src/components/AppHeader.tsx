@@ -1,13 +1,10 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { Bell, LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import { useSignOut } from "@/lib/use-sign-out";
+import { HeaderAccountActions } from "@/components/HeaderAccountActions";
 import { useWorkspaceBranding } from "@/hooks/useWorkspaceBranding";
 import { DEFAULT_BRANDING } from "@/hooks/usePlatformBranding";
 
-import { useInAppShell, useRegisterHeader } from "@/components/shell/shell-context";
+import { useInAppShell, useRegisterHeader, useRegisterShellHeaderActions } from "@/components/shell/shell-context";
 
 type Props = {
   /** Optional actions rendered before the notification / account cluster. */
@@ -16,27 +13,22 @@ type Props = {
 
 /**
  * Global application header: logo · wordmark on the left, actions / bell /
- * avatar / sign out on the right. Inside AppShell the side menu carries
- * Sign out, so the header omits its own (decided by React context).
+ * avatar / sign out on the right. Inside AppShell it only supplies actions
+ * to the shell-owned header, without rendering another bar.
  */
 export function AppHeader({ actions }: Props) {
-  const handleSignOut = useSignOut();
-  const brand = useWorkspaceBranding();
   const inShell = useInAppShell();
-  useRegisterHeader();
-  const [initial, setInitial] = useState("");
+  return inShell ? <ShellHeaderActions actions={actions} /> : <BareAppHeader actions={actions} />;
+}
 
-  useEffect(() => {
-    let active = true;
-    supabase.auth.getUser().then(({ data }) => {
-      if (!active) return;
-      const email = data.user?.email ?? "";
-      setInitial(email.slice(0, 1).toUpperCase());
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
+function ShellHeaderActions({ actions }: Props) {
+  useRegisterShellHeaderActions(actions);
+  return null;
+}
+
+function BareAppHeader({ actions }: Props) {
+  const brand = useWorkspaceBranding();
+  useRegisterHeader();
 
   return (
     <header data-app-header className="sticky top-0 z-40 border-b border-border/60 bg-card">
@@ -48,25 +40,7 @@ export function AppHeader({ actions }: Props) {
             <span className="truncate text-lg font-semibold tracking-tight">{brand.productName}</span>
           )}
         </Link>
-
-
-        <div className="flex items-center gap-2 sm:gap-3">
-          {actions}
-          <Button variant="ghost" size="icon" aria-label="Notifications" className="hidden sm:inline-flex">
-            <Bell className="h-4 w-4" />
-          </Button>
-          <span
-            aria-hidden
-            className="hidden h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground sm:flex"
-          >
-            {initial}
-          </span>
-          {!inShell && (
-            <Button variant="ghost" size="sm" onClick={() => void handleSignOut()} className="font-semibold">
-              <LogOut className="mr-2 h-4 w-4" /> Sign out
-            </Button>
-          )}
-        </div>
+        <HeaderAccountActions actions={actions} showSignOut />
       </div>
     </header>
   );

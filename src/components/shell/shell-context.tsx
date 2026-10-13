@@ -1,8 +1,39 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 /** True when the page is inside AppShell (whose sidebar carries Sign out). */
 export const InAppShellContext = createContext(false);
 export const useInAppShell = () => useContext(InAppShellContext);
+
+type HeaderActionsSlot = { actions: ReactNode; register: (id: symbol, actions: ReactNode) => () => void };
+const ShellHeaderActionsContext = createContext<HeaderActionsSlot>({ actions: null, register: () => () => {} });
+
+/** Mounted AppHeaders contribute actions, never another bar or logo. */
+export function ShellHeaderActionsProvider({ children }: { children: ReactNode }) {
+  const [slots, setSlots] = useState<Map<symbol, ReactNode>>(() => new Map());
+  const register = useCallback((id: symbol, actions: ReactNode) => {
+    setSlots((current) => new Map(current).set(id, actions));
+    return () => {
+      setSlots((current) => {
+        const next = new Map(current);
+        next.delete(id);
+        return next;
+      });
+    };
+  }, []);
+  const value = useMemo(() => ({ actions: Array.from(slots.values()), register }), [slots, register]);
+  return <ShellHeaderActionsContext.Provider value={value}>{children}</ShellHeaderActionsContext.Provider>;
+}
+
+export const useShellHeaderActions = () => useContext(ShellHeaderActionsContext).actions;
+
+export function useRegisterShellHeaderActions(actions?: ReactNode) {
+  const { register } = useContext(ShellHeaderActionsContext);
+  const [id] = useState(() => Symbol("page-header-actions"));
+  useEffect(() => {
+    if (actions == null) return;
+    return register(id, actions);
+  }, [actions, id, register]);
+}
 
 /**
  * Lets AppHeader tell the bare layout it is showing its own Sign out, so the

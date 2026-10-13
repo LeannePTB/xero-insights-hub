@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
-import { InAppShellContext } from "./shell-context";
+import { InAppShellContext, ShellHeaderActionsProvider, useShellHeaderActions } from "./shell-context";
+import { HeaderAccountActions } from "@/components/HeaderAccountActions";
 import { useWorkspaceBranding } from "@/hooks/useWorkspaceBranding";
 import { DEFAULT_BRANDING } from "@/hooks/usePlatformBranding";
 
@@ -33,14 +34,28 @@ function usePersistedSidebarOpen(): [boolean, (open: boolean) => void] {
 /** The one app menu wrapped around page content. Presentation only. */
 export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = usePersistedSidebarOpen();
-  const brand = useWorkspaceBranding();
-  const hasLogo = brand.logoLight !== DEFAULT_BRANDING.logoLight;
   return (
     <InAppShellContext.Provider value={true}>
-      <SidebarProvider open={open} onOpenChange={setOpen}>
-        <AppSidebar />
-        <SidebarInset className="min-w-0 overflow-x-hidden">
-          <header className="flex h-16 shrink-0 items-center gap-3 border-b px-4">
+      <ShellHeaderActionsProvider>
+        <SidebarProvider open={open} onOpenChange={setOpen}>
+          <AppSidebar />
+          <SidebarInset className="min-w-0 overflow-x-hidden">
+            <ShellHeader />
+            <div className="min-w-0 flex-1">{children}</div>
+          </SidebarInset>
+        </SidebarProvider>
+      </ShellHeaderActionsProvider>
+    </InAppShellContext.Provider>
+  );
+}
+
+function ShellHeader() {
+  const brand = useWorkspaceBranding();
+  const hasLogo = brand.logoLight !== DEFAULT_BRANDING.logoLight;
+  const actions = useShellHeaderActions();
+  return (
+          <header data-app-header className="sticky top-0 z-40 shrink-0 border-b border-border/60 bg-card">
+            <div className="flex min-h-16 flex-wrap items-center gap-3 px-4 py-2 sm:flex-nowrap sm:py-0">
             <SidebarTrigger />
             {hasLogo && (
               <Link
@@ -57,10 +72,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {brand.logoDark !== brand.logoLight ? <img src={brand.logoDark} alt={brand.productName} className="hidden h-12 w-auto max-w-32 shrink-0 object-contain dark:block" /> : <span className="hidden text-lg font-semibold text-foreground dark:block">{brand.productName}</span>}
               </Link>
             )}
+            <div className="ml-auto min-w-0 max-w-full [&>div]:flex-wrap sm:[&>div]:flex-nowrap">
+              <HeaderAccountActions actions={actions} />
+            </div>
+            </div>
           </header>
-          <div className="min-w-0 flex-1">{children}</div>
-        </SidebarInset>
-      </SidebarProvider>
-    </InAppShellContext.Provider>
   );
 }

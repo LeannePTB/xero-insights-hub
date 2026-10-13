@@ -1,6 +1,7 @@
 - Client overview reads stored snapshots only and derives status from `evaluateClient`; its client list comes from the caller-scoped `overview_clients()` — never re-implement who-can-see-what in TypeScript.
 - Bank/card extraction is shared in `tax-lines.ts`; the ID-keyed bank-classification overlay applies explicit client/file/account overrides before Xero BankAccountType, never name guesses, so stored and live figures agree without rewriting Xero metadata.
-- Sidebar layouts reserve width through the non-shrinking sidebar spacer; the main inset uses flex-1 and min-w-0 without w-full, so collapsed navigation cannot crowd or clip page content.
+- Sidebar spacer stays non-shrinking; inset uses flex-1 min-w-0, never w-full, to avoid clipping.
+- AppShell owns the sole menu-layout header; AppHeader supplies context-registered actions there and renders standalone only outside, preventing duplicate branding and lost actions.
 - Client income tax instalments use one dedicated period-history table and one audited caller-scoped save function, because period history and organisation-team-only editing must stay explicit.
 - Navigation is one AppShell whose menu is data in `src/lib/nav/sidebar-nav.ts`, chosen by the URL (/system, /firms/:id, /clients/:id) and gated only by getMyContext server signals, because the menu must stay presentation-only and be movable to the database later.
 - Platform branding is read through the anon-callable `get_platform_branding()` with bundled-asset fallback and written only via `save_platform_branding()`, because sign-in pages need it before login while the table stays grant-free.
