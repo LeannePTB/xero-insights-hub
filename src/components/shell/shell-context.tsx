@@ -1,16 +1,16 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Fragment, createContext, useCallback, useContext, useEffect, useId, useMemo, useState, type ReactNode } from "react";
 
 /** True when the page is inside AppShell (whose sidebar carries Sign out). */
 export const InAppShellContext = createContext(false);
 export const useInAppShell = () => useContext(InAppShellContext);
 
-type HeaderActionsSlot = { actions: ReactNode; register: (id: symbol, actions: ReactNode) => () => void };
+type HeaderActionsSlot = { actions: ReactNode; register: (id: string, actions: ReactNode) => () => void };
 const ShellHeaderActionsContext = createContext<HeaderActionsSlot>({ actions: null, register: () => () => {} });
 
 /** Mounted AppHeaders contribute actions, never another bar or logo. */
 export function ShellHeaderActionsProvider({ children }: { children: ReactNode }) {
-  const [slots, setSlots] = useState<Map<symbol, ReactNode>>(() => new Map());
-  const register = useCallback((id: symbol, actions: ReactNode) => {
+  const [slots, setSlots] = useState<Map<string, ReactNode>>(() => new Map());
+  const register = useCallback((id: string, actions: ReactNode) => {
     setSlots((current) => new Map(current).set(id, actions));
     return () => {
       setSlots((current) => {
@@ -20,7 +20,7 @@ export function ShellHeaderActionsProvider({ children }: { children: ReactNode }
       });
     };
   }, []);
-  const value = useMemo(() => ({ actions: Array.from(slots.values()), register }), [slots, register]);
+  const value = useMemo(() => ({ actions: Array.from(slots, ([id, action]) => <Fragment key={id}>{action}</Fragment>), register }), [slots, register]);
   return <ShellHeaderActionsContext.Provider value={value}>{children}</ShellHeaderActionsContext.Provider>;
 }
 
@@ -28,7 +28,7 @@ export const useShellHeaderActions = () => useContext(ShellHeaderActionsContext)
 
 export function useRegisterShellHeaderActions(actions?: ReactNode) {
   const { register } = useContext(ShellHeaderActionsContext);
-  const [id] = useState(() => Symbol("page-header-actions"));
+  const id = useId();
   useEffect(() => {
     if (actions == null) return;
     return register(id, actions);
