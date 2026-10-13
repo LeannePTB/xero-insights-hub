@@ -12,8 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SecurityRouteImport } from './routes/security'
 import { Route as SetPasswordRouteImport } from './routes/set-password'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -102,6 +104,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SecurityRoute = SecurityRouteImport.update({
   id: '/security',
   path: '/security',
@@ -110,6 +117,11 @@ const SecurityRoute = SecurityRouteImport.update({
 const SetPasswordRoute = SetPasswordRouteImport.update({
   id: '/set-password',
   path: '/set-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
@@ -533,8 +545,10 @@ const AuthenticatedFirmsFirmIdSettingsSupportRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/privacy': typeof PrivacyRoute
   '/security': typeof SecurityRoute
   '/set-password': typeof SetPasswordRoute
+  '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -612,8 +626,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/privacy': typeof PrivacyRoute
   '/security': typeof SecurityRoute
   '/set-password': typeof SetPasswordRoute
+  '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/overview': typeof AuthenticatedOverviewRoute
@@ -688,8 +704,10 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/privacy': typeof PrivacyRoute
   '/security': typeof SecurityRoute
   '/set-password': typeof SetPasswordRoute
+  '/terms': typeof TermsRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -769,8 +787,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/privacy'
     | '/security'
     | '/set-password'
+    | '/terms'
     | '/unsubscribe'
     | '/admin'
     | '/dashboard'
@@ -848,8 +868,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/privacy'
     | '/security'
     | '/set-password'
+    | '/terms'
     | '/unsubscribe'
     | '/dashboard'
     | '/overview'
@@ -923,8 +945,10 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/privacy'
     | '/security'
     | '/set-password'
+    | '/terms'
     | '/unsubscribe'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
@@ -1004,8 +1028,10 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  PrivacyRoute: typeof PrivacyRoute
   SecurityRoute: typeof SecurityRoute
   SetPasswordRoute: typeof SetPasswordRoute
+  TermsRoute: typeof TermsRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   ApiTrixieRoute: typeof ApiTrixieRoute
   AuthMfaEnrollRoute: typeof AuthMfaEnrollRoute
@@ -1051,6 +1077,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/security': {
       id: '/security'
       path: '/security'
@@ -1063,6 +1096,13 @@ declare module '@tanstack/react-router' {
       path: '/set-password'
       fullPath: '/set-password'
       preLoaderRoute: typeof SetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/unsubscribe': {
@@ -1797,8 +1837,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  PrivacyRoute: PrivacyRoute,
   SecurityRoute: SecurityRoute,
   SetPasswordRoute: SetPasswordRoute,
+  TermsRoute: TermsRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   ApiTrixieRoute: ApiTrixieRoute,
   AuthMfaEnrollRoute: AuthMfaEnrollRoute,
