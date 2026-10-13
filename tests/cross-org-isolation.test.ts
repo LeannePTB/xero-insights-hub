@@ -76,12 +76,15 @@ function bPredicate(cols: string[]) {
 }
 
 async function visibleB(table: string, cols: string[]): Promise<number> {
+  await db.exec("savepoint s");
   try {
     const r = await db.query<{ n: number }>(
       `select count(*)::int as n from public.${table} where ${bPredicate(cols)}`,
     );
+    await db.exec("release savepoint s");
     return r.rows[0]!.n;
   } catch (e) {
+    await db.exec("rollback to savepoint s");
     // permission denied = no grant at all: zero rows reachable.
     if (/permission denied/i.test(String(e))) return 0;
     throw e;
@@ -123,6 +126,10 @@ beforeAll(async () => {
   const byTable = new Map<string, string[]>();
   for (const r of cols.rows) byTable.set(r.table_name, [...(byTable.get(r.table_name) ?? []), r.column_name]);
 
+  // Seeding is a system context: skip app triggers (e.g. the pending-onboard
+  // owner guard) so every table gets its synthetic Org B row. Reads below run
+  // with triggers and RLS exactly as in production.
+  await db.exec("set session_replication_role = replica");
   // Rows already seeded above, so they are not seeded twice.
   const preSeeded = new Set(["firms", "firm_members", "clients", "xero_connections", "client_xero_orgs", "consolidation_groups", "unreconciled_uploads", "trixie_threads"]);
   for (const [table, c] of [...byTable.entries()].sort()) {
@@ -146,6 +153,7 @@ beforeAll(async () => {
       seedErrors.push(`${table}: ${String(e).slice(0, 160)}`);
     }
   }
+  await db.exec("set session_replication_role = origin");
 }, 120_000);
 
 describe("every attributed table: Organisation B rows are invisible outside Organisation B", () => {
@@ -165,10 +173,7 @@ describe("every attributed table: Organisation B rows are invisible outside Orga
       const leaks: string[] = [];
       await asUser(uid, async () => {
         for (const { table, cols } of attributed) {
-          // Savepoint so one table's error cannot hide later tables.
-          await db.exec("savepoint s");
           const n = await visibleB(table, cols);
-          await db.exec("release savepoint s");
           if (n > 0) leaks.push(`${table} (${n})`);
         }
       });
@@ -178,7 +183,7 @@ describe("every attributed table: Organisation B rows are invisible outside Orga
 
   it("positive control: Organisation B's owner can read its own client and organisation", async () => {
     await asUser(OWNER_B, async () => {
-      expect(await visibleB("clients", ["client_id" in {} ? "client_id" : "firm_id"])).toBe(1);
+      expect(await visibleB("clients", ["firm_id"])).toBe(1);
       expect(await visibleB("firms", ["owner_user_id"])).toBe(1);
     });
   });
