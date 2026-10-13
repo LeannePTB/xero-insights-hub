@@ -126,7 +126,7 @@ export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; cleared:
 
     // Data events. Each links to the client settings page, where the Xero
     // sync status section shows the reason in plain English.
-    const settingsHref = `/clients/${c.client_id}/settings`;
+    const settingsHref = `/clients/${c.client_id}/settings/xero`;
     const conns = ctx.connections.get(c.client_id) ?? [];
     if (conns.length && !conns.some((x) => x.status === "connected")) {
       events.push({ ...base, eventKey: "data:disconnected", kind: "data", severity: 1, headline: "Xero disconnected", before: "Connected", after: "Disconnected", date: ctx.today, href: settingsHref });

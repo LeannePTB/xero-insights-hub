@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { BrandMark } from "@/components/BrandMark";
 
@@ -55,9 +55,15 @@ function SecurityPage() {
             .
           </p>
         </div>
-        <p className="mt-10 text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Traction Advisory
-        </p>
+        <div className="mt-10 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
+          <span>© {new Date().getFullYear()} Traction Advisory</span>
+          <Link to="/privacy" className="underline underline-offset-2 hover:text-foreground">
+            Privacy policy
+          </Link>
+          <Link to="/terms" className="underline underline-offset-2 hover:text-foreground">
+            Terms of service
+          </Link>
+        </div>
       </div>
     </div>
   );

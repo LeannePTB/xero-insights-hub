@@ -247,8 +247,16 @@ function AuthPage() {
         </div>
         <p className="relative z-20 text-xs text-primary-foreground/70">
           © {new Date().getFullYear()} {platformBrand.productName} ·{" "}
-          <Link to="/security" className="underline underline-offset-2 hover:text-primary-foreground">
+           <Link to="/security" className="underline underline-offset-2 hover:text-primary-foreground">
             Report a security issue
+          </Link>
+          {" · "}
+          <Link to="/privacy" className="underline underline-offset-2 hover:text-primary-foreground">
+            Privacy
+          </Link>
+          {" · "}
+          <Link to="/terms" className="underline underline-offset-2 hover:text-primary-foreground">
+            Terms
           </Link>
         </p>
       </div>
@@ -404,6 +412,14 @@ function AuthPage() {
                 <p className="text-center text-xs text-muted-foreground">
                   <Link to="/security" className="underline-offset-2 hover:text-foreground hover:underline">
                     Report a security issue
+                  </Link>
+                  {" · "}
+                  <Link to="/privacy" className="underline-offset-2 hover:text-foreground hover:underline">
+                    Privacy
+                  </Link>
+                  {" · "}
+                  <Link to="/terms" className="underline-offset-2 hover:text-foreground hover:underline">
+                    Terms
                   </Link>
                 </p>
               </div>
