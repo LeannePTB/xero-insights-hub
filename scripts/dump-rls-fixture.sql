@@ -47,7 +47,8 @@ fns as (
          'set_client_overview_hidden','set_firm_overview_hidden','overview_hidden_items',
          'save_client_bank_account_classification','delete_all_my_trixie_threads',
          'admin_onboard_candidates','admin_onboard_organisation_from_xero',
-         'set_viewer_scope','grant_client_access','grant_firm_viewer_access','revoke_client_access','revoke_firm_viewer_access'))
+         'set_viewer_scope','grant_client_access','grant_firm_viewer_access','revoke_client_access','revoke_firm_viewer_access',
+         'trixie_access_context','reserve_trixie_usage','assert_widget_access','client_for_tenant','me_is_super_admin'))
     )
 ),
 stmts as (
