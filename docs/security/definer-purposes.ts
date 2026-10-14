@@ -397,6 +397,16 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Presentation signal: whether the caller may change card/module ticks for one organisation (Organisation Owner or System Administrator, aal2). Grants nothing; every write re-checks through app_private.assert_card_manager. Returns only a boolean.",
   "app_private.client_purchasable_cards":
     "Cards a client's organisation purchase offers, optionally including Work-in-progress catalogue rows. Execute revoked from PUBLIC, anon and authenticated; reached only from app_private.client_available_cards (offered cards) and app_private.client_cards_v2, which adds Work-in-progress cards solely for a System Administrator who can already read the client. Holds no authorisation of its own.",
+  "app_private.firm_early_access_cards":
+    "Work-in-progress card keys with an active (not revoked, not ended) org_early_access row for one organisation. Execute revoked from PUBLIC, anon and authenticated; reached only from app_private.client_early_access_for_caller. No authorisation of its own.",
+  "app_private.client_early_access_for_caller":
+    "Caller-scoped: early-access cards the purchase allows for one client, returned only when auth.uid() can read the client and holds an active firm_members row in its organisation (or is a System Administrator). Never Business Owners, Viewers or support grants. Execute revoked from PUBLIC, anon and authenticated; used by client_cards_v2 and the two tick writers.",
+  "public.client_early_access_cards":
+    "aal2, caller-scoped through app_private.client_early_access_for_caller: catalogue rows (label, description, module) for a client's early-access cards so the Package screen and dashboard can show them. Product copy only, no client data.",
+  "public.admin_org_early_access":
+    "System Administrator only (aal2 + assert_super_admin): lists Work-in-progress cards with one organisation's early-access state. Product configuration only.",
+  "public.admin_set_org_early_access":
+    "System Administrator only (aal2 + assert_super_admin): grants (optional future end date) or revokes one organisation's early access to a Work-in-progress card, keeping the row for the record, and audits who/when/card/organisation. Grants no client data; visibility still goes through client_cards_v2.",
   "public.admin_set_card_status":
     "System Administrator only (aal2 + assert_super_admin): marks a catalogue card Available or Work in progress and audits the change. Changes product configuration only; never touches client ticks or client data.",
   "public.admin_set_card_entry":
