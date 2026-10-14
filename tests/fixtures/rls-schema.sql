@@ -3659,7 +3659,7 @@ begin
   select count(*) into _client_count from public.clients where firm_id = _firm;
   if not coalesce(_consolidation, false) and _client_count > 1
      and not exists (select 1 from public.card_catalogue c where c.package = 'consolidation' and c.card_key = any(_cards)) then
-    _out := _out || 'consolidation';
+    _out := array_append(_out, 'consolidation'::text);
   end if;
   return _out;
 end;
@@ -5094,4 +5094,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: b7f3d5ca4a6f3933b924e9f87cab15e901d7df2fdcbca5446cbe7a9094d65c6b
+-- catalogue-fingerprint: 774805fce6d144850d84652e381fdb65d931bb309367b533cbdc8e4c8f4217c6

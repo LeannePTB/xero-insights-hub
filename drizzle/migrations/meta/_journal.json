@@ -344,6 +344,13 @@
       "when": 1791962790638,
       "tag": "0048_client_locked_advisory_modules",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1791963183319,
+      "tag": "0049_client_locked_modules_append_fix",
+      "breakpoints": true
     }
   ]
 }
