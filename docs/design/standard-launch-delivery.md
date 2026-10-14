@@ -19,7 +19,7 @@
 ## Open before launch
 - Owner must complete two-step sign-in for real client dashboard/report and enquiry submit/read/status checks, including mobile. Synthetic PDF is evidence of rendering, not real data correctness.
 - Admin email notification is NOT wired: a recipient is not approved and existing mail history includes three failed/dead-letter sends. Enquiries save to the admin list; no success message claims an email was sent. Confirm one notification inbox and resolve mail delivery before wiring a single-recipient alert through the existing sender. No bulk admin-recipient loop.
-- Email identity currently comes from `auth.users`; explicit confirmed-email refusal needs an additional narrowly reviewed guard before treating the enquiry as verified-email complete.
+- Email identity is stamped from `auth.users` and must have a confirmed-email timestamp; unconfirmed callers receive no enquiry context and cannot submit.
 - Cash-basis P&L history has no saved cash-basis snapshots; income/expense historical coverage remains limited to saved reports/snapshots. No invented twelve-month history or extra Xero fetch.
 - Historical health scores and optional latest-report panel were not added; scores unavailable, panel optional/deferred.
 

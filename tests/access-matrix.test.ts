@@ -1839,7 +1839,7 @@ beforeAll(async () => {
   const users = Object.values(U);
   await db.exec(`
     insert into auth.users(id, email, email_confirmed_at) values
-      ${users.map((u, i) => `('${u}', 'u${i}@example.invalid')`).join(", ")};
+      ${users.map((u, i) => `('${u}', 'u${i}@example.invalid', now())`).join(", ")};
     insert into auth.sessions(id, user_id, created_at) values
       ${users.map((u) => `('${u}', '${u}', now())`).join(", ")},
       
@@ -2073,6 +2073,14 @@ describe("meta: the suite can actually detect a regression", () => {
     for(const role of ['org_staff','client_viewer','standing_viewer','business_owner'] as Role[]) await asRole(role,async()=>{
       const r=await db.query<{context:null}>(`select public.upgrade_enquiry_context('${ORG_A}') as context`);
       expect(r.rows[0]?.context).toBeNull();
+    });
+  });
+  it('unconfirmed identity cannot submit an enquiry',async()=>{
+    await asRole('org_owner',async()=>{
+      await seedThenActAs('org_owner',`update auth.users set email_confirmed_at=null where id='${U.ownerA}'`);
+      const r=await db.query<{context:null}>(`select public.upgrade_enquiry_context('${ORG_A}') as context`);
+      expect(r.rows[0]?.context).toBeNull();
+      expect((await probe(EXEC['public.submit_upgrade_enquiry()'])).ok).toBe(false);
     });
   });
   it("sources organisation limits from org_subscription_options, not legacy plans", async () => {
