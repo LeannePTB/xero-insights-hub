@@ -122,6 +122,7 @@ const CONTEXT: Record<Role, Ctx> = {
  */
 const q = (v: string) => `'${v}'`;
 const TARGET: Record<string, Record<string, string>> = {
+  client_report_pending_videos: {client_id:q(CLIENT_A),period_end:q("2026-09-30"),video_url:q("https://www.loom.com/share/1234567890abcdef")},
   upgrade_enquiries: {id:q('e0000002-1111-4111-8111-111111111111'),submitter_id:q(U.ownerA),firm_id:q(ORG_A),name:q('Enquiry A'),email:q('a@example.invalid'),organisation_name:q('Org A'),module_keys:"'{}'::text[]",client_ids:"'{}'::uuid[]",message:q('Hello'),status:q('new'),submission_key:q('f0000000-0000-0000-0000-000000000000'),created_at:'now()'},
   firms: { id: q(ORG_A), name: q("Org A"), owner_user_id: q(U.ownerA) },
   firm_members: {
@@ -487,8 +488,9 @@ async function tableOutcome(
 ): Promise<Result["detail"] | Outcome> {
   const spec = TARGET[table];
   if (!spec) return "unsupported";
-  const pk = pkOf(table);
-  const id = spec[pk]!;
+  const pk = table === "client_report_pending_videos" ? "client_id" : pkOf(table);
+  const id = spec[pk];
+  if (!id) return "unsupported";
 
   if (op === "read") {
     const r = await probe(`select 1 from public.${table} where ${pk} = ${id}`);
@@ -540,6 +542,23 @@ async function seedThenActAs(role: Role, sql: string) {
 async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   const r = row.resource;
 
+  if (r.startsWith("report_video:")) {
+    await seedThenActAs(row.role, `
+      select set_config('request.jwt.claims','{}',true);
+      create unique index if not exists video_pending_pk on public.client_report_pending_videos(client_id,period_end);
+      insert into public.client_report_pending_videos(client_id,period_end,video_url,video_set_at) values ('${CLIENT_A}','2026-09-30','https://www.loom.com/share/1234567890abcdef',now()) on conflict(client_id,period_end) do nothing;
+      delete from public.client_reports where id='c0000008-1111-4111-8111-111111111111';
+      insert into public.client_reports(id,client_id,firm_id,period_end,status,version,payload) values('c0000008-1111-4111-8111-111111111111','${CLIENT_A}','${ORG_A}','2026-09-30','draft',1,'{}');
+    `);
+    if (r === "report_video:read") return (await probe(`select public.get_pending_report_video('${CLIENT_A}','2026-09-30')`)).ok ? "allow" : "deny";
+    if (r === "report_video:locked") {
+      await seedThenActAs(row.role, `update public.client_reports set status='final' where id='c0000008-1111-4111-8111-111111111111';`);
+    }
+    const report = r === "report_video:pending" ? "NULL" : "'c0000008-1111-4111-8111-111111111111'::uuid";
+    const period = r === "report_video:wrong_period" ? "2026-08-31" : "2026-09-30";
+    const p = await probe(`select public.save_report_video('${CLIENT_A}','${period}',${report},'https://www.loom.com/share/1234567890abcdef','Heading','Message')`);
+    return p.ok ? "allow" : "deny";
+  }
   if (r.startsWith("server fn:")) return "unsupported";
   if (r === "admin_firm_overview") return "unsupported"; // a view; not dumped into the fixture
 

@@ -296,6 +296,12 @@
     {
         "args": [
         ],
+        "name": "attach_pending_report_video",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
         "name": "audit_table_change",
         "required": 0
     },
@@ -736,6 +742,14 @@
         ],
         "name": "get_mfa_posture_counts",
         "required": 0
+    },
+    {
+        "args": [
+            "_client_id",
+            "_period_end"
+        ],
+        "name": "get_pending_report_video",
+        "required": 2
     },
     {
         "args": [
@@ -1191,6 +1205,18 @@
         ],
         "name": "save_public_website_settings",
         "required": 1
+    },
+    {
+        "args": [
+            "_client_id",
+            "_period_end",
+            "_report_id",
+            "_url",
+            "_heading",
+            "_message"
+        ],
+        "name": "save_report_video",
+        "required": 2
     },
     {
         "args": [

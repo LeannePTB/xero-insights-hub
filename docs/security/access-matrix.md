@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **2580**. Known failures: **0**.
+Rows: **2694**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -232,7 +232,15 @@ None.
 | server fn: list clients for an organisation | execute | ALLOW | live | PK 2 path A |  |
 | server fn: write client data | execute | ALLOW | live | PK 2 path A |  |
 | server fn: invite a member | execute | ALLOW | live | PK 2 path A |  |
-| server fn: set a report's personal video | execute | DENY | live | PK 2 (requireAal2) + platform super admin only (assert_super_admin) |  |
+| client_report_pending_videos | read | ALLOW | pglite | AAL2 existing client manager only |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| report_video:read | execute | ALLOW | pglite | Owner 14 Oct: AAL2 me_can_manage_client, per-client/period video |  |
+| report_video:pending | execute | ALLOW | pglite | Owner 14 Oct: AAL2 me_can_manage_client, per-client/period video |  |
+| report_video:draft | execute | ALLOW | pglite | Owner 14 Oct: AAL2 me_can_manage_client, per-client/period video |  |
+| report_video:locked | execute | DENY | pglite | Final/sent video immutable; exact period binding |  |
+| report_video:wrong_period | execute | DENY | pglite | Final/sent video immutable; exact period binding |  |
 | server fn: list pending member invitations | execute | DENY | live | PK section 2 path C — invitations stay platform metadata; inviting is super admin only | public.firm_member_invites requires aal2 + super admin; the People section hides the forms for everyone else. |
 | PLAN_LIMIT_CLIENTS counts clients, not standing grants | execute | ALLOW | pglite, live | PK section 2 path D — a standing grant never counts toward plan limits |  |
 | firm_viewer_access | read | ALLOW | pglite, live | PK section 2 path D — the organisation's owner grants and revokes |  |
@@ -486,7 +494,13 @@ None.
 | server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: invite a member | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: transfer ownership | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| server fn: set a report's personal video | execute | DENY | live | PK 3 (super admin alone grants ZERO client data) + PK 5 | setReportVideo runs assert_super_admin AND canWriteFirm (public.user_can_write_firm) on the report's own firm_id, read server-side from the stored row. A super admin who is not an active member of that organisation is refused. Finalised or sent reports are refused outright; the video never enters the payload, so it cannot reach the rendered PDF. |
+| client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | server fn: invite an owner to an existing organisation | execute | DENY | live | Spec §4 — ownership only moves through transfer_organisation_ownership | adminInviteFirmMember accepts role 'staff' only; an owner invitation to an existing organisation is refused with a pointer to ownership transfer. |
 | firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
@@ -698,7 +712,13 @@ None.
 | overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
 | me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
 | server fn: write client data | execute | DENY | live | PK 5 (support grants are READ-ONLY) | Phase 3a: every server-function write path (branding, report finalise/send/revoke/delete, draft save, Xero audit runs and finding snoozes, organisation reconnect-all, loan-consolidation account setup, note report-flagging, Xero file link/unlink/move) authorises through public.user_can_write_firm / public.user_can_write_client, which never admit a support grant. |
-| server fn: set a report's personal video | execute | DENY | live | PK 2 (requireAal2) + platform super admin only (assert_super_admin) |  |
+| client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | server fn: change organisation or client branding | execute | DENY | live | PK 5 (support grants are READ-ONLY) | branding.server.ts write gates call public.user_can_write_firm / user_can_write_client; reads still allow a grant. The Branding entitlement gate added on top narrows further and never widens: assertClientWriter still runs first. |
 | audit trail row for reading a client's figures | insert | ALLOW | live | PK section 2 path B — support reads are read-only AND recorded | meta.access_path comes from public.firm_access_path, so a support read is distinguishable from a member read. |
 | firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
@@ -857,6 +877,10 @@ None.
 | client_subscriptions | update | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
 | client_subscriptions | delete | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
 | firm_support_access (expired grant used for a read) | read | DENY | pglite, live | Spec §7 (max 72h, expires_at enforced) |  |
+| client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 
 ## Support-grant holder, grant revoked
 
@@ -990,6 +1014,10 @@ None.
 | client_subscriptions | update | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
 | client_subscriptions | delete | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
 | firm_support_access (revoked grant used for a read) | read | DENY | pglite, live | Spec §7 (revoked_at) |  |
+| client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 
 ## Anonymous (no session)
 
@@ -1140,6 +1168,13 @@ None.
 | set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
 | overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
 | me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
+| client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | server fn: accept an owner invite while the organisation already has an owner | execute | DENY | live | Spec §4 — accepting an invite never replaces a sitting owner | acceptInvite sets firms.owner_user_id only while it is null (the organisation-creation flow) and writes an audit row when it does; otherwise the person joins as a member and ownership is untouched. |
 | audit trail row for a public report link view | insert | ALLOW | live | PK 8 — a link view is a read and is recorded; PK 8 — never the token, IP or user agent | client_report_read with anonymous = true, the report and client, and the period; the token itself is never stored, only its SHA-256 hash on the recipient row. |
 | firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
@@ -1343,7 +1378,13 @@ None.
 | server fn: write client data | execute | DENY | live | PK 2 (requireAal2) |  |
 | server fn: invite a member | execute | DENY | live | PK 2 (requireAal2) |  |
 | server fn: transfer ownership | execute | DENY | live | PK 2 (requireAal2) |  |
-| server fn: set a report's personal video | execute | DENY | live | PK 2 (requireAal2) + platform super admin only (assert_super_admin) |  |
+| client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
@@ -1577,7 +1618,15 @@ None.
 | set_overview_alert_state(own organisation's client) | execute | ALLOW | pglite | PK 2 path A — members acknowledge or snooze an alert for everyone, through the write predicate user_can_write_client, audited |  |
 | overview_clients() — own organisation's clients | execute | ALLOW | pglite | Step 4 (owner-approved): any active owner or staff member gets their own organisation's Overview without practice team (PK 2 path A); still capped by user_can_read_client |  |
 | me_is_practice_member() | execute | DENY | pglite | Practice-team signal stays practice-team only (routing, never a grant) |  |
-| server fn: set a report's personal video | execute | DENY | live | PK 2 (requireAal2) + platform super admin only (assert_super_admin) |  |
+| client_report_pending_videos | read | ALLOW | pglite | AAL2 existing client manager only |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| report_video:read | execute | ALLOW | pglite | Owner 14 Oct: AAL2 me_can_manage_client, per-client/period video |  |
+| report_video:pending | execute | ALLOW | pglite | Owner 14 Oct: AAL2 me_can_manage_client, per-client/period video |  |
+| report_video:draft | execute | ALLOW | pglite | Owner 14 Oct: AAL2 me_can_manage_client, per-client/period video |  |
+| report_video:locked | execute | DENY | pglite | Final/sent video immutable; exact period binding |  |
+| report_video:wrong_period | execute | DENY | pglite | Final/sent video immutable; exact period binding |  |
 | server fn: set a client logo when the organisation has not bought Branding | execute | DENY | live | Spec §5 — Branding is a purchasable option; an entitlement is never a grant | setClientLogo calls public.client_branding_enabled (aal2 + user_can_read_client + effective branding + NOT lapsed) after the write gate. A direct upload call is refused, and getClientLogo returns no path or signed URL, so an existing report link cannot render the logo either. |
 | server fn: set a client logo when the organisation has bought Branding | execute | ALLOW | live | Path A — membership writes within its own organisation | With effective branding on (purchased OR unexpired trial that explicitly includes Branding) and the organisation not lapsed, an active member may upload, replace and clear the client logo. Switching Branding off hides the logo; storage and clients.logo_path are untouched, so it returns when Branding comes back. |
 | audit trail row for reading a client's figures | insert | ALLOW | live | PK 8 / Spec §1 — reading client financial data must be auditable | Opening a client dashboard writes one xero_data_read row per actor + client + Xero file + read key + source per five minutes, recording no figures, account names or contact names. |
@@ -1790,6 +1839,13 @@ None.
 | server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: invite a member | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: transfer ownership | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | audit trail row for reading another organisation's client figures | insert | DENY | live | PK 1 / PK 4 — the read is impossible, so nothing is recorded | Access is refused before any read path runs; no audit row is written because no read happened. |
 | firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
@@ -1945,6 +2001,13 @@ None.
 | scenario_exclusions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | scenario_exclusions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
+| client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | Trixie: reserve for organisation B client | execute | DENY | live | PK 4 (ids are filters, never grants) | trixie_access_context refuses when user_can_read_client does not admit the exact client. |
 
 ## External adviser — selected clients (client_access on one client; user-facing name only, the key is unchanged)
@@ -2048,7 +2111,13 @@ None.
 | set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
 | overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
 | me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
-| server fn: set a report's personal video | execute | DENY | live | PK 2 (requireAal2) + platform super admin only (assert_super_admin) |  |
+| client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | audit trail row for reading a client's figures | insert | ALLOW | live | PK 8 / Spec §1 — every reader is recorded, not only staff | A client viewer's dashboard read writes the same row with their own user id as the actor. |
 | clients (client added after the grant) | read | DENY | pglite, live | PK section 2 client viewer — a specific grant covers that client only |  |
 | firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
@@ -2126,6 +2195,13 @@ None.
 | set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
 | overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
 | me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
+| client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | clients | read | ALLOW | pglite, live | PK section 2 path D — read every client in the organisation |  |
 | client_cost_classifications | read | ALLOW | pglite, live | PK section 2 path D — read every client in the organisation |  |
 | client_statutory_accounts | read | ALLOW | pglite, live | PK section 2 path D — read every client in the organisation |  |
@@ -2297,6 +2373,13 @@ None.
 | set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
 | overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
 | me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
+| client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | server fn: getClientOrgTrial for their own client | execute | ALLOW | live | Path E — the business owner may see their client's plan and billing | public.client_org_trial asserts aal2, then returns the organisation's live trial (end date, days remaining, ending-soon flag) only when the caller is an active member of the client's organisation or holds a client_access row with relationship = 'business_owner' for that exact client. Only trial metadata is returned — never purchase detail, never another organisation. |
 | server fn: getClientOrgTrial for a client that is not theirs | execute | DENY | live | PK 4 (a caller-supplied client_id is a FILTER, never a GRANT) | Neither predicate holds — no membership of that organisation and no business_owner row for that client — so the function returns no rows and the banner never renders. |
 | admin_onboard: start the Xero sign-in (oauth state) | execute | DENY | pglite | PK 2 / PK 3 — only an aal2 super admin; UI hiding is not the control |  |
@@ -2449,6 +2532,13 @@ None.
 | server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: invite a member | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: transfer ownership | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 
 ## Member with status = removed
@@ -2590,6 +2680,13 @@ None.
 | server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: invite a member | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: transfer ownership | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
+| report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 | the organisation's clients after removal | read | DENY | pglite, live | PK 2 path A — membership must be ACTIVE |  |
 | trixie_threads: own thread after access removed | read | DENY | pglite | PK 9 — access removed hides the chat; never shown with old figures |  |
@@ -2613,6 +2710,10 @@ None.
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
+| client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_notes | read | DENY | pglite | PK 2 — the aal2 gate requires activity inside the 30 minute window |  |
 | assert_aal2() with an idle session | execute | DENY | pglite | PK 2 — raises SESSION_IDLE before any MFA answer |  |
 | touch_session_activity() | execute | DENY | pglite | PK 2 — an idle session cannot revive itself: the aal2 assertion fails first |  |
@@ -2634,6 +2735,9 @@ None.
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_notes | read | ALLOW | pglite | PK 2 — a brand-new session with no activity row is active from its start time |  |
 | assert_aal2() immediately after MFA (no activity row yet) | execute | ALLOW | pglite | PK 2 — completing MFA is never refused as idle |  |
 | touch_session_activity() | execute | ALLOW | pglite | PK 2 — the first activity write of a new session succeeds |  |
@@ -2653,6 +2757,9 @@ None.
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_notes | read | ALLOW | pglite | PK 2 — recent recorded activity keeps a long-lived session active, whatever its age |  |
 | assert_aal2() after 90 minutes of continuous use | execute | ALLOW | pglite | PK 2 — an actively used session is never refused as idle |  |
 | touch_session_activity() | execute | ALLOW | pglite | PK 2 — an actively used session keeps recording its own activity, caller-scoped |  |
@@ -2672,6 +2779,10 @@ None.
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | server fn: approveSupportAccess (own request) | update | DENY | pglite, live | PK 2 path B; Spec §7 (a super admin never approves their own access) |  |
+| client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 
 ## Live smoke-suite test account (confined to ZZ Security Test Org, banned outside a run)
 
@@ -2688,6 +2799,9 @@ None.
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | membership of a real organisation | insert | DENY | live | Live suite containment — app_private.confine_security_test_accounts() refuses even service_role |  |
 | a platform role (user_roles) | insert | DENY | live | Live suite containment — app_private.confine_security_test_accounts() refuses even service_role |  |
 | practice_team membership | insert | DENY | live | Live suite containment — app_private.confine_security_test_accounts() refuses even service_role |  |

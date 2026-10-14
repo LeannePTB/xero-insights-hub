@@ -1,140 +1,65 @@
-import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, Trash2, Video } from "lucide-react";
+import { Loader2, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { setReportVideo } from "@/lib/reports/report-video.functions";
-import {
-  DEFAULT_VIDEO_HEADING,
-  VIDEO_HEADING_MAX,
-  VIDEO_MESSAGE_MAX,
-  parseLoomId,
-} from "@/lib/reports/report-video";
+import { getPendingReportVideo, savePendingReportVideo } from "@/lib/reports/report-video.functions";
+import { DEFAULT_VIDEO_HEADING, VIDEO_HEADING_MAX, VIDEO_MESSAGE_MAX, parseLoomId } from "@/lib/reports/report-video";
 
-/**
- * Super-admin-only editor for the optional personal video on a DRAFT report.
- * Presentation only — the server re-checks System Administrator, organisation write
- * access and draft status on every save.
- */
-export function ReportVideoEditor({
-  report,
-  onSaved,
-}: {
-  report: {
-    id: string;
-    video_url?: string | null;
-    video_heading?: string | null;
-    video_message?: string | null;
-  };
+type Fields = { video_url?: string | null; video_heading?: string | null; video_message?: string | null };
+export type ReportVideoEditorHandle = { save: () => Promise<void> };
+
+export const ReportVideoEditor = forwardRef<ReportVideoEditorHandle, {
+  clientId: string; periodEnd: string;
+  report?: Fields & { id: string; version: number };
   onSaved: () => void;
-}) {
-  const saveFn = useServerFn(setReportVideo);
-  const [url, setUrl] = useState(report.video_url ?? "");
-  const [heading, setHeading] = useState(report.video_heading ?? "");
-  const [message, setMessage] = useState(report.video_message ?? "");
-
-  // Reset the local draft when a different report is shown. Nothing persists
-  // until Save is pressed.
+}>(function ReportVideoEditor({ clientId, periodEnd, report, onSaved }, ref) {
+  const readFn = useServerFn(getPendingReportVideo);
+  const saveFn = useServerFn(savePendingReportVideo);
+  const q = useQuery({ queryKey: ["pending-report-video", clientId, periodEnd],
+    queryFn: () => readFn({ data: { clientId, periodEnd } }), enabled: !!periodEnd });
+  const [url, setUrl] = useState("");
+  const [heading, setHeading] = useState("");
+  const [message, setMessage] = useState("");
+  const [dirty, setDirty] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const initial = (q.data?.video ?? report) as Fields | undefined;
   useEffect(() => {
-    setUrl(report.video_url ?? "");
-    setHeading(report.video_heading ?? "");
-    setMessage(report.video_message ?? "");
-  }, [report.id, report.video_url, report.video_heading, report.video_message]);
-
-  const mut = useMutation({
-    mutationFn: (vars: { clear?: boolean }) =>
-      saveFn({
-        data: vars.clear
-          ? { reportId: report.id, url: null }
-          : { reportId: report.id, url, heading, message },
-      }),
-    onSuccess: (_res, vars) => {
-      toast.success(vars.clear ? "Video removed" : "Video saved");
-      onSaved();
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const trimmed = url.trim();
-  const invalid = trimmed.length > 0 && !parseLoomId(trimmed);
-  const hasVideo = !!(report.video_url ?? "").trim();
-
-  return (
-    <section className="mt-6 rounded-lg border border-border bg-card p-6">
-        <h2 className="mb-3 text-sm font-medium">Personal video (Loom)</h2>
-        <p className="text-sm text-muted-foreground">
-          Optional. Anyone who can see this report — including a client opening their
-          emailed link — sees the player at the top. It never appears in the PDF, and it
-          locks once the report is finalised.
-        </p>
-
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <Label htmlFor="video-url">Loom link</Label>
-            <Input
-              id="video-url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://www.loom.com/share/…"
-              aria-invalid={invalid}
-            />
-            {invalid && (
-              <p className="mt-1 text-xs text-destructive">
-                That does not look like a Loom link. Paste a loom.com/share/… URL.
-              </p>
-            )}
-          </div>
-          <div className="sm:col-span-2">
-            <Label htmlFor="video-heading">Heading</Label>
-            <Input
-              id="video-heading"
-              value={heading}
-              maxLength={VIDEO_HEADING_MAX}
-              onChange={(e) => setHeading(e.target.value)}
-              placeholder={DEFAULT_VIDEO_HEADING}
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <Label htmlFor="video-message">Short message</Label>
-            <Textarea
-              id="video-message"
-              value={message}
-              maxLength={VIDEO_MESSAGE_MAX}
-              rows={3}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="A line or two of context to sit above the player."
-            />
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Button
-            onClick={() => mut.mutate({})}
-            disabled={mut.isPending || invalid || !trimmed}
-          >
-            {mut.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Video className="mr-2 h-4 w-4" />
-            )}
-            Save video
-          </Button>
-          <span className="text-xs text-muted-foreground">System Administrator</span>
-          {hasVideo && (
-            <Button
-              variant="ghost"
-              className="text-destructive hover:text-destructive"
-              onClick={() => mut.mutate({ clear: true })}
-              disabled={mut.isPending}
-            >
-              <Trash2 className="mr-2 h-4 w-4" /> Remove video
-            </Button>
-          )}
-        </div>
-    </section>
-  );
-}
+    if (dirty) return;
+    setUrl(initial?.video_url ?? ""); setHeading(initial?.video_heading ?? ""); setMessage(initial?.video_message ?? "");
+  }, [initial?.video_url, initial?.video_heading, initial?.video_message, dirty]);
+  const invalid = !!url.trim() && !parseLoomId(url.trim());
+  async function save(clear = false) {
+    if (!clear && !dirty) return;
+    if (invalid && !clear) throw new Error("Paste a valid Loom share link before generating.");
+    setBusy(true);
+    try {
+      await saveFn({ data: { clientId, periodEnd, reportId: report?.id ?? null,
+        url: clear ? null : url, heading, message } });
+      if (clear) { setUrl(""); setHeading(""); setMessage(""); }
+      setDirty(false); await q.refetch(); onSaved();
+    } finally { setBusy(false); }
+  }
+  useImperativeHandle(ref, () => ({ save: () => save() }));
+  const edit = (setter: (v: string) => void, v: string) => { setter(v); setDirty(true); };
+  const disabled = busy || q.isLoading || !!q.error;
+  return <section className="min-w-0">
+    <h3 className="mb-3 text-sm font-medium">③ Personal video <span className="ml-2 text-xs font-normal text-muted-foreground">{report ? `Draft v${report.version}` : "Next draft"}</span></h3>
+    <div className="space-y-2">
+      <div><Label htmlFor="video-url">Loom link</Label><Input className="h-8" id="video-url" value={url} disabled={disabled} onChange={(e) => edit(setUrl, e.target.value)} placeholder="https://www.loom.com/share/…" aria-invalid={invalid} />
+        {invalid && <p className="mt-1 text-xs text-destructive">Paste a valid Loom share link.</p>}</div>
+      <div><Label htmlFor="video-heading">Heading</Label><Input className="h-8" id="video-heading" value={heading} disabled={disabled} maxLength={VIDEO_HEADING_MAX} onChange={(e) => edit(setHeading, e.target.value)} placeholder={DEFAULT_VIDEO_HEADING} /></div>
+      <div><Label htmlFor="video-message">Short message</Label><Textarea id="video-message" value={message} disabled={disabled} rows={2} maxLength={VIDEO_MESSAGE_MAX} onChange={(e) => edit(setMessage, e.target.value)} /></div>
+      {q.error && <p className="text-xs text-destructive">Video could not be loaded.</p>}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="outline" disabled={disabled || invalid || !dirty} onClick={() => save().then(() => toast.success("Video saved")).catch((e) => toast.error(e.message))}>
+          {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}Save video</Button>
+        {url && <Button size="sm" variant="ghost" disabled={disabled} onClick={() => save(true).then(() => toast.success("Video removed")).catch((e) => toast.error(e.message))}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Remove</Button>}
+      </div>
+    </div>
+  </section>;
+});

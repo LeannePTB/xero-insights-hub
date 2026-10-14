@@ -830,6 +830,44 @@ export type Database = {
           },
         ]
       }
+      client_report_pending_videos: {
+        Row: {
+          client_id: string
+          period_end: string
+          video_heading: string | null
+          video_message: string | null
+          video_set_at: string
+          video_set_by: string | null
+          video_url: string | null
+        }
+        Insert: {
+          client_id: string
+          period_end: string
+          video_heading?: string | null
+          video_message?: string | null
+          video_set_at?: string
+          video_set_by?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          client_id?: string
+          period_end?: string
+          video_heading?: string | null
+          video_message?: string | null
+          video_set_at?: string
+          video_set_by?: string | null
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_report_pending_videos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_reports: {
         Row: {
           client_id: string
@@ -4742,6 +4780,10 @@ export type Database = {
           total_staff: number
         }[]
       }
+      get_pending_report_video: {
+        Args: { _client_id: string; _period_end: string }
+        Returns: Json
+      }
       get_platform_branding: {
         Args: never
         Returns: {
@@ -5119,6 +5161,17 @@ export type Database = {
       }
       save_public_website_settings: {
         Args: { _settings: Json }
+        Returns: undefined
+      }
+      save_report_video: {
+        Args: {
+          _client_id: string
+          _heading?: string
+          _message?: string
+          _period_end: string
+          _report_id?: string
+          _url?: string
+        }
         Returns: undefined
       }
       save_trixie_alert_settings: {

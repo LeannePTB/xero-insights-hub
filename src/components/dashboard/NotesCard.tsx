@@ -30,7 +30,7 @@ function fmt(ts: string) {
   return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
-export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: boolean }) {
+export function NotesCard({ clientId, canEdit, compact = false }: { clientId: string; canEdit: boolean; compact?: boolean }) {
   const qc = useQueryClient();
   const listFn = useServerFn(listClientNotes);
   const addFn = useServerFn(addClientNote);
@@ -86,8 +86,8 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
   });
 
   return (
-    <section className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
-      <DashboardCardHeader label="Client notes" title="Notes" icon={<StickyNote className="h-4 w-4"/>} description="Notes and commentary for this client" status={<p className="mt-1.5 text-xs text-muted-foreground">{notes.length} saved note{notes.length === 1 ? '' : 's'}</p>}/>
+    <section className={compact ? "min-w-0" : "rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft"}>
+      {compact ? <h3 className="mb-3 text-sm font-medium">② Notes <span className="ml-2 text-xs font-normal text-muted-foreground">{notes.length} saved</span></h3> : <DashboardCardHeader label="Client notes" title="Notes" icon={<StickyNote className="h-4 w-4"/>} description="Notes and commentary for this client" status={<p className="mt-1.5 text-xs text-muted-foreground">{notes.length} saved note{notes.length === 1 ? '' : 's'}</p>}/>}
 
       {canEdit && (
         <div className="mb-4">
@@ -104,7 +104,7 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
               <Textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                rows={4}
+                rows={compact ? 2 : 4}
                 placeholder="Write a note…"
                 autoFocus
               />
@@ -147,7 +147,7 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
       ) : notes.length === 0 ? (
         <p className="text-sm text-muted-foreground">No notes recorded for this client.</p>
       ) : (
-        <ul className="space-y-3">
+        <ul className={compact ? "max-h-64 space-y-2 overflow-y-auto" : "space-y-3"}>
           {notes.map((n) => {
             const isEditing = editingId === n.id;
             return (
@@ -170,6 +170,7 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2"
+                        aria-label="Edit note"
                         onClick={() => { setEditingId(n.id); setEditValue(n.body); setEditInReport(n.include_in_report); }}
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -178,6 +179,7 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-destructive hover:text-destructive"
+                        aria-label="Delete note"
                         onClick={() => {
                           if (confirm("Delete this note?")) deleteMut.mutate(n.id);
                         }}
@@ -189,7 +191,7 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
                 </div>
                 {isEditing ? (
                   <div className="space-y-2">
-                    <Textarea value={editValue} onChange={(e) => setEditValue(e.target.value)} rows={4} />
+                    <Textarea value={editValue} onChange={(e) => setEditValue(e.target.value)} rows={compact ? 2 : 4} />
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       {canFlagForReport ? (
                         <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">

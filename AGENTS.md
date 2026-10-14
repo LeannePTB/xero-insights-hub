@@ -1,7 +1,7 @@
-- Client overview reads stored snapshots only and derives status from `evaluateClient`; its client list comes from the caller-scoped `overview_clients()` — never re-implement who-can-see-what in TypeScript.
+- Overview uses stored snapshots, `evaluateClient` status and caller-scoped `overview_clients()`; never duplicate access rules in TypeScript.
 - Bank/card extraction is shared in `tax-lines.ts`; the ID-keyed bank-classification overlay applies explicit client/file/account overrides before Xero BankAccountType, never name guesses, so stored and live figures agree without rewriting Xero metadata.
-- Sidebar spacer never shrinks; inset uses flex-1 min-w-0, never w-full (clipping).
-- AppShell owns the sole menu-layout header; AppHeader supplies context-registered actions there and renders standalone only outside, preventing duplicate branding and lost actions.
+- Sidebar spacer never shrinks; inset: flex-1 min-w-0, not w-full (clipping).
+- AppShell owns the sole menu header; AppHeader registers actions there and renders standalone only outside, avoiding duplicate branding/lost actions.
 - Client income tax instalments use one period-history table and audited caller-scoped save; history and organisation-team-only editing stay explicit.
 - AppShell navigation uses `src/lib/nav/sidebar-nav.ts`, URL-selected (/system, /firms/:id, /clients/:id) and gated only by getMyContext signals; it stays presentation-only and database-movable.
 - Branding/website use narrow anon display readers and separate audited AAL2 canonical-admin saves on the grant-free branding table. Public sales visuals are synthetic; media uses bounded admin-only storage INSERT, never bypassing blocked public buckets.
@@ -15,13 +15,13 @@
 - Product branding for server email/PDF work comes from the anon-safe `get_platform_branding()` reader. Sender domains and security/legal contact details remain fixed infrastructure text.
 - Effective White label identity is database-resolved per organisation/client; it is independent of Advisory/Branding, never applies to System Admin/auth, and private logo paths never reach the browser.
 - Authenticated pages use the shared left-aligned PageContainer; wide tables and matrices select its full-width mode rather than adding centred route wrappers.
-- App typography is governed by the shared Tailwind size tokens and PageHeader; only explicitly marked dashboard KPI figures use the separate KPI utility, so density changes remain centralised.
+- Typography uses shared Tailwind size tokens and PageHeader; only marked dashboard KPIs use the KPI utility, keeping density centralised.
 - Print and email rendering use server-safe presentation tokens mirroring the global semantic palette, because CSS variables are unavailable in PDFs and email clients.
 - Official web colours are represented by OKLCH semantic tokens; approved logo crops are bundled circular TA marks, because artwork must retain its proportions and the colour sheet's printed conversions are not authoritative.
 - Bank-reconciliation warnings use only per-account dates, the cash account overlay and the recent-line window in `src/lib/overview/bank-reconciliation.ts`, never file-wide oldest dates. Missing data shows nothing.
 - Protected money is compared with cash at bank only through `src/lib/health/protected-money-share.ts`, because the health rule, Overview, reports and Trixie must agree on one definition.
 - Viewer is one read-only login type whose scope (All clients via firm_viewer_access, Selected via client_access external_adviser rows) is changed only through `set_viewer_scope`, because the two storage paths must switch atomically without a new predicate.
-- Login labels use `LOGIN_TYPE_LABEL`; database keys stay unchanged to preserve access rules.
+- Login labels use `LOGIN_TYPE_LABEL`; DB keys stay unchanged, preserving access.
 - Auth/public logos share display-only rendering and official fallback; auth logic stays route-owned.
 
 - Charts share pure vector geometry between accessible SVG and jsPDF; history is caller-scoped and frozen only into new report drafts, so charts never widen access or refresh final/sent documents.
@@ -31,3 +31,5 @@
 - Report sections come from `card_catalogue.report_sections` via `client_report_sections`, frozen into new drafts' `includedSections`: one list, final/sent untouched.
 - Subdirectories have their own `AGENTS.md`; read it before changing files there.
 - WIP early access (`org_early_access`) resolves only inside `client_cards_v2` for active org members, keeping one visibility path.
+
+- Period video uses separate storage, caller-scoped audited RPCs and a draft-only attachment trigger; the unchanged notes builder preserves generation snapshots.
