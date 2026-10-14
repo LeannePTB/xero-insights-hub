@@ -126,11 +126,16 @@ async function firmMemberActive(
  * entitlement or the organisation's plan includes it. The database resolves
  * plan ∩ tier config; we never reimplement it. Fails closed.
  */
-async function loanFeatureAllowed(supabase: any, clientId: string): Promise<boolean> {
+async function loanFeatureAllowed(supabase: any, userId: string, clientId: string): Promise<boolean> {
   const { clientCanUseWidget, firmCanUseWidget } = await import("@/lib/widget-access.server");
   if (await clientCanUseWidget(supabase, clientId, "loan_consolidation")) return true;
+  // Organisation-level fallback (Organisation → Consolidations uses these same
+  // readers) is for active members of an organisation that bought
+  // Consolidation only. Viewers, Business Owners and support grants need the
+  // client's own loan_consolidation card (14 Oct 2026).
   const firmId = await clientFirmId(supabase, clientId);
   if (!firmId) return false;
+  if (!userId || !(await firmMemberActive(supabase, userId, firmId))) return false;
   return firmCanUseWidget(supabase, firmId, "loan_consolidation");
 }
 
@@ -140,7 +145,7 @@ async function loanFeatureAllowed(supabase: any, clientId: string): Promise<bool
  * The rule lives in public.user_can_write_client.
  */
 async function canManageClient(supabase: any, userId: string, clientId: string): Promise<boolean> {
-  if (!(await loanFeatureAllowed(supabase, clientId))) return false;
+  if (!(await loanFeatureAllowed(supabase, userId, clientId))) return false;
   const { canWriteClient } = await import("@/lib/support-access.server");
   return canWriteClient(userId, clientId);
 }
@@ -149,7 +154,7 @@ async function canManageClient(supabase: any, userId: string, clientId: string):
 /** READ gate: membership, client viewer, or an approved read-only support grant. */
 async function canReadClient(supabase: any, userId: string, clientId: string): Promise<boolean> {
   if (await canManageClient(supabase, userId, clientId)) return true;
-  if (!(await loanFeatureAllowed(supabase, clientId))) return false;
+  if (!(await loanFeatureAllowed(supabase, userId, clientId))) return false;
   // Client viewer, member or owner — all decided by public.user_can_read_client.
   const { data: canRead } = await supabase.rpc("user_can_read_client", { _client_id: clientId });
   if (canRead === true) return true;

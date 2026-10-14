@@ -34,6 +34,11 @@ export type NavItem = {
   children?: NavItem[];
   /** Key into the optional badge counts map. */
   badgeKey?: string;
+  /**
+   * Catalogue card this item opens. Shown only when the server-provided
+   * visible-card list (client_visible_cards) includes it.
+   */
+  cardKey?: string;
 };
 
 export type NavGroup = { id: string; label: string; items: NavItem[] };
@@ -112,12 +117,12 @@ export const CLIENT_NAV: NavGroup[] = [
     items: [
       { id: "dashboard", label: "Live Dashboard", icon: "chart", to: "/clients/$clientId", exact: true },
       { id: "reports", label: "Monthly reports", icon: "file", to: "/clients/$clientId/reports" },
-      { id: "cashflow", label: "Cash flow scenario", icon: "trending", to: "/clients/$clientId/cashflow-scenario" },
+      { id: "cashflow", label: "Cash flow scenario", icon: "trending", to: "/clients/$clientId/cashflow-scenario", cardKey: "cashflow_scenario" },
       {
-        id: "loans", label: "Loans", icon: "landmark", to: "/clients/$clientId/loans",
+        id: "loans", label: "Loans", icon: "landmark", to: "/clients/$clientId/loans", cardKey: "loan_consolidation",
         children: [
-          { id: "loan-matrix", label: "Loan matrix", icon: "landmark", to: "/clients/$clientId/loans", exact: true },
-          { id: "loan-accounts", label: "Loan accounts", icon: "settings", to: "/clients/$clientId/loans-accounts" },
+          { id: "loan-matrix", label: "Loan matrix", icon: "landmark", to: "/clients/$clientId/loans", exact: true, cardKey: "loan_consolidation" },
+          { id: "loan-accounts", label: "Loan accounts", icon: "settings", to: "/clients/$clientId/loans-accounts", cardKey: "loan_consolidation" },
         ],
       },
       {
@@ -144,17 +149,19 @@ export type ClientXeroFile = { tenantId: string; name: string };
  */
 export function clientFileItems(files: ClientXeroFile[]): NavItem[] {
   if (files.length === 0) return [];
+  const CARD = { payables: "payables", receivables: "receivables", audit: "xero_audit" } as const;
   const make = (kind: "payables" | "receivables" | "audit", label: string, icon: NavIcon): NavItem =>
     files.length === 1
-      ? { id: kind, label, icon, to: `/clients/$clientId/${kind}/${files[0].tenantId}` }
+      ? { id: kind, label, icon, to: `/clients/$clientId/${kind}/${files[0].tenantId}`, cardKey: CARD[kind] }
       : {
           id: kind,
           label,
           icon,
+          cardKey: CARD[kind],
           // Multi-file parents are disclosure controls only; use the first
           // authorised file as a valid fallback destination.
           to: `/clients/$clientId/${kind}/${files[0].tenantId}`,
-          children: files.map((f) => ({ id: `${kind}-${f.tenantId}`, label: f.name, icon, to: `/clients/$clientId/${kind}/${f.tenantId}` })),
+          children: files.map((f) => ({ id: `${kind}-${f.tenantId}`, label: f.name, icon, to: `/clients/$clientId/${kind}/${f.tenantId}`, cardKey: CARD[kind] })),
         };
   return [{
     id: "xero-files", label: "Xero files", icon: "link", to: `/clients/$clientId/audit/${files[0].tenantId}`,
@@ -162,8 +169,31 @@ export function clientFileItems(files: ClientXeroFile[]): NavItem[] {
   }];
 }
 
-export function clientNav(files: ClientXeroFile[]): NavGroup[] {
-  return [{ ...CLIENT_NAV[0], items: [...CLIENT_NAV[0].items, ...clientFileItems(files)] }];
+export function clientNav(files: ClientXeroFile[], visibleCards: readonly string[] | null = null): NavGroup[] {
+  const groups = [{ ...CLIENT_NAV[0], items: [...CLIENT_NAV[0].items, ...clientFileItems(files)] }];
+  return filterByVisibleCards(groups, visibleCards);
+}
+
+/**
+ * Drops every item whose card is not in the server-provided visible list.
+ * `null` (unknown, loading or failed) hides every card item — fail closed.
+ * A parent left with no children after filtering is dropped too, so a
+ * "Xero files" group never opens onto a card the client cannot see.
+ * Not a rule: it only mirrors client_visible_cards; pages re-check on the server.
+ */
+export function filterByVisibleCards(groups: NavGroup[], visibleCards: readonly string[] | null): NavGroup[] {
+  const visible = new Set(visibleCards ?? []);
+  const keep = (item: NavItem): NavItem | null => {
+    if (item.cardKey && !visible.has(item.cardKey)) return null;
+    if (!item.children) return item;
+    const children = item.children.map(keep).filter((c): c is NavItem => c !== null);
+    if (children.length === 0) return null;
+    const first = children[0]!;
+    // Parent link falls back to the first child still visible.
+    const to = item.cardKey || children.some((c) => c.to === item.to) ? item.to : first.to;
+    return { ...item, to, children };
+  };
+  return groups.map((g) => ({ ...g, items: g.items.map(keep).filter((i): i is NavItem => i !== null) }));
 }
 
 /**
@@ -244,12 +274,18 @@ export function isBranchActive(item: NavItem, pathname: string, params: Record<s
  */
 export function navForWorkspace(
   ws: Workspace,
-  opts: { canSeeSystem: boolean; clientFiles?: ClientXeroFile[]; organisations?: OrganisationSummary[] },
+  opts: {
+    canSeeSystem: boolean;
+    clientFiles?: ClientXeroFile[];
+    organisations?: OrganisationSummary[];
+    /** Server-provided client_visible_cards list; null hides card items. */
+    clientVisibleCards?: readonly string[] | null;
+  },
 ): NavGroup[] {
   if (ws.kind === "system") return opts.canSeeSystem ? SYSTEM_NAV : [];
   if (ws.kind === "all") return allOrganisationsNav(opts.organisations ?? []);
   if (ws.kind === "organisation") return ORGANISATION_NAV;
-  if (ws.kind === "client") return clientNav(opts.clientFiles ?? []);
+  if (ws.kind === "client") return clientNav(opts.clientFiles ?? [], opts.clientVisibleCards ?? null);
   return [];
 }
 

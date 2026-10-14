@@ -206,7 +206,6 @@ function ClientDashboard() {
   type StatutoryBlock = {
     orgId: string;
     taxObligations: ReactNode | null;
-    activity: ReactNode | null;
     gst: ReactNode | null;
     payg: ReactNode | null;
     superannuation: ReactNode | null;
@@ -244,7 +243,7 @@ function ClientDashboard() {
       // Fixed statutory block for this Xero file. Populated below under the
       // exact same conditions the sortable cards used, then pushed only if it
       // holds at least one card.
-      const block: StatutoryBlock = { orgId: String(o.id), taxObligations: null, activity: null, gst: null, payg: null, superannuation: null };
+      const block: StatutoryBlock = { orgId: String(o.id), taxObligations: null, gst: null, payg: null, superannuation: null };
 
       if (widgets.includes("xero_audit"))
         advanced.push({
@@ -290,10 +289,11 @@ function ClientDashboard() {
         advanced.push({ id: `${o.id}:rent_report`, node: <RentReportWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
       }
 
-      // Xero file activity shows for every connected file: it is read-only
-      // client data from the stored nightly snapshot, and the server function
-      // applies the same caller-scoped access checks as the rest of the page.
-      block.activity = <XeroActivityWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />;
+      // Xero file activity is an Advisory card (Bookkeeping checks module,
+      // owner decision 14 Oct 2026): drawn only when the single entitlement
+      // rule lists it, and its server reader refuses otherwise.
+      if (widgets.includes("xero_activity"))
+        advanced.push({ id: `${o.id}:xero_activity`, node: <XeroActivityWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
 
       // PAYG withholding stands alone: the activity statement card reports the
       // period's GST only, and this answers what is still owing month by month.
@@ -312,7 +312,7 @@ function ClientDashboard() {
       if (widgets.includes("loan_consolidation"))
         advanced.push({ id: `${o.id}:loan_consolidation`, node: <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
 
-      if (block.taxObligations || block.activity || block.gst || block.payg || block.superannuation) statutory.push(block);
+      if (block.taxObligations || block.gst || block.payg || block.superannuation) statutory.push(block);
     }
 
     // Transaction Search is organisation-wide, not per-org, so it lives in the
@@ -478,7 +478,6 @@ function ClientDashboard() {
               {statutoryBlocks.map((b) => (
                 <div key={b.orgId} className="mb-6 space-y-6">
                   {b.taxObligations && <div>{b.taxObligations}</div>}
-                  {b.activity && <div>{b.activity}</div>}
                   {(b.gst || b.payg || b.superannuation) && (
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                       {b.gst && <div>{b.gst}</div>}

@@ -45,6 +45,7 @@ import { getMyContext } from "@/lib/roles.functions";
 import { listMyFirms } from "@/lib/firms.functions";
 import { getClient } from "@/lib/clients.functions";
 import { getMyClientCapabilities } from "@/lib/roles.functions";
+import { getMyClientVisibleCards } from "@/lib/card-model.functions";
 import { useSignOut } from "@/lib/use-sign-out";
 
 import { useRef } from "react";
@@ -135,7 +136,17 @@ export function AppSidebar({ badges = {} }: { badges?: Record<string, number> })
   const clientOrgName = clientRow?.firm_id
     ? (organisations.find((o) => o.id === clientRow.firm_id)?.name ?? null)
     : null;
-  const groups = navForWorkspace(workspace, { canSeeSystem, clientFiles, organisations }).map((group) => ({
+  // Card menu items follow the one rule (client_visible_cards), fetched fresh.
+  const fetchVisibleCards = useServerFn(getMyClientVisibleCards);
+  const visibleCardsQ = useQuery({
+    queryKey: ["client-visible-cards", clientId],
+    queryFn: () => fetchVisibleCards({ data: { clientId: clientId! } }),
+    enabled: !!clientId,
+    retry: false,
+    staleTime: 0,
+  });
+  const clientVisibleCards = visibleCardsQ.data?.cards ?? null;
+  const groups = navForWorkspace(workspace, { canSeeSystem, clientFiles, organisations, clientVisibleCards }).map((group) => ({
     ...group,
     items: workspace.kind === "client" && manageQ.data?.canManageClient !== true
       ? group.items.filter((item) => !["cashflow", "loans", "client-settings"].includes(item.id))

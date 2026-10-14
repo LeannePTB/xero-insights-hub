@@ -983,6 +983,33 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     }
     return "allow";
   }
+  if (r.startsWith("assert_widget_access(")) {
+    // Owner decision 14 Oct 2026: Xero file activity, Advisory pages and Loans
+    // are refused by the server reader unless the single rule lists the card.
+    const card = /assert_widget_access\(([a-z_]+)\)/.exec(r)![1]!;
+    const advisoryOn = r.includes("Advisory on");
+    const consolidationOn = r.includes("Consolidation on");
+    await seedThenActAs(row.role, `
+      -- The fixture omits app_private tables; mirror the live switch
+      -- (card_model_v2 = true, verified 14 Oct 2026) inside this rolled-back
+      -- transaction only.
+      create or replace function app_private.setting_bool(_key text) returns boolean
+        language sql stable as $f$ select _key = 'card_model_v2' $f$;
+      create unique index if not exists org_subscription_options_firm_key
+        on public.org_subscription_options (firm_id);
+      delete from public.org_subscription_options where firm_id = '${ORG_A}'::uuid;
+      insert into public.org_subscription_options
+        (firm_id, client_limit, advisory_enabled, consolidation_enabled, billing_mode)
+      values ('${ORG_A}'::uuid, 10, ${advisoryOn}, ${consolidationOn}, 'bookkeeping');
+      delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
+      insert into public.client_cards (client_id, cards)
+      select '${CLIENT_A}'::uuid, array_agg(card_key) from public.card_catalogue
+       where not (${r.includes("unticked")} and card_key = '${card}');
+    `);
+    const p = await probe(`select public.assert_widget_access('${TENANT_A}', '${card}')`);
+    if (process.env.MATRIX_DEBUG) console.log("WIDGET", row.role, r, p.ok, p.error);
+    return p.ok ? "allow" : "deny";
+  }
   if (
     r === "an organisation created with Advisory off cannot reach Advisory cards by any route"
   ) {

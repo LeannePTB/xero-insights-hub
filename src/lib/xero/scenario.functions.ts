@@ -397,6 +397,10 @@ async function assertScenarioWriteAccess(supabase: any, clientId: string) {
     _client_id: clientId,
   });
   if (error || data !== true) throw new Error("You cannot change this scenario.");
+  // The scenario is an Advisory card: no writes unless the single entitlement
+  // rule lists cashflow_scenario for this client.
+  const { assertClientWidget } = await import("@/lib/widget-access.server");
+  await assertClientWidget(supabase, clientId, "cashflow_scenario");
 }
 
 export const setInvoiceExcluded = createServerFn({ method: "POST" })

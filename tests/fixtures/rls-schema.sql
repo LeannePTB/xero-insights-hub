@@ -1216,6 +1216,45 @@ AS $function$
   ), '{}'::text[])
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.effective_tier_for_tenant(_tenant_id text)
+ RETURNS TABLE(is_staff boolean, tier text, client_id uuid)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _uid uuid := auth.uid();
+        _client uuid;
+        _firm uuid;
+        _tier text;
+begin
+  perform app_private.assert_aal2();
+  if _uid is null then
+    return query select false, null::text, null::uuid; return;
+  end if;
+
+  _client := app_private.client_for_tenant(_tenant_id);
+  if _client is not null then
+    select c.firm_id into _firm from public.clients c where c.id = _client;
+  end if;
+
+  if _firm is not null
+     and (app_private.has_firm_access(_uid, _firm)
+          or app_private.platform_staff_can_access_firm(_uid, _firm)) then
+    return query select true, 'investigate'::text, _client; return;
+  end if;
+
+  if _client is not null then
+    select ca.tier::text into _tier
+    from public.client_access ca
+    where ca.user_id = _uid and ca.client_id = _client
+    order by case ca.tier::text when 'investigate' then 3 when 'advisory' then 2 else 1 end desc
+    limit 1;
+  end if;
+
+  return query select false, _tier, _client;
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.assert_widget_access(_tenant_id text, _widget text)
  RETURNS boolean
  LANGUAGE plpgsql
@@ -1993,6 +2032,23 @@ AS $function$
     ) as x
     order by x
   ), '{}'::text[])
+$function$
+;
+CREATE OR REPLACE FUNCTION public.client_visible_cards(_client_id uuid)
+ RETURNS text[]
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+
+  if not app_private.user_can_read_client(auth.uid(), _client_id) then
+    raise exception 'CLIENT_ACCESS_DENIED';
+  end if;
+
+  return app_private.client_cards_v2(_client_id);
+end;
 $function$
 ;
 CREATE OR REPLACE FUNCTION app_private.set_client_cards(_client_id uuid, _cards text[])
