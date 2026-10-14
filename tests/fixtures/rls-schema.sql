@@ -69,6 +69,8 @@ create table public.audit_findings (id uuid, run_id uuid, tenant_id text, rule_i
 create table public.audit_log (id uuid, actor_user_id uuid, firm_id uuid, action text, target_type text, target_id text, ip text, user_agent text, meta jsonb, at timestamp with time zone);
 create table public.audit_runs (id uuid, tenant_id text, run_at timestamp with time zone, run_by uuid, summary jsonb, duration_ms integer, error text);
 create table public.billing_events (id uuid, firm_id uuid, stripe_event_id text, type text, payload jsonb, occurred_at timestamp with time zone, client_id uuid);
+create table public.card_catalogue (card_key text, package text, module_key text, label text, description text, sort_order integer, updated_at timestamp with time zone, updated_by uuid);
+create table public.card_modules (module_key text, label text, description text, sort_order integer, updated_at timestamp with time zone, updated_by uuid);
 create table public.client_access (id uuid, client_id uuid, user_id uuid, tier text, created_at timestamp with time zone, updated_at timestamp with time zone, relationship client_access_relationship, inviter_label text);
 create table public.client_bank_account_classifications (client_id uuid, tenant_id text, account_id uuid, classification text, updated_by uuid, updated_at timestamp with time zone);
 create table public.client_cards (client_id uuid, cards text[], created_at timestamp with time zone, updated_at timestamp with time zone);
@@ -860,66 +862,37 @@ CREATE OR REPLACE FUNCTION public.set_client_widget_enabled(_client_id uuid, _wi
  SECURITY DEFINER
  SET search_path TO 'public', 'app_private'
 AS $function$
-DECLARE
-  _uid uuid := auth.uid();
-  _tier text;
-  _firm uuid;
-  _excl text[];
-  _in_tier boolean;
-BEGIN
+declare _uid uuid := auth.uid(); _tier text; _firm uuid; _excl text[]; _in_tier boolean;
+begin
   perform app_private.assert_aal2();
-  -- Membership-only gate: the caller must own the client or be an active
-  -- member of the client's organisation. Deliberately NOT
-  -- app_private.user_can_manage_client, which admits read-only support grants.
-  IF _uid IS NULL THEN
-    RAISE EXCEPTION 'NO_ACCESS' USING errcode='insufficient_privilege';
-  END IF;
+  if _uid is null then raise exception 'NO_ACCESS' using errcode='insufficient_privilege'; end if;
+  select c.firm_id into _firm from public.clients c where c.id = _client_id;
+  perform app_private.assert_card_manager(_firm);
+  if not exists (
+    select 1 from public.clients c where c.id = _client_id
+      and (c.owner_user_id = _uid or (c.firm_id is not null and app_private.has_firm_access(_uid, c.firm_id)))
+  ) then raise exception 'NO_ACCESS' using errcode='insufficient_privilege'; end if;
 
-  IF NOT EXISTS (
-    SELECT 1 FROM public.clients c
-     WHERE c.id = _client_id
-       AND (c.owner_user_id = _uid
-            OR (c.firm_id IS NOT NULL AND app_private.has_firm_access(_uid, c.firm_id)))
-  ) THEN
-    RAISE EXCEPTION 'NO_ACCESS' USING errcode='insufficient_privilege';
-  END IF;
-
-  SELECT e.tier::text INTO _tier FROM public.client_entitlement(_client_id) e;
-  SELECT c.firm_id INTO _firm FROM public.clients c WHERE c.id = _client_id;
-
-  SELECT (_widget = ANY(pl.widgets)) INTO _in_tier
-    FROM public.plan_levels pl
-   WHERE pl.scope='dashboard' AND pl.key = _tier AND pl.enabled;
-
-  IF _enabled AND NOT coalesce(_in_tier,false) THEN
-    RAISE EXCEPTION 'NOT_IN_TIER: % is not part of the % dashboard', _widget, _tier
-      USING errcode='check_violation';
-  END IF;
-
-  SELECT coalesce(twc.excluded_widgets,'{}') INTO _excl
-    FROM public.tier_widget_config twc
-   WHERE twc.client_id = _client_id AND twc.tier = _tier;
-
-  IF _enabled THEN
-    _excl := array_remove(coalesce(_excl,'{}'), _widget);
-  ELSE
-    _excl := (SELECT array(SELECT DISTINCT u FROM unnest(coalesce(_excl,'{}') || array[_widget]) u));
-  END IF;
-
-  INSERT INTO public.tier_widget_config (client_id, tier, widgets, excluded_widgets)
-  VALUES (_client_id, _tier, '{}', _excl)
-  ON CONFLICT (client_id, tier) WHERE client_id IS NOT NULL
-  DO UPDATE SET excluded_widgets = _excl, updated_at = now();
-
-  -- Batch 3 dual write: mirror the same intent into the new single ticked list.
-  PERFORM app_private.set_client_card(_client_id, _widget, _enabled);
-
-  INSERT INTO public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
-  VALUES (_uid, _firm, 'client_widget_toggled', 'client', _client_id::text,
+  select e.tier::text into _tier from public.client_entitlement(_client_id) e;
+  select (_widget = any(pl.widgets)) into _in_tier from public.plan_levels pl
+   where pl.scope='dashboard' and pl.key = _tier and pl.enabled;
+  if _enabled and not coalesce(_in_tier,false) then
+    raise exception 'NOT_IN_TIER: % is not part of the % dashboard', _widget, _tier using errcode='check_violation';
+  end if;
+  select coalesce(twc.excluded_widgets,'{}') into _excl from public.tier_widget_config twc
+   where twc.client_id = _client_id and twc.tier = _tier;
+  if _enabled then _excl := array_remove(coalesce(_excl,'{}'), _widget);
+  else _excl := (select array(select distinct u from unnest(coalesce(_excl,'{}') || array[_widget]) u)); end if;
+  insert into public.tier_widget_config (client_id, tier, widgets, excluded_widgets)
+  values (_client_id, _tier, '{}', _excl)
+  on conflict (client_id, tier) where client_id is not null
+  do update set excluded_widgets = _excl, updated_at = now();
+  perform app_private.set_client_card(_client_id, _widget, _enabled);
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (_uid, _firm, 'client_widget_toggled', 'client', _client_id::text,
           jsonb_build_object('widget',_widget,'enabled',_enabled,'tier',_tier));
-
-  RETURN QUERY SELECT _tier, public.client_can_use_widget(_client_id, _widget);
-END;
+  return query select _tier, public.client_can_use_widget(_client_id, _widget);
+end;
 $function$
 ;
 CREATE OR REPLACE FUNCTION app_private.firm_subscription_lapsed(_firm_id uuid)
@@ -1980,15 +1953,13 @@ $function$
 CREATE OR REPLACE FUNCTION app_private.card_group_cards(_group text)
  RETURNS text[]
  LANGUAGE sql
- IMMUTABLE
+ STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-  SELECT CASE _group
-    WHEN 'standard' THEN ARRAY['health','receivables','payables','pnl','notes']
-    WHEN 'advisory' THEN ARRAY['cashflow','cashflow_scenario','accounting_breakeven','tax_obligations','gst_reconciliation','superannuation','payg_withholding','xero_audit','transaction_search']
-    WHEN 'consolidation' THEN ARRAY['loan_consolidation']
-    ELSE '{}'::text[]
-  END
+  select coalesce(array(
+    select c.card_key from public.card_catalogue c
+     where c.package = _group order by c.sort_order, c.card_key
+  ), '{}'::text[])
 $function$
 ;
 CREATE OR REPLACE FUNCTION app_private.client_available_cards(_client_id uuid)
@@ -2384,12 +2355,10 @@ $function$
 CREATE OR REPLACE FUNCTION app_private.known_cards()
  RETURNS text[]
  LANGUAGE sql
- IMMUTABLE
+ STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-  select app_private.card_group_cards('standard')
-      || app_private.card_group_cards('advisory')
-      || app_private.card_group_cards('consolidation')
+  select coalesce(array(select c.card_key from public.card_catalogue c order by c.sort_order, c.card_key), '{}'::text[])
 $function$
 ;
 CREATE OR REPLACE FUNCTION app_private.assert_firm_member_write(_firm_id uuid)
@@ -2441,42 +2410,28 @@ CREATE OR REPLACE FUNCTION public.set_org_card_defaults(_firm_id uuid, _cards te
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-declare
-  _clean text[];
-  _allowed text[];
-  _adv boolean;
-  _cons boolean;
-  _n int;
+declare _clean text[]; _allowed text[]; _adv boolean; _cons boolean; _n int;
 begin
   perform app_private.assert_aal2();
-  perform app_private.assert_firm_member_write(_firm_id);
-
+  perform app_private.assert_card_manager(_firm_id);
   if not exists (select 1 from public.firms f where f.id = _firm_id) then
     raise exception 'NO_SUCH_ORGANISATION' using errcode = 'no_data_found';
   end if;
-
-  -- Entitlement: the same groups the purchase screen offers.
   select e.advisory, e.consolidation into _adv, _cons from app_private.org_effective_options(_firm_id) e;
   select count(*)::int into _n from public.clients c where c.firm_id = _firm_id;
   _allowed := app_private.card_group_cards('standard')
     || case when coalesce(_adv, false) then app_private.card_group_cards('advisory') else '{}'::text[] end
     || case when coalesce(_cons, false) and _n > 1 then app_private.card_group_cards('consolidation') else '{}'::text[] end;
-
   _clean := coalesce(array(
     select distinct x from unnest(coalesce(_cards, '{}'::text[])) x
-     where x = any(app_private.known_cards())
-       and x = any(_allowed)
+     where x = any(app_private.known_cards()) and x = any(_allowed)
      order by x
   ), '{}'::text[]);
-
-  insert into public.org_card_defaults (firm_id, cards)
-  values (_firm_id, _clean)
+  insert into public.org_card_defaults (firm_id, cards) values (_firm_id, _clean)
   on conflict (firm_id) do update set cards = excluded.cards, updated_at = now();
-
   insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
   values (auth.uid(), _firm_id, 'org_card_defaults_set', 'firm', _firm_id::text,
           jsonb_build_object('cards', to_jsonb(_clean)));
-
   return _clean;
 end;
 $function$
@@ -2487,28 +2442,19 @@ CREATE OR REPLACE FUNCTION public.apply_org_card_defaults(_firm_id uuid)
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-declare
-  _cards text[];
-  _client uuid;
-  _n int := 0;
+declare _cards text[]; _client uuid; _n int := 0;
 begin
   perform app_private.assert_aal2();
-  perform app_private.assert_firm_member_write(_firm_id);
-
+  perform app_private.assert_card_manager(_firm_id);
   select d.cards into _cards from public.org_card_defaults d where d.firm_id = _firm_id;
-  if _cards is null then
-    raise exception 'NO_DEFAULT_SET' using errcode = 'no_data_found';
-  end if;
-
+  if _cards is null then raise exception 'NO_DEFAULT_SET' using errcode = 'no_data_found'; end if;
   for _client in select c.id from public.clients c where c.firm_id = _firm_id loop
     perform app_private.set_client_cards(_client, _cards);
     _n := _n + 1;
   end loop;
-
   insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
   values (auth.uid(), _firm_id, 'org_card_defaults_applied', 'firm', _firm_id::text,
           jsonb_build_object('clients_changed', _n, 'cards', to_jsonb(_cards)));
-
   return _n;
 end;
 $function$
@@ -3112,7 +3058,18 @@ CREATE OR REPLACE FUNCTION public.get_public_website_settings()
  LANGUAGE sql
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
-AS $function$ SELECT jsonb_build_object('calendlyUrl',b.website_settings->>'calendlyUrl','heroVideoPath',b.website_settings->>'heroVideoPath','heroPosterPath',b.website_settings->>'heroPosterPath','walkthroughUrl',b.website_settings->>'walkthroughUrl','standardPrice',b.website_settings->>'standardPrice','advisoryPrice',b.website_settings->>'advisoryPrice','consolidationPrice',b.website_settings->>'consolidationPrice','whiteLabelPrice',b.website_settings->>'whiteLabelPrice') FROM public.platform_branding b WHERE b.id = true $function$
+AS $function$
+  select coalesce((
+    select jsonb_build_object('calendlyUrl',b.website_settings->>'calendlyUrl','heroVideoPath',b.website_settings->>'heroVideoPath','heroPosterPath',b.website_settings->>'heroPosterPath','walkthroughUrl',b.website_settings->>'walkthroughUrl','standardPrice',b.website_settings->>'standardPrice','advisoryPrice',b.website_settings->>'advisoryPrice','consolidationPrice',b.website_settings->>'consolidationPrice','whiteLabelPrice',b.website_settings->>'whiteLabelPrice')
+      from public.platform_branding b where b.id = true
+  ), '{}'::jsonb)
+  || jsonb_build_object(
+    'packages', jsonb_build_object(
+      'modules', coalesce((select jsonb_agg(jsonb_build_object('key', m.module_key, 'label', m.label, 'description', m.description) order by m.sort_order, m.module_key) from public.card_modules m), '[]'::jsonb),
+      'cards', coalesce((select jsonb_agg(jsonb_build_object('package', c.package, 'module', c.module_key, 'label', c.label, 'description', c.description) order by c.sort_order, c.card_key) from public.card_catalogue c), '[]'::jsonb)
+    )
+  )
+$function$
 ;
 CREATE OR REPLACE FUNCTION public.save_public_website_settings(_settings jsonb)
  RETURNS void
@@ -3138,6 +3095,23 @@ BEGIN
  INSERT INTO public.platform_branding(id,website_settings,updated_at,updated_by) VALUES(true,_settings,now(),auth.uid()) ON CONFLICT(id) DO UPDATE SET website_settings=excluded.website_settings,updated_at=now(),updated_by=auth.uid();
  INSERT INTO public.audit_log(actor_user_id,action,target_type,target_id,meta) VALUES(auth.uid(),'public_website_settings_saved','platform_branding','platform',jsonb_build_object('fields',ARRAY(SELECT jsonb_object_keys(_settings))));
 END $function$
+;
+CREATE OR REPLACE FUNCTION app_private.assert_card_manager(_firm_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  if auth.uid() is null then
+    raise exception 'NO_ACCESS' using errcode = 'insufficient_privilege';
+  end if;
+  if app_private.me_is_super_admin() then return; end if;
+  if _firm_id is not null and app_private.is_org_owner(auth.uid(), _firm_id) then return; end if;
+  raise exception 'NO_ACCESS' using errcode = 'insufficient_privilege';
+end;
+$function$
 ;
 CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
  RETURNS trigger
@@ -3258,6 +3232,8 @@ alter table public.audit_findings enable row level security;
 alter table public.audit_log enable row level security;
 alter table public.audit_runs enable row level security;
 alter table public.billing_events enable row level security;
+alter table public.card_catalogue enable row level security;
+alter table public.card_modules enable row level security;
 alter table public.client_access enable row level security;
 alter table public.client_bank_account_classifications enable row level security;
 alter table public.client_cards enable row level security;
@@ -3383,6 +3359,20 @@ grant SELECT on table public.billing_events to service_role;
 grant TRIGGER on table public.billing_events to service_role;
 grant TRUNCATE on table public.billing_events to service_role;
 grant UPDATE on table public.billing_events to service_role;
+grant DELETE on table public.card_catalogue to service_role;
+grant INSERT on table public.card_catalogue to service_role;
+grant REFERENCES on table public.card_catalogue to service_role;
+grant SELECT on table public.card_catalogue to service_role;
+grant TRIGGER on table public.card_catalogue to service_role;
+grant TRUNCATE on table public.card_catalogue to service_role;
+grant UPDATE on table public.card_catalogue to service_role;
+grant DELETE on table public.card_modules to service_role;
+grant INSERT on table public.card_modules to service_role;
+grant REFERENCES on table public.card_modules to service_role;
+grant SELECT on table public.card_modules to service_role;
+grant TRIGGER on table public.card_modules to service_role;
+grant TRUNCATE on table public.card_modules to service_role;
+grant UPDATE on table public.card_modules to service_role;
 grant SELECT on table public.client_access to authenticated;
 grant DELETE on table public.client_access to service_role;
 grant INSERT on table public.client_access to service_role;
@@ -4023,6 +4013,16 @@ grant SELECT (firm_id) on table public.access_invites to authenticated;
 grant SELECT (id) on table public.access_invites to authenticated;
 grant SELECT (invited_by) on table public.access_invites to authenticated;
 grant SELECT (role) on table public.access_invites to authenticated;
+grant SELECT (card_key) on table public.card_catalogue to authenticated;
+grant SELECT (description) on table public.card_catalogue to authenticated;
+grant SELECT (label) on table public.card_catalogue to authenticated;
+grant SELECT (module_key) on table public.card_catalogue to authenticated;
+grant SELECT (package) on table public.card_catalogue to authenticated;
+grant SELECT (sort_order) on table public.card_catalogue to authenticated;
+grant SELECT (description) on table public.card_modules to authenticated;
+grant SELECT (label) on table public.card_modules to authenticated;
+grant SELECT (module_key) on table public.card_modules to authenticated;
+grant SELECT (sort_order) on table public.card_modules to authenticated;
 grant UPDATE (display_name) on table public.profiles to authenticated;
 grant UPDATE (title) on table public.trixie_threads to authenticated;
 grant UPDATE (updated_at) on table public.trixie_threads to authenticated;
@@ -4071,6 +4071,10 @@ create policy mfa_aal2_required on public.audit_runs as restrictive for all to a
 create policy "firm members read own billing events" on public.billing_events as permissive for select to authenticated using (((firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), firm_id)));
 create policy mfa_aal2_required on public.billing_events as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "super_admin reads billing events" on public.billing_events as permissive for select to authenticated using (app_private.is_super_admin(auth.uid()));
+create policy "card catalogue readable by signed-in users" on public.card_catalogue as permissive for select to authenticated using ((auth.uid() IS NOT NULL));
+create policy mfa_aal2_required on public.card_catalogue as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "card modules readable by signed-in users" on public.card_modules as permissive for select to authenticated using ((auth.uid() IS NOT NULL));
+create policy mfa_aal2_required on public.card_modules as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "manage client access by firm (read)" on public.client_access as permissive for select to authenticated using (app_private.user_can_manage_client(auth.uid(), client_id));
 create policy mfa_aal2_required on public.client_access as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "viewers read own access" on public.client_access as permissive for select to authenticated using ((user_id = auth.uid()));
@@ -4478,4 +4482,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: 0034adbd4170455e2bf54c09180fe8df566a1515b12d801a24402da4d4d5b40a
+-- catalogue-fingerprint: f7ce6bd1bca6ae9a067023393c6e2196eb7b45dd9463d5146cbac62b5b3f632d
