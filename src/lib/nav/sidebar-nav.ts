@@ -119,7 +119,6 @@ export const CLIENT_NAV: NavGroup[] = [
     items: [
       { id: "dashboard", label: "Live Dashboard", icon: "chart", to: "/clients/$clientId", exact: true },
       { id: "reports", label: "Monthly reports", icon: "file", to: "/clients/$clientId/reports" },
-      { id: "cashflow", label: "Cash flow scenario", icon: "trending", to: "/clients/$clientId/cashflow-scenario", cardKey: "cashflow_scenario" },
       {
         id: "loans", label: "Loans", icon: "landmark", to: "/clients/$clientId/loans", cardKey: "loan_consolidation",
         children: [
