@@ -33,7 +33,7 @@ beforeAll(async () => {
     insert into public.firms(id,name,owner_user_id) values('${org}','Synthetic organisation','${owner}');
     insert into public.firm_members(id,firm_id,user_id,role,status) values(gen_random_uuid(),'${org}','${owner}','owner','active'),(gen_random_uuid(),'${org}','${staff}','staff','active');
     insert into public.clients(id,name,firm_id,owner_user_id) values('${client}','Synthetic client','${org}','${owner}');
-    insert into public.client_access(id,client_id,user_id,relationship,dashboard_tier) values(gen_random_uuid(),'${client}','${business}','business_owner','basic'),(gen_random_uuid(),'${client}','${viewer}','external_adviser','basic');
+    insert into public.client_access(id,client_id,user_id,relationship,tier) values(gen_random_uuid(),'${client}','${business}','business_owner','basic'),(gen_random_uuid(),'${client}','${viewer}','external_adviser','basic');
   `);
 },60_000);
 afterAll(async () => { await db?.close(); });

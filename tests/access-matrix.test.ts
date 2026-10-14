@@ -546,7 +546,8 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       select set_config('request.jwt.claims','{}',true);
       create unique index if not exists video_pending_pk on public.client_report_pending_videos(client_id,period_end);
       insert into public.client_report_pending_videos(client_id,period_end,video_url,video_set_at) values ('${CLIENT_A}','2026-09-30','https://www.loom.com/share/1234567890abcdef',now()) on conflict(client_id,period_end) do nothing;
-      update public.client_reports set period_end='2026-09-30',status='draft' where id='c0000008-1111-4111-8111-111111111111';
+      delete from public.client_reports where id='c0000008-1111-4111-8111-111111111111';
+      insert into public.client_reports(id,client_id,firm_id,period_end,status,version,payload) values('c0000008-1111-4111-8111-111111111111','${CLIENT_A}','${ORG_A}','2026-09-30','draft',1,'{}');
     `);
     if (r === "report_video:read") return (await probe(`select public.get_pending_report_video('${CLIENT_A}','2026-09-30')`)).ok ? "allow" : "deny";
     if (r === "report_video:locked") {
