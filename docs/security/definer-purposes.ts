@@ -9,6 +9,10 @@
  * Keys are `schema.name` — overloads share one purpose.
  */
 export const DEFINER_PURPOSES: Record<string, string> = {
+  "public.upgrade_enquiry_context": "AAL2 Organisation Owner or canonical System Administrator enquiry eligibility, verified email and authorised client options; no client access granted.",
+  "public.submit_upgrade_enquiry": "AAL2 caller-scoped eligibility, catalogue/client validation, atomic three-per-hour and duplicate guard, identity stamping and metadata-only audit.",
+  "public.admin_upgrade_enquiries": "AAL2 canonical System Administrator-only enquiry list; no linked client figures.",
+  "public.set_upgrade_enquiry_status": "AAL2 canonical System Administrator-only bounded enquiry status write with metadata-only audit.",
   "public.admin_onboard_candidates": "Lists the Xero files on the aal2 super admin's own unexpired pending onboard record, flagging files already in the app.",
   "public.admin_onboard_organisation_from_xero": "Atomically creates an organisation, its clients and Xero links from the aal2 super admin's own single-use pending onboard record, within the client cap and never reusing a linked file; adds the Traction Advisory team only when _add_practice_team is true; audited.",
   "public.set_viewer_scope": "Switches an existing Viewer of one organisation between All clients and Selected clients in one transaction: aal2, can_manage_client_viewers first, client ids filtered to that organisation, never touches a Business Owner row, reuses the audited grant/revoke definers and writes viewer_scope_changed. Read-only access only.",

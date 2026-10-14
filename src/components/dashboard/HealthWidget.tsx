@@ -5,6 +5,7 @@ import { Activity, AlertTriangle } from "lucide-react";
 import { getBusinessHealthDetail } from "@/lib/health.functions";
 import { useTenantCurrency } from "./useTenantCurrency";
 import { HealthScoreDonut } from "./HealthScoreDonut";
+import { StandardHistoryChart } from '@/components/charts/StandardHistoryChart';
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DateRangeControls,
@@ -50,7 +51,7 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
     queryFn: () =>
       fetchHealth({
         data: {
-          tenantId: tenantId!,
+          tenantId: tenantId ?? '',
           clientId,
           fromDate: toISO(fromDate),
           toDate: toISO(toDate),
@@ -82,6 +83,7 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
         onFromChange={setFromDate}
         onToChange={setToDate}
       />
+      <StandardHistoryChart tenantId={tenantId} card="health" currency={currency}/>
 
 
 

@@ -1,6 +1,6 @@
 import type { HistoryRow } from './history';
 export type FrozenTrend = { label: string; date: string; value: number | null; source: string | null };
-export type ReportCharts = { cash: FrozenTrend[]; profit: FrozenTrend[]; note: string };
+export type ReportCharts = { cash: FrozenTrend[]; profit: FrozenTrend[]; pnl?: {label:string;values:(number|null)[]}[]; note: string };
 export function freezeReportCharts(rows: HistoryRow[], reports: { id: string; period_end: string; version: number; payload: any }[], current: {periodEnd:string;currency:string;profit:number|null}, monthEnd: {month_end:string;net_profit:number|null}[] = []): ReportCharts {
   const months: string[] = [];
   const [year,month] = current.periodEnd.split('-').map(Number);
@@ -11,7 +11,7 @@ export function freezeReportCharts(rows: HistoryRow[], reports: { id: string; pe
   });
   const profit = months.map(date => {
     if(date === current.periodEnd) return {date,label:date.slice(0,7),value:current.profit,source:'current_report'};
-    const report = reports.filter(r => r.period_end === date && r.payload?.meta?.currency === current.currency).sort((a,b) => b.version-a.version || a.id.localeCompare(b.id))[0];
+    const report = reports.filter(r => r.period_end === date && r.payload?.meta?.currency === current.currency && (r.payload?.basis??'accrual')==='accrual').sort((a,b) => b.version-a.version || a.id.localeCompare(b.id))[0];
     const value = report?.payload?.profitAndLoss?.totals?.netProfit;
     if (!(typeof value === 'number' && Number.isFinite(value))) {
       const filled = monthEnd.find(m => m.month_end === date)?.net_profit;

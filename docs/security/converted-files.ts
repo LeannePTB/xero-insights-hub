@@ -99,6 +99,7 @@ export const REGISTERED_DB_AUTH_WRAPPERS = [
 
 /** Batch 1 — the Xero read gate and everything that authorised through it. */
 export const CONVERTED_FILES: string[] = [
+  "src/lib/charts/standard.functions.ts",
   "src/lib/xero/access.server.ts",
   "src/lib/tenant-ownership.server.ts",
   "src/lib/widget-access.server.ts",

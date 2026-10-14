@@ -22,6 +22,7 @@ create schema if not exists app_private;
 create table auth.users(
   id uuid primary key,
   email text,
+  email_confirmed_at timestamptz,
   raw_user_meta_data jsonb default '{}'::jsonb,
   created_at timestamptz default now(),
   deleted_at timestamptz
@@ -135,6 +136,7 @@ create table public.trixie_threads (id uuid, user_id uuid, firm_id uuid, client_
 create table public.trixie_usage (id uuid, user_id uuid, firm_id uuid, client_id uuid, requested_at timestamp with time zone, completed_at timestamp with time zone, model text, gateway_run_id text, status text, input_tokens integer, output_tokens integer, reasoning_tokens integer, estimated_cost_usd numeric(12,6), error_code text);
 create table public.unreconciled_lines (id uuid, upload_id uuid, client_id uuid, account_name text, account_number text, row_index integer, txn_date date, payee text, reference text, spent numeric(14,2), received numeric(14,2), tax text, source_comment text, client_comment text, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.unreconciled_uploads (id uuid, client_id uuid, uploaded_by uuid, filename text, line_count integer, created_at timestamp with time zone);
+create table public.upgrade_enquiries (id uuid, submitter_id uuid, firm_id uuid, name text, email text, organisation_name text, module_keys text[], client_ids uuid[], message text, status text, submission_key uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.user_presence (user_id uuid, last_seen_at timestamp with time zone);
 create table public.user_roles (id uuid, user_id uuid, role app_role, created_at timestamp with time zone);
 create table public.xero_api_errors (id uuid, firm_id uuid, xero_connection_id uuid, tenant_id text, tenant_name text, path text, http_status integer, last_message text, occurrences integer, first_seen timestamp with time zone, last_seen timestamp with time zone, day date);
@@ -3574,6 +3576,58 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.upgrade_enquiry_context(_firm_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$ DECLARE _org text; _email text; _clients jsonb; BEGIN PERFORM app_private.assert_aal2(); IF NOT public.me_can_manage_cards(_firm_id) THEN RETURN NULL; END IF; SELECT name INTO _org FROM public.firms WHERE id=_firm_id; IF _org IS NULL THEN RETURN NULL; END IF; SELECT email INTO _email FROM auth.users WHERE id=auth.uid() AND email_confirmed_at IS NOT NULL; IF _email IS NULL THEN RETURN NULL; END IF; SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name) ORDER BY name),'[]'::jsonb) INTO _clients FROM public.clients WHERE firm_id=_firm_id AND app_private.user_can_read_client(auth.uid(),id); RETURN jsonb_build_object('firmId',_firm_id,'organisation',_org,'email',_email,'clients',_clients,'advisory',coalesce((SELECT advisory_enabled OR (trial_advisory_enabled AND trial_ends_at>now()) FROM public.org_subscription_options WHERE firm_id=_firm_id),false)); END; $function$
+;
+CREATE OR REPLACE FUNCTION public.submit_upgrade_enquiry(_firm_id uuid, _name text, _module_keys text[], _client_ids uuid[], _message text, _submission_key uuid)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE _id uuid; _ctx jsonb; BEGIN
+ PERFORM app_private.assert_aal2();
+ _ctx:=public.upgrade_enquiry_context(_firm_id);
+ IF _ctx IS NULL THEN RAISE EXCEPTION 'NO_ACCESS' USING errcode='42501'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended('upgrade_enquiry:'||auth.uid()::text,0));
+ SELECT id INTO _id FROM public.upgrade_enquiries WHERE submitter_id=auth.uid() AND submission_key=_submission_key;
+ IF _id IS NOT NULL THEN RETURN _id; END IF;
+ IF _name IS NULL OR length(trim(_name)) NOT BETWEEN 1 AND 100 OR _message IS NULL OR length(trim(_message)) NOT BETWEEN 1 AND 2000 OR _submission_key IS NULL OR _module_keys IS NULL OR _client_ids IS NULL OR cardinality(_module_keys)>20 OR cardinality(_client_ids)>100 THEN RAISE EXCEPTION 'INVALID_INPUT'; END IF;
+ IF EXISTS(SELECT 1 FROM unnest(_module_keys) m WHERE NOT EXISTS(SELECT 1 FROM public.card_modules cm JOIN public.card_catalogue cc ON cc.module_key=cm.module_key WHERE cm.module_key=m AND cc.package='advisory')) THEN RAISE EXCEPTION 'INVALID_INPUT'; END IF;
+ IF EXISTS(SELECT 1 FROM unnest(_client_ids) c WHERE NOT EXISTS(SELECT 1 FROM public.clients WHERE id=c AND firm_id=_firm_id AND app_private.user_can_read_client(auth.uid(),id))) THEN RAISE EXCEPTION 'NO_ACCESS' USING errcode='42501'; END IF;
+ IF (SELECT count(*) FROM public.upgrade_enquiries WHERE submitter_id=auth.uid() AND created_at>now()-interval '1 hour')>=3 THEN RAISE EXCEPTION 'ENQUIRY_LIMIT'; END IF;
+ INSERT INTO public.upgrade_enquiries(submitter_id,firm_id,name,email,organisation_name,module_keys,client_ids,message,submission_key) VALUES(auth.uid(),_firm_id,trim(_name),_ctx->>'email',_ctx->>'organisation',_module_keys,_client_ids,trim(_message),_submission_key) RETURNING id INTO _id;
+ INSERT INTO public.audit_log(actor_user_id,firm_id,action,target_type,target_id,meta) VALUES(auth.uid(),_firm_id,'upgrade_enquiry_submitted','upgrade_enquiry',_id,'{}');
+ RETURN _id;
+END; $function$
+;
+CREATE OR REPLACE FUNCTION public.admin_upgrade_enquiries()
+ RETURNS SETOF upgrade_enquiries
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$ BEGIN
+ PERFORM app_private.assert_aal2(); IF NOT app_private.me_is_super_admin() THEN RAISE EXCEPTION 'NO_ACCESS' USING errcode='42501'; END IF;
+ RETURN QUERY SELECT * FROM public.upgrade_enquiries ORDER BY created_at DESC LIMIT 200;
+END; $function$
+;
+CREATE OR REPLACE FUNCTION public.set_upgrade_enquiry_status(_id uuid, _status text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$ BEGIN
+ PERFORM app_private.assert_aal2(); IF NOT app_private.me_is_super_admin() THEN RAISE EXCEPTION 'NO_ACCESS' USING errcode='42501'; END IF;
+ IF _status NOT IN ('new','contacted','done') OR _status IS NULL THEN RAISE EXCEPTION 'INVALID_INPUT'; END IF;
+ UPDATE public.upgrade_enquiries SET status=_status,updated_at=now() WHERE id=_id;
+ IF NOT FOUND THEN RAISE EXCEPTION 'NOT_FOUND'; END IF;
+ INSERT INTO public.audit_log(actor_user_id,action,target_type,target_id,meta) VALUES(auth.uid(),'upgrade_enquiry_status_changed','upgrade_enquiry',_id,jsonb_build_object('status',_status));
+END; $function$
+;
 CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3759,6 +3813,7 @@ alter table public.trixie_threads enable row level security;
 alter table public.trixie_usage enable row level security;
 alter table public.unreconciled_lines enable row level security;
 alter table public.unreconciled_uploads enable row level security;
+alter table public.upgrade_enquiries enable row level security;
 alter table public.user_presence enable row level security;
 alter table public.user_roles enable row level security;
 alter table public.xero_api_errors enable row level security;
@@ -4404,6 +4459,14 @@ grant SELECT on table public.unreconciled_uploads to service_role;
 grant TRIGGER on table public.unreconciled_uploads to service_role;
 grant TRUNCATE on table public.unreconciled_uploads to service_role;
 grant UPDATE on table public.unreconciled_uploads to service_role;
+grant SELECT on table public.upgrade_enquiries to authenticated;
+grant DELETE on table public.upgrade_enquiries to service_role;
+grant INSERT on table public.upgrade_enquiries to service_role;
+grant REFERENCES on table public.upgrade_enquiries to service_role;
+grant SELECT on table public.upgrade_enquiries to service_role;
+grant TRIGGER on table public.upgrade_enquiries to service_role;
+grant TRUNCATE on table public.upgrade_enquiries to service_role;
+grant UPDATE on table public.upgrade_enquiries to service_role;
 grant INSERT on table public.user_presence to authenticated;
 grant SELECT on table public.user_presence to authenticated;
 grant UPDATE on table public.user_presence to authenticated;
@@ -4941,6 +5004,9 @@ create policy "manage unreconciled uploads by firm (update)" on public.unreconci
    FROM clients c
   WHERE ((c.id = unreconciled_uploads.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
 create policy mfa_aal2_required on public.unreconciled_uploads as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy enquiry_admin_read on public.upgrade_enquiries as permissive for select to authenticated using (app_private.me_is_super_admin());
+create policy enquiry_submitter_read on public.upgrade_enquiries as permissive for select to authenticated using (((submitter_id = auth.uid()) AND me_can_manage_cards(firm_id)));
+create policy mfa_aal2_required on public.upgrade_enquiries as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy mfa_aal2_required on public.user_presence as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "users insert own presence" on public.user_presence as permissive for insert to authenticated with check ((user_id = auth.uid()));
 create policy "users read own presence" on public.user_presence as permissive for select to authenticated using ((user_id = auth.uid()));
@@ -4990,4 +5056,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: 63429630129140fdd3fa40c2a3c821baacdeb93f437e75ce47a808f0e8fda9e5
+-- catalogue-fingerprint: e2aaeb343b9dd07566d432f5bfa3625713470281ce0486bd47957b3e8d8f6ebd

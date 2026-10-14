@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getProfitAndLoss } from "@/lib/xero/reports.functions";
 import { Loader2, TrendingUp, TrendingDown, Minus, RefreshCw, LineChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { StandardHistoryChart } from '@/components/charts/StandardHistoryChart';
 
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
 import { BasisBadge } from "@/components/dashboard/BasisBadge";
@@ -103,6 +104,7 @@ export function PnlWidget({
       </div>
 
       <PeriodSelect value={period} onChange={setPeriod} monthsBack={6} />
+      <StandardHistoryChart tenantId={tenantId} card="pnl" currency={currency} basis={basis}/>
 
       {!shouldLoad ? (
         <XeroLoadPrompt

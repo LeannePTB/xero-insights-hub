@@ -5,6 +5,10 @@ import { ArrowRight, HandCoins, Loader2 } from "lucide-react";
 import { BasisBadge } from "@/components/dashboard/BasisBadge";
 import { AwaitingSnapshot, DataSourceLine } from "@/components/dashboard/DataSourceLine";
 import { getReceivablesList } from "@/lib/xero/receivables.functions";
+import { VectorChart } from '@/components/charts/VectorChart';
+import { StandardHistoryChart } from '@/components/charts/StandardHistoryChart';
+import { ageingPoints } from '@/lib/charts/standard';
+import { useTenantCurrency } from './useTenantCurrency';
 
 function fmt(n: number, ccy = "AUD") {
   return new Intl.NumberFormat(undefined, {
@@ -28,6 +32,7 @@ export function ReceivablesWidget({
   basis?: "accrual" | "cash";
 }) {
   const fetchList = useServerFn(getReceivablesList);
+  const currency = useTenantCurrency(tenantId);
   const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ["xero-ar-list", tenantId],
     queryFn: () => fetchList({ data: { tenantId } }),
@@ -61,6 +66,8 @@ export function ReceivablesWidget({
         </div>
       </div>
 
+      {data && data.source?.mode !== 'pending' && <VectorChart title="Receivables ageing" points={ageingPoints(data.invoices)} series={[{label:'Outstanding',kind:'bar'}]} currency={currency}/>}
+      <StandardHistoryChart tenantId={tenantId} card="receivables" currency={currency}/>
       <div className="mt-6 rounded-lg border border-border bg-background p-4">
         {isLoading ? (
           <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">

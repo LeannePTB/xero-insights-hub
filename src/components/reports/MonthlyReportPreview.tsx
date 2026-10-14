@@ -1,4 +1,5 @@
 import { useWorkspaceBranding } from "@/hooks/useWorkspaceBranding";
+import { VectorChart } from '@/components/charts/VectorChart';
 import { sectionIncluded } from "@/lib/reports/monthly-report";
 import { AlertTriangle } from "lucide-react";
 import { ReportVerdictPage } from "@/components/reports/ReportVerdictPage";
@@ -102,6 +103,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function AgeingTable({ detail, label }: { detail: AgeingDetail; label: string }) {
   return (
     <div>
+      <VectorChart title={`${label} ageing`} points={detail.bucketLabels.map((label,i)=>({label,values:[detail.totals[i] ?? null]}))} series={[{label:'Outstanding',kind:'bar'}]}/>
       {/* Table from 900px up. No scroll container — the page scrolls, not the table. */}
       <table className="hidden w-full table-fixed text-sm min-[900px]:table">
         <thead>
@@ -333,6 +335,12 @@ export function MonthlyReportPreview({
         )}
       </SectionShell>
 
+      {payload.charts && sectionIncluded(payload,'charts') && <SectionShell title="Financial trends">
+        {payload.charts.pnl && <VectorChart title="Income, expenses and net profit" points={payload.charts.pnl} series={[{label:'Income',kind:'bar'},{label:'Expenses',kind:'bar'},{label:'Net profit',kind:'line'}]} currency={m.currency}/>}
+        <VectorChart title="Cash at bank" points={payload.charts.cash.map(p=>({label:p.label,values:[p.value]}))} series={[{label:'Cash at bank',kind:'line'}]} currency={m.currency}/>
+        {!payload.charts.pnl && <VectorChart title="Net profit" points={payload.charts.profit.map(p=>({label:p.label,values:[p.value]}))} series={[{label:'Net profit',kind:'line'}]} currency={m.currency}/>}
+        <p className="text-xs text-muted-foreground">{payload.charts.note}</p>
+      </SectionShell>}
       {/* 2. Key figures */}
       <SectionShell title="Key figures" included={sectionIncluded(payload, "key_figures")}>
 

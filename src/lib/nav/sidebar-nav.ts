@@ -60,6 +60,7 @@ export const SYSTEM_NAV: NavGroup[] = [
       { id: "branding", label: "Platform branding", icon: "palette", to: "/system/branding" },
       { id: "trixie", label: "Trixie", icon: "message", to: "/system/trixie" },
       { id: "packages", label: "Packages & modules", icon: "grid", to: "/system/packages" },
+      { id: "enquiries", label: "Enquiries", icon: "message", to: "/system/enquiries" },
     ],
   },
   {

@@ -137,6 +137,8 @@ export const NON_ADVICE_LINE =
   "These observations come from the accounting records and do not constitute a compliance review, or tax, legal or solvency advice.";
 
 export type MonthlyReportPayload = {
+  /** Captured for new reports; historical generator was accrual-only. */
+  basis?: 'accrual' | 'cash';
   payloadVersion: number;
   complete: boolean;
   failedSections: FailedSection[];
