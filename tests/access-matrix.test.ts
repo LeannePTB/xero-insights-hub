@@ -870,6 +870,28 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const p = await probe(`select public.rename_my_organisation('${ORG_A}'::uuid, 'Matrix renamed')`);
     return p.ok ? "allow" : "deny";
   }
+  if (r.startsWith("set_client_module(") || r.startsWith("set_client_card_enabled(") || r.startsWith("admin_set_card_entry(")) {
+    // Seed the product catalogue as postgres (the fixture is schema only).
+    await db.exec("set local role postgres");
+    await db.exec(`
+      insert into public.card_modules (module_key, label, description, sort_order)
+      values ('cash_flow', 'Cash flow', '', 10) on conflict do nothing;
+      insert into public.card_catalogue (card_key, package, module_key, label, description, sort_order)
+      values ('health','standard',null,'Business health','',10),
+             ('cashflow','advisory','cash_flow','Cash flow','',110)
+      on conflict do nothing;
+    `);
+    const ctx = CONTEXT[row.role];
+    await db.query(`select set_config('request.jwt.claims', $1, true)`, [claims(ctx)]);
+    await db.exec(`set local role ${ctx.dbRole}`);
+    const sql = r.startsWith("set_client_module(")
+      ? `select public.set_client_module('${CLIENT_A}'::uuid, 'cash_flow', false)`
+      : r.startsWith("set_client_card_enabled(")
+        ? `select public.set_client_card_enabled('${CLIENT_A}'::uuid, 'health', false)`
+        : `select public.admin_set_card_entry('cashflow', 'advisory', 'cash_flow', 'matrix probe')`;
+    const p = await probe(sql);
+    return p.ok ? "allow" : "deny";
+  }
   if (r.startsWith("set_org_card_defaults(")) {
     const p = await probe(
       `select public.set_org_card_defaults('${ORG_A}'::uuid, array['cashflow','profit_loss'])`,
