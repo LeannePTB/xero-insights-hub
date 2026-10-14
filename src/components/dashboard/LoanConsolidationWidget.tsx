@@ -1,3 +1,4 @@
+import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -44,25 +45,8 @@ export function LoanConsolidationWidget({
   const totalOut = mismatches.reduce((sum, r) => sum + Math.abs(r.net), 0);
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tenantName}</p>
-          <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-emphasis" /> Loan Consolidation
-          </h3>
-          <p className="text-xs text-muted-foreground">Inter-company loan accounts as at {asAt}</p>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => { setShouldLoad(true); refetch(); }}
-          disabled={isFetching}
-          title="Refresh"
-        >
-          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-        </Button>
-      </div>
+    <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
+      <DashboardCardHeader label={tenantName} title="Loan consolidation" icon={<Building2 className="h-4 w-4"/>} description={`Inter-company loan accounts as at ${asAt}`} source={data?.source} isFetching={isFetching} actions={<Button variant="ghost" size="icon-sm" onClick={() => { setShouldLoad(true); refetch(); }} disabled={isFetching} title="Refresh" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}/></Button>}/>
 
       {!shouldLoad ? (
         <XeroLoadPrompt

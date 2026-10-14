@@ -1,3 +1,4 @@
+import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
 import { BreakevenChart } from "@/components/charts/BreakevenChart";
 import { type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -41,28 +42,8 @@ export function BreakevenWidget({
   const aboveBreakeven = f?.aboveBreakeven ?? false;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tenantName}</p>
-          <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <Target className="h-4 w-4 text-emphasis" /> Breaking even
-            <BasisBadge basis={basis} />
-          </h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            The sales you need to cover your costs
-          </p>
-          <CardFreshness
-            from={s.fromDate}
-            to={s.toDate}
-            source={s.data?.source}
-            isFetching={s.isFetching}
-          />
-        </div>
-        <Button variant="ghost" size="sm" onClick={() => { s.setShouldLoad(true); s.refetch(); }} disabled={s.isFetching} title="Refresh">
-          <RefreshCw className={`h-4 w-4 ${s.isFetching ? "animate-spin" : ""}`} />
-        </Button>
-      </div>
+    <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
+      <DashboardCardHeader label={tenantName} title="Breaking even" icon={<Target className="h-4 w-4"/>} description="The sales you need to cover your costs" badge={<BasisBadge basis={basis}/>} from={s.fromDate} to={s.toDate} source={s.data?.source} isFetching={s.isFetching} actions={<Button variant="ghost" size="icon-sm" onClick={() => { s.setShouldLoad(true); s.refetch(); }} disabled={s.isFetching} title="Refresh" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${s.isFetching ? "animate-spin" : ""}`}/></Button>}/>
 
       <DateRangeControls
         fromDate={s.fromDate}

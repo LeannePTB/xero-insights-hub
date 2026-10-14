@@ -1,3 +1,4 @@
+import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
 import { paygQueryKey, paygQueryLimits } from "./payg-query";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -93,21 +94,8 @@ export function TaxObligationsWidget({
   const busy = gstQuery.isLoading || paygQuery.isLoading || instalmentsQuery.isLoading;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tenantName}</p>
-          <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
-            <Calculator className="h-4 w-4 text-emphasis" /> Tax obligations
-          </h3>
-          <p className="mt-1 text-xs text-muted-foreground">Latest completed periods and the ATO-set instalment</p>
-        </div>
-        {instalmentsQuery.data?.canEdit && !editing && (
-          <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-            <Pencil className="mr-2 h-4 w-4" /> Add instalment
-          </Button>
-        )}
-      </div>
+    <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
+      <DashboardCardHeader label={tenantName} title="Tax obligations" icon={<Calculator className="h-4 w-4"/>} description="Latest completed periods and the ATO-set instalment" source={gstQuery.data?.source} isFetching={gstQuery.isFetching || paygQuery.isFetching} actions={instalmentsQuery.data?.canEdit && !editing ? <Button variant="outline" size="sm" onClick={() => setEditing(true)}><Pencil className="h-4 w-4"/> Add instalment</Button> : undefined}/>
 
       {busy ? (
         <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>

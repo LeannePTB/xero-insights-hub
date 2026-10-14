@@ -1,3 +1,4 @@
+import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
@@ -26,18 +27,8 @@ export function XeroActivityWidget({
   const data = query.data;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tenantName}</p>
-          <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
-            <UserCheck className="h-4 w-4 text-emphasis" /> Xero file activity
-          </h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Who last signed in to this Xero file, as reported by Xero. Updated overnight.
-          </p>
-        </div>
-      </div>
+    <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
+      <DashboardCardHeader label={tenantName} title="Xero file activity" icon={<UserCheck className="h-4 w-4"/>} description="Sign-in activity reported by Xero, updated overnight" status={<p className="mt-1.5 text-xs text-muted-foreground">{data?.fetchedAt ? `Figures pulled ${format(new Date(data.fetchedAt), "d MMM yyyy, h:mm a")}` : "Figures not available yet"}</p>}/>
 
       {query.isLoading ? (
         <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">

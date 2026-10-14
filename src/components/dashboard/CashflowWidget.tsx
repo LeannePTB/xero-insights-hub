@@ -1,3 +1,4 @@
+import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
 import { VectorChart } from "@/components/charts/VectorChart";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -54,31 +55,8 @@ export function CashflowWidget({
   const NetIcon = data && data.netMovement > 0 ? TrendingUp : data && data.netMovement < 0 ? TrendingDown : Minus;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {tenantName}
-          </p>
-          <div className="flex items-center gap-2">
-            <h3 className="font-display text-lg font-semibold flex items-center gap-2"><Wallet className="h-4 w-4 text-emphasis" />Cash Flow</h3>
-            <BasisBadge basis="cash" />
-          </div>
-          <CardFreshness from={fromDate} to={toDate} source={data?.source} isFetching={isFetching} />
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            setShouldLoad(true);
-            refetch();
-          }}
-          disabled={isFetching}
-          title="Refresh"
-        >
-          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-        </Button>
-      </div>
+    <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
+      <DashboardCardHeader label={tenantName} title="Cash flow" icon={<Wallet className="h-4 w-4"/>} description="Cash coming in, going out and remaining at bank" badge={<BasisBadge basis="cash"/>} from={fromDate} to={toDate} source={data?.source} isFetching={isFetching} actions={<Button variant="ghost" size="icon-sm" onClick={() => { setShouldLoad(true); refetch(); }} disabled={isFetching} title="Refresh" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}/></Button>}/>
 
       <DateRangeControls
         fromDate={fromDate}

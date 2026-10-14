@@ -1,3 +1,4 @@
+import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -95,7 +96,7 @@ function DateField({
 type Submitted = { query: string; fromDate: string | null; toDate: string | null };
 type UnavailableOrg = { tenantId: string; tenantName: string; reason: string };
 
-export function TransactionSearchWidget({ clientId }: { clientId: string; orgCount?: number }) {
+export function TransactionSearchWidget({ clientId, clientName }: { clientId: string; clientName?: string; orgCount?: number }) {
   const fetchSearch = useServerFn(searchClientTransactions);
   const [q, setQ] = useState("");
   const debouncedQ = useDebounced(q);
@@ -121,6 +122,7 @@ export function TransactionSearchWidget({ clientId }: { clientId: string; orgCou
     staleTime: 5 * 60 * 1000,
     retry: false,
     queryFn: async () => {
+      if (!submitted) return { hits: [], unavailable: [], hasMore: false, totalOrganisations: 0 };
       const hits: SearchHit[] = [];
       const unavailable: UnavailableOrg[] = [];
       let hasMore = false;
@@ -134,9 +136,9 @@ export function TransactionSearchWidget({ clientId }: { clientId: string; orgCou
         const res = await fetchSearch({
           data: {
             clientId,
-            query: submitted!.query,
-            fromDate: submitted!.fromDate,
-            toDate: submitted!.toDate,
+            query: submitted.query,
+            fromDate: submitted.fromDate,
+            toDate: submitted.toDate,
             page,
             batch,
           },
@@ -180,20 +182,11 @@ export function TransactionSearchWidget({ clientId }: { clientId: string; orgCou
 
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <div className="mb-3">
-        <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-          <Search className="h-4 w-4 text-emphasis" /> Transaction Search
-        </h3>
-        <p className="text-xs text-muted-foreground">
-          Invoices, bills, credit notes, prepayments and overpayments across every Xero
-          organisation in this organisation. Staff only.
-        </p>
-
-      </div>
+    <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
+      <DashboardCardHeader label={clientName ?? "Client Xero files"} title="Transaction search" icon={<Search className="h-4 w-4"/>} description="Invoices, bills and credits across this client’s Xero files" status={<p className="mt-1.5 text-xs text-muted-foreground">{search.isFetching ? "Pulling matching transactions…" : submitted ? "Figures pulled for this search" : "Figures pulled when you search"}</p>}/>
 
       <form onSubmit={onSubmit} className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[240px] flex-1">
+        <div className="relative min-w-0 w-full sm:w-auto sm:flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={q}

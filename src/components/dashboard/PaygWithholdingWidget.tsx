@@ -1,3 +1,4 @@
+import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
 import { paygQueryKey, paygQueryLimits } from "./payg-query";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -51,27 +52,8 @@ export function PaygWithholdingWidget({
   const isPaidUp = !!data && data.status !== "no_payg_accounts" && outstanding <= 0.005;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {tenantName}
-          </p>
-          <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <Receipt className="h-4 w-4 text-emphasis" />
-            PAYG withholding by month
-          </h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            What was withheld from wages each month, and what is still owing
-          </p>
-          {/* The balance is live, the pay runs may be last night's copy: the
-              line reports the older of the two. */}
-          <CardFreshness className="mt-1.5" source={data?.source} isFetching={isFetching} />
-        </div>
-        <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} title="Refresh">
-          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-        </Button>
-      </div>
+    <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
+      <DashboardCardHeader label={tenantName} title="PAYG withholding by month" icon={<Receipt className="h-4 w-4"/>} description="Monthly wage withholding and what is still owing" source={data?.source} isFetching={isFetching} actions={<Button variant="ghost" size="icon-sm" onClick={() => refetch()} disabled={isFetching} title="Refresh" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}/></Button>}/>
 
       {isLoading ? (
         <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">

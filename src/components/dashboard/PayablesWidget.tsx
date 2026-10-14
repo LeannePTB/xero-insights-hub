@@ -1,3 +1,4 @@
+import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -50,20 +51,8 @@ export function PayablesWidget({
     .slice(0, 5);
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {tenantName}
-          </p>
-          <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <Wallet className="h-4 w-4 text-emphasis" /> Accounts Payable Ageing
-            <BasisBadge basis={basis} />
-          </h3>
-          <DataSourceLine source={data?.source} isFetching={isFetching} />
-          <p className="text-xs text-muted-foreground">Oldest outstanding supplier bills.</p>
-        </div>
-      </div>
+    <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
+      <DashboardCardHeader label={tenantName} title="Payables" icon={<Wallet className="h-4 w-4"/>} description="Oldest outstanding supplier bills" badge={<BasisBadge basis={basis}/>} source={data?.source} isFetching={isFetching}/>
 
       {data && data.source?.mode !== 'pending' && <VectorChart title="Payables ageing" points={ageingPoints(data.invoices)} series={[{label:'Outstanding',kind:'bar'}]} currency={currency}/>}
       <div className="mt-6 rounded-lg border border-border bg-background p-4">
