@@ -2,7 +2,7 @@ import type { CardCatalogue } from '@/lib/cards/catalogue';
 
 // Presentation only: callers pass the cards already granted by the database.
 export const MODULE_ORDER = ['cash_flow', 'profit', 'tax_compliance', 'bookkeeping_checks'];
-const STANDARD_ORDER = ['health', 'pnl', 'receivables', 'payables', 'notes'];
+export const STANDARD_ORDER = ['health', 'pnl', 'receivables', 'payables', 'notes'];
 const WIDE_CARDS = new Set(['health', 'pnl', 'cashflow', 'cashflow_scenario', 'accounting_breakeven', 'transaction_search', 'gst_reconciliation', 'notes', 'loan_consolidation']);
 
 export function dashboardCardMeta(id: string, catalogue: CardCatalogue) {
@@ -42,4 +42,10 @@ export function smallCardRowSizes(count: number): number[] {
   if (count <= 0) return [];
   if (count <= 3) return [count];
   return count % 3 === 1 ? [2, ...smallCardRowSizes(count - 2)] : [3, ...smallCardRowSizes(count - 3)];
+}
+/** Catalogue unavailable: keep only granted Standard cards, in the fixed order. */
+export function standardFallbackCards<T extends { id: string }>(cards: readonly T[]): T[] {
+  const key = (id: string) => (id.includes(':') ? id.slice(id.indexOf(':') + 1) : id);
+  return cards.filter(c => STANDARD_ORDER.includes(key(c.id)))
+    .sort((a, b) => STANDARD_ORDER.indexOf(key(a.id)) - STANDARD_ORDER.indexOf(key(b.id)));
 }

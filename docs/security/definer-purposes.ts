@@ -10,6 +10,7 @@
  */
 export const DEFINER_PURPOSES: Record<string, string> = {
   "public.upgrade_enquiry_context": "AAL2 Organisation Owner or canonical System Administrator enquiry eligibility, verified email and authorised client options; no client access granted.",
+  "public.client_locked_modules": "AAL2 practice-only upsell signal: catalogue module keys a readable client lacks, for Organisation Owner or System Administrator (me_can_manage_cards) only; empty for everyone else; no figures, no grant.",
   "public.submit_upgrade_enquiry": "AAL2 caller-scoped eligibility, catalogue/client validation, atomic three-per-hour and duplicate guard, identity stamping and metadata-only audit.",
   "public.admin_upgrade_enquiries": "AAL2 canonical System Administrator-only enquiry list; no linked client figures.",
   "public.admin_upgrade_enquiry_alerts": "AAL2 System Administrator-only latest email send status per enquiry alert; metadata only.",

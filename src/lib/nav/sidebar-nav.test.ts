@@ -182,3 +182,14 @@ describe("Loans / Consolidations menu follow the server owner-or-team signal (14
     expect(ids(navForWorkspace({ kind: "organisation", firmId: "f" }, { canSeeSystem: false, canOpenConsolidations: true }))).toContain("consolidations");
   });
 });
+
+describe("locked Advisory menu item", () => {
+  const ids = (locked?: string[]) => navForWorkspace({ kind: "client", clientId: "c1" }, { canSeeSystem: false, clientVisibleCards: ["pnl"], lockedModules: locked })[0]!.items.map((i) => i.id);
+  it("shows one Advisory item when the server lists locked modules", () => {
+    expect(ids(["cash_flow", "profit"]).filter((i) => i === "advisory-locked")).toHaveLength(1);
+  });
+  it("hides it when the server lists none", () => {
+    expect(ids([])).not.toContain("advisory-locked");
+    expect(ids(undefined)).not.toContain("advisory-locked");
+  });
+});

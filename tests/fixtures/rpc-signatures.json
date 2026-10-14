@@ -373,6 +373,13 @@
         "args": [
             "_client_id"
         ],
+        "name": "client_locked_modules",
+        "required": 1
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
         "name": "client_org_trial",
         "required": 1
     },

@@ -21,7 +21,8 @@ export type NavIcon =
   | "file"
   | "trending"
   | "landmark"
-  | "message";
+  | "message"
+  | "lock";
 
 export type NavItem = {
   id: string;
@@ -141,6 +142,9 @@ export const CLIENT_NAV: NavGroup[] = [
     ],
   },
 ];
+
+/** One locked entry point; shown only when the server lists locked modules. */
+export const ADVISORY_LOCKED_ITEM: NavItem = { id: "advisory-locked", label: "Advisory", icon: "lock", to: "/clients/$clientId/advisory" };
 
 export type ClientXeroFile = { tenantId: string; name: string };
 
@@ -285,13 +289,17 @@ export function navForWorkspace(
     canOpenLoans?: boolean;
     /** Server signal public.me_can_open_consolidations; absent/false hides Consolidations. */
     canOpenConsolidations?: boolean;
+    /** Server signal public.client_locked_modules; empty/absent hides the locked Advisory item. */
+    lockedModules?: readonly string[];
   },
 ): NavGroup[] {
   if (ws.kind === "system") return opts.canSeeSystem ? SYSTEM_NAV : [];
   if (ws.kind === "all") return allOrganisationsNav(opts.organisations ?? []);
   if (ws.kind === "organisation") return dropItems(ORGANISATION_NAV, opts.canOpenConsolidations === true ? [] : ["consolidations"]);
   if (ws.kind === "client") {
-    return dropItems(clientNav(opts.clientFiles ?? [], opts.clientVisibleCards ?? null), opts.canOpenLoans === true ? [] : ["loans"]);
+    const groups = dropItems(clientNav(opts.clientFiles ?? [], opts.clientVisibleCards ?? null), opts.canOpenLoans === true ? [] : ["loans"]);
+    if (!opts.lockedModules?.length) return groups;
+    return groups.map((g, i) => (i === 0 ? { ...g, items: [...g.items, ADVISORY_LOCKED_ITEM] } : g));
   }
   return [];
 }

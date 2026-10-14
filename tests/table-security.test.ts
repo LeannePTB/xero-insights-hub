@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { checkTableSecurity } from "../scripts/check-table-security";
+import { checkBrowserReadGrants, checkTableSecurity } from "../scripts/check-table-security";
 
 const fixture = readFileSync(join(process.cwd(), "tests/fixtures/rls-schema.sql"), "utf8");
 
@@ -40,5 +40,19 @@ describe("public table security contract", () => {
     expect(grantsFor("user_presence", "authenticated")).toEqual(["INSERT", "SELECT", "UPDATE"]);
     expect(grantsFor("security_test_runs", "anon")).toEqual([]);
     expect(grantsFor("security_test_runs", "authenticated")).toEqual(["SELECT"]);
+  });
+
+  it("fails when app code reads a policy-covered table without a grant (card_catalogue regression)", () => {
+    const broken = fixture.replace(/^grant SELECT on table public\.card_catalogue to authenticated;\n/m, "");
+    const src = [{ path: "x.ts", text: `db.from("card_catalogue").select("card_key, report_sections")` }];
+    expect(checkBrowserReadGrants(fixture, src)).toEqual([]);
+    expect(checkBrowserReadGrants(broken, src)).toContain(
+      "card_catalogue.report_sections: read by x.ts but authenticated has no SELECT grant on it",
+    );
+  });
+
+  it("does not flag admin-client reads of deliberately ungranted tables", () => {
+    const src = [{ path: "x.ts", text: `const { data } = await supabaseAdmin.from("security_contact_details").select("id")` }];
+    expect(checkBrowserReadGrants(fixture, src)).toEqual([]);
   });
 });

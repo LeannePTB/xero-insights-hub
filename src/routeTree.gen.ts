@@ -47,6 +47,7 @@ import { Route as AuthenticatedSystemXeroRouteImport } from './routes/_authentic
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AuthenticatedAdminFirmsFirmIdRouteImport } from './routes/_authenticated/admin.firms.$firmId'
 import { Route as AuthenticatedClientsClientIdIndexRouteImport } from './routes/_authenticated/clients.$clientId.index'
+import { Route as AuthenticatedClientsClientIdAdvisoryRouteImport } from './routes/_authenticated/clients.$clientId.advisory'
 import { Route as AuthenticatedClientsClientIdCashflowScenarioRouteImport } from './routes/_authenticated/clients.$clientId.cashflow-scenario'
 import { Route as AuthenticatedClientsClientIdLoansRouteImport } from './routes/_authenticated/clients.$clientId.loans'
 import { Route as AuthenticatedClientsClientIdLoansAccountsRouteImport } from './routes/_authenticated/clients.$clientId.loans-accounts'
@@ -296,6 +297,12 @@ const AuthenticatedClientsClientIdIndexRoute =
   AuthenticatedClientsClientIdIndexRouteImport.update({
     id: '/clients/$clientId/',
     path: '/clients/$clientId/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedClientsClientIdAdvisoryRoute =
+  AuthenticatedClientsClientIdAdvisoryRouteImport.update({
+    id: '/clients/$clientId/advisory',
+    path: '/clients/$clientId/advisory',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedClientsClientIdCashflowScenarioRoute =
@@ -606,6 +613,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/system/': typeof AuthenticatedSystemIndexRoute
   '/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
+  '/clients/$clientId/advisory': typeof AuthenticatedClientsClientIdAdvisoryRoute
   '/clients/$clientId/cashflow-scenario': typeof AuthenticatedClientsClientIdCashflowScenarioRoute
   '/clients/$clientId/loans': typeof AuthenticatedClientsClientIdLoansRoute
   '/clients/$clientId/loans-accounts': typeof AuthenticatedClientsClientIdLoansAccountsRoute
@@ -688,6 +696,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/system': typeof AuthenticatedSystemIndexRoute
   '/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
+  '/clients/$clientId/advisory': typeof AuthenticatedClientsClientIdAdvisoryRoute
   '/clients/$clientId/cashflow-scenario': typeof AuthenticatedClientsClientIdCashflowScenarioRoute
   '/clients/$clientId/loans': typeof AuthenticatedClientsClientIdLoansRoute
   '/clients/$clientId/loans-accounts': typeof AuthenticatedClientsClientIdLoansAccountsRoute
@@ -773,6 +782,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/system/': typeof AuthenticatedSystemIndexRoute
   '/_authenticated/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
+  '/_authenticated/clients/$clientId/advisory': typeof AuthenticatedClientsClientIdAdvisoryRoute
   '/_authenticated/clients/$clientId/cashflow-scenario': typeof AuthenticatedClientsClientIdCashflowScenarioRoute
   '/_authenticated/clients/$clientId/loans': typeof AuthenticatedClientsClientIdLoansRoute
   '/_authenticated/clients/$clientId/loans-accounts': typeof AuthenticatedClientsClientIdLoansAccountsRoute
@@ -860,6 +870,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/system/'
     | '/admin/firms/$firmId'
+    | '/clients/$clientId/advisory'
     | '/clients/$clientId/cashflow-scenario'
     | '/clients/$clientId/loans'
     | '/clients/$clientId/loans-accounts'
@@ -942,6 +953,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/system'
     | '/admin/firms/$firmId'
+    | '/clients/$clientId/advisory'
     | '/clients/$clientId/cashflow-scenario'
     | '/clients/$clientId/loans'
     | '/clients/$clientId/loans-accounts'
@@ -1026,6 +1038,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/'
     | '/_authenticated/system/'
     | '/_authenticated/admin/firms/$firmId'
+    | '/_authenticated/clients/$clientId/advisory'
     | '/_authenticated/clients/$clientId/cashflow-scenario'
     | '/_authenticated/clients/$clientId/loans'
     | '/_authenticated/clients/$clientId/loans-accounts'
@@ -1372,6 +1385,13 @@ declare module '@tanstack/react-router' {
       path: '/clients/$clientId'
       fullPath: '/clients/$clientId/'
       preLoaderRoute: typeof AuthenticatedClientsClientIdIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/clients/$clientId/advisory': {
+      id: '/_authenticated/clients/$clientId/advisory'
+      path: '/clients/$clientId/advisory'
+      fullPath: '/clients/$clientId/advisory'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdAdvisoryRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/clients/$clientId/cashflow-scenario': {
@@ -1874,6 +1894,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsActivityRoute: typeof AuthenticatedSettingsActivityRoute
   AuthenticatedSettingsAdvisorsRoute: typeof AuthenticatedSettingsAdvisorsRoute
   AuthenticatedSettingsPracticeTeamRoute: typeof AuthenticatedSettingsPracticeTeamRoute
+  AuthenticatedClientsClientIdAdvisoryRoute: typeof AuthenticatedClientsClientIdAdvisoryRoute
   AuthenticatedClientsClientIdCashflowScenarioRoute: typeof AuthenticatedClientsClientIdCashflowScenarioRoute
   AuthenticatedClientsClientIdLoansRoute: typeof AuthenticatedClientsClientIdLoansRoute
   AuthenticatedClientsClientIdLoansAccountsRoute: typeof AuthenticatedClientsClientIdLoansAccountsRoute
@@ -1897,6 +1918,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsAdvisorsRoute: AuthenticatedSettingsAdvisorsRoute,
   AuthenticatedSettingsPracticeTeamRoute:
     AuthenticatedSettingsPracticeTeamRoute,
+  AuthenticatedClientsClientIdAdvisoryRoute:
+    AuthenticatedClientsClientIdAdvisoryRoute,
   AuthenticatedClientsClientIdCashflowScenarioRoute:
     AuthenticatedClientsClientIdCashflowScenarioRoute,
   AuthenticatedClientsClientIdLoansRoute:

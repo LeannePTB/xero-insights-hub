@@ -330,6 +330,27 @@
       "when": 1791961471660,
       "tag": "0046_enquiry_alert_email",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1791962647446,
+      "tag": "0047_card_catalogue_select_grant",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1791962790638,
+      "tag": "0048_client_locked_advisory_modules",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1791963183319,
+      "tag": "0049_client_locked_modules_append_fix",
+      "breakpoints": true
     }
   ]
 }
