@@ -1,4 +1,5 @@
 import { useWorkspaceBranding } from "@/hooks/useWorkspaceBranding";
+import { sectionIncluded } from "@/lib/reports/monthly-report";
 import { AlertTriangle } from "lucide-react";
 import { ReportVerdictPage } from "@/components/reports/ReportVerdictPage";
 import {
@@ -37,7 +38,10 @@ function fmtDate(iso: string) {
   }
 }
 
-function SectionShell({ title, children }: { title: string; children: React.ReactNode }) {
+function SectionShell({ title, children, included = true }: { title: string; children: React.ReactNode; included?: boolean }) {
+  // A section left out because the client's cards don't include it is simply
+  // absent — no upsell or "missing" text inside the client-facing report.
+  if (!included) return null;
   return (
     <section className="rounded-2xl border border-border bg-card p-6">
       <h3 className="font-display text-lg font-semibold">{title}</h3>
@@ -279,7 +283,7 @@ export function MonthlyReportPreview({
 
       {/* 1. Page one — the verdict, before Notes and before every number.
           Absent on payloads written before v11; never reconstructed. */}
-      {payload.verdict ? <ReportVerdictPage verdict={payload.verdict} /> : null}
+      {payload.verdict && sectionIncluded(payload, "verdict") ? <ReportVerdictPage verdict={payload.verdict} /> : null}
 
       {/* A quiet staff-only line while the report is still a draft. It never
           blocks finalising — a month with no comment is normal. */}
@@ -308,7 +312,7 @@ export function MonthlyReportPreview({
 
       {/* 2. Notes — the practice's commentary is read BEFORE the tables, so it
           sits directly under the header. Do not move it back below Payables. */}
-      <SectionShell title="Notes">
+      <SectionShell title="Notes" included={sectionIncluded(payload, "notes")}>
         {!payload.notes ? (
           <Missing message={failed.get("notes") ?? "Not computed."} />
         ) : payload.notes.length === 0 ? (
@@ -330,7 +334,7 @@ export function MonthlyReportPreview({
       </SectionShell>
 
       {/* 2. Key figures */}
-      <SectionShell title="Key figures">
+      <SectionShell title="Key figures" included={sectionIncluded(payload, "key_figures")}>
 
         {!payload.keyFigures ? (
           <Missing message={failed.get("key_figures") ?? "Not computed."} />
@@ -440,7 +444,7 @@ export function MonthlyReportPreview({
       </SectionShell>
 
       {/* 3. Profit and Loss */}
-      <SectionShell title="Profit and Loss">
+      <SectionShell title="Profit and Loss" included={sectionIncluded(payload, "profit_and_loss")}>
         {!payload.profitAndLoss ? (
           <Missing message={failed.get("profit_and_loss") ?? "Not computed."} />
         ) : (
@@ -554,7 +558,7 @@ export function MonthlyReportPreview({
       </SectionShell>
 
       {/* 4. Receivables */}
-      <SectionShell title="Receivables detail">
+      <SectionShell title="Receivables detail" included={sectionIncluded(payload, "receivables")}>
         {!payload.receivables ? (
           <Missing message={failed.get("receivables") ?? "Not computed."} />
         ) : (
@@ -563,7 +567,7 @@ export function MonthlyReportPreview({
       </SectionShell>
 
       {/* 5. Payables */}
-      <SectionShell title="Payables detail">
+      <SectionShell title="Payables detail" included={sectionIncluded(payload, "payables")}>
         {!payload.payables ? (
           <Missing message={failed.get("payables") ?? "Not computed."} />
         ) : (

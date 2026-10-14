@@ -621,6 +621,17 @@ export async function computeMonthlyReport(opts: {
   const priorFyStart = addMonths(fyStart, -12);
   const priorFyPeriodEnd = endOfMonth(addMonths(monthStart, -12));
 
+  // Sections follow the client's visible cards — the one rule, in the
+  // database. Fails closed to the Standard-free empty list on error.
+  const { data: sectionRows, error: sectionErr } = await opts.supabase.rpc("client_report_sections", {
+    _client_id: opts.clientId,
+  });
+  if (sectionErr || !Array.isArray(sectionRows)) {
+    throw new Error("The report sections for this client could not be read. Try again.");
+  }
+  const includedSections = (sectionRows as unknown[]).filter((x): x is string => typeof x === "string");
+  const inc = (k: string) => includedSections.includes(k);
+
   const failed: FailedSection[] = [];
   let keyFigures: KeyFigure[] | null = null;
   let profitAndLoss: PnlSectionPayload | null = null;
@@ -688,7 +699,7 @@ export async function computeMonthlyReport(opts: {
   let unmatchedAccounts: string[] = [];
   const warnings: string[] = [];
 
-  try {
+  if (inc("profit_and_loss") || inc("key_figures") || inc("charts")) try {
     // SEQUENTIAL, deliberately. Xero allows only a handful of concurrent
     // requests per tenant; firing these together tripped the limit and failed
     // the whole report. A few extra seconds here costs nothing.
@@ -758,7 +769,7 @@ export async function computeMonthlyReport(opts: {
   const { fetchAsAtLedger } = await import("@/lib/xero/asat-ledger.server");
   // Kept for the verdict on page one, so the debtor rules cost no extra call.
   let debtorEntries: import("@/lib/xero/asat-ledger.server").AsAtEntry[] | null = null;
-  try {
+  if (inc("receivables") || inc("verdict")) try {
     const ledger = await fetchAsAtLedger(conn, periodEnd, "ACCREC");
     receivables = buildAgeing(ledger.entries, periodEnd);
     debtorEntries = ledger.entries;
@@ -769,7 +780,7 @@ export async function computeMonthlyReport(opts: {
   // Kept for the verdict on page one: the lodged-and-owing half of protected
   // money is read from these same bills.
   let creditorDocuments: { invoice: any; outstanding: number }[] | null = null;
-  try {
+  if (inc("payables") || inc("verdict")) try {
     const ledger = await fetchAsAtLedger(conn, periodEnd, "ACCPAY");
     payables = buildAgeing(ledger.entries, periodEnd);
     creditorDocuments = ledger.documents;
@@ -779,7 +790,7 @@ export async function computeMonthlyReport(opts: {
 
 
   // --- Notes (the client's existing notes, read under the caller's RLS)
-  try {
+  if (inc("notes")) try {
     const { data: rows, error } = await opts.supabase
       .from("client_notes")
       .select("body, author_id, created_at")
@@ -813,7 +824,7 @@ export async function computeMonthlyReport(opts: {
 
   // --- Page one: the verdict, from LIVE data. Never reads `xero_snapshots`.
   let verdict: import("./monthly-report").ReportVerdict | null = null;
-  try {
+  if (inc("verdict")) try {
     const { buildReportVerdict } = await import("./report-verdict.server");
     verdict = await buildReportVerdict({
       conn,
@@ -834,7 +845,7 @@ export async function computeMonthlyReport(opts: {
 
   // De-duplicate failures per section (the P&L feeds two sections).
   const seen = new Set<string>();
-  const failedSections = failed.filter((f) => {
+  const failedSections = failed.filter((f) => inc(f.section) || f.section === "key_figures" && inc("key_figures")).filter((f) => {
     const k = `${f.section}`;
     if (seen.has(k)) return false;
     seen.add(k);
@@ -849,7 +860,8 @@ export async function computeMonthlyReport(opts: {
     charts = {cash:[],profit:[],note:'Stored chart history could not be read; no history has been substituted.'};
   }
   return {
-    charts,
+    includedSections,
+    charts: inc("charts") ? charts : undefined,
     payloadVersion: MONTHLY_REPORT_PAYLOAD_VERSION,
     complete: failedSections.length === 0,
     failedSections,
@@ -868,12 +880,12 @@ export async function computeMonthlyReport(opts: {
       currency: opts.currency,
       generatedAt: new Date().toISOString(),
     },
-    keyFigures,
-    profitAndLoss,
-    receivables,
-    payables,
-    notes,
-    verdict,
+    keyFigures: inc("key_figures") ? keyFigures : null,
+    profitAndLoss: inc("profit_and_loss") ? profitAndLoss : null,
+    receivables: inc("receivables") ? receivables : null,
+    payables: inc("payables") ? payables : null,
+    notes: inc("notes") ? notes : null,
+    verdict: inc("verdict") ? verdict : null,
     // Frozen at generation time: an old report keeps the wording that was sent.
     disclaimer: disclaimerText(opts.clientName),
   };

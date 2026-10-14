@@ -14,6 +14,7 @@ import { drawPdfChart } from "@/lib/charts/pdf.server";
 //    and nothing signed is ever persisted.
 //  - Every download writes an audit_log row.
 
+import { sectionIncluded } from "./monthly-report";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
@@ -367,7 +368,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   // Before Notes and before every number. Only strings frozen at generation
   // time are printed — nothing is re-worded or re-computed here, and no score
   // or pillar score appears. Absent on payloads written before v11.
-  const v = payload.verdict;
+  const v = sectionIncluded(payload, "verdict") ? payload.verdict : null;
   if (v) {
     heading("This month");
     doc.setFont("helvetica", "bold");
@@ -408,7 +409,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   }
 
   // v12: only frozen payload points. Old final/sent reports never acquire charts.
-  if (payload.charts) {
+  if (payload.charts && sectionIncluded(payload, "charts")) {
     for (const [title, points, kind] of [
       ['Cash at bank trend', payload.charts.cash, 'line'],
       ['Net profit by month', payload.charts.profit, 'bar'],
@@ -427,8 +428,10 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   }
 
   // 2. Notes -----------------------------------------------------------------
-  heading("Notes");
-  if (!payload.notes) {
+  if (sectionIncluded(payload, "notes")) heading("Notes");
+  if (!sectionIncluded(payload, "notes")) {
+    // Left out: not in the client's cards.
+  } else if (!payload.notes) {
     missing(failed.get("notes") ?? "Not computed.");
   } else if (!payload.notes.length) {
     paragraph("No notes recorded for this client.");
@@ -446,8 +449,10 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   }
 
   // 3. Key figures -----------------------------------------------------------
-  heading("Key figures");
-  if (!payload.keyFigures) {
+  if (sectionIncluded(payload, "key_figures")) heading("Key figures");
+  if (!sectionIncluded(payload, "key_figures")) {
+    // Left out: not in the client's cards.
+  } else if (!payload.keyFigures) {
     missing(failed.get("key_figures") ?? "Not computed.");
   } else {
     const ytdLabels = yearToDateComparisonLabels(payload.meta.periodEnd);
@@ -540,8 +545,10 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   }
 
   // 4. Profit and Loss -------------------------------------------------------
-  heading("Profit and Loss");
-  if (!payload.profitAndLoss) {
+  if (sectionIncluded(payload, "profit_and_loss")) heading("Profit and Loss");
+  if (!sectionIncluded(payload, "profit_and_loss")) {
+    // Left out: not in the client's cards.
+  } else if (!payload.profitAndLoss) {
     missing(failed.get("profit_and_loss") ?? "Not computed.");
   } else {
     const p = payload.profitAndLoss;
@@ -618,8 +625,8 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     });
     paragraph(detail.caveat, { size: 7.5 });
   };
-  ageing(payload.receivables, "Receivables detail", "Customer", "receivables");
-  ageing(payload.payables, "Payables detail", "Supplier", "payables");
+  if (sectionIncluded(payload, "receivables")) ageing(payload.receivables, "Receivables detail", "Customer", "receivables");
+  if (sectionIncluded(payload, "payables")) ageing(payload.payables, "Payables detail", "Supplier", "payables");
 
   // 5. Disclaimer — fine print, last, no forced page break -------------------
   need(SPACING.beforeSection + 11 + SPACING.afterSectionHeading + 12);

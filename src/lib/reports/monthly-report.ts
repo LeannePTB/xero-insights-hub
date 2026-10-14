@@ -146,6 +146,12 @@ export type MonthlyReportPayload = {
    * incomplete — the figures still tie — so they must not block finalising.
    */
   warnings?: string[];
+  /**
+   * Report sections this draft includes, frozen at generation from the
+   * client's visible cards (public.client_report_sections, mapped through
+   * card_catalogue.report_sections). Absent on older payloads = everything.
+   */
+  includedSections?: string[];
   /** v12: frozen caller-scoped chart history; old reports remain chart-less. */
   charts?: import("@/lib/charts/report-history").ReportCharts;
   meta: {
@@ -341,4 +347,9 @@ export function endOfMonth(monthStartIso: string): string {
 export function variancePct(current: number, prior: number): number | null {
   if (!Number.isFinite(prior) || prior === 0) return null;
   return ((current - prior) / Math.abs(prior)) * 100;
+}
+
+/** True when the frozen payload includes this section (older payloads: all). */
+export function sectionIncluded(payload: { includedSections?: string[] }, section: string): boolean {
+  return !Array.isArray(payload.includedSections) || payload.includedSections.includes(section);
 }
