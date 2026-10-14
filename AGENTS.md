@@ -2,14 +2,14 @@
 - Bank/card extraction is shared in `tax-lines.ts`; the ID-keyed bank-classification overlay applies explicit client/file/account overrides before Xero BankAccountType, never name guesses, so stored and live figures agree without rewriting Xero metadata.
 - Sidebar spacer stays non-shrinking; inset uses flex-1 min-w-0, never w-full, to avoid clipping.
 - AppShell owns the sole menu-layout header; AppHeader supplies context-registered actions there and renders standalone only outside, preventing duplicate branding and lost actions.
-- Client income tax instalments use one dedicated period-history table and one audited caller-scoped save function, because period history and organisation-team-only editing must stay explicit.
+- Client income tax instalments use one period-history table and audited caller-scoped save; history and organisation-team-only editing stay explicit.
 - AppShell navigation uses `src/lib/nav/sidebar-nav.ts`, URL-selected (/system, /firms/:id, /clients/:id) and gated only by getMyContext signals; it stays presentation-only and database-movable.
 - Branding/website use narrow anon display readers and separate audited AAL2 canonical-admin saves on the grant-free branding table. Public sales visuals are synthetic; media uses bounded admin-only storage INSERT, never bypassing blocked public buckets.
 
-- System Admin pages reuse FirmPageHeader for a single title and right-aligned actions, keeping workspace headers consistent without duplicating header markup.
+- System Admin pages reuse FirmPageHeader: one title, right-aligned actions, consistent headers without duplicate markup.
 - System Admin organisation detail uses URL-backed tabs on its existing guarded route, so deep links do not duplicate authorisation boundaries.
 
-### Client workspace and platform branding (9 Oct 2026)
+### Client workspace and branding
 - Client settings are child routes under `/clients/:clientId/settings/*`; keep the parent capability check and each existing server write guard.
 - `me_can_manage_client` is a presentation signal only. Never infer access from a visible menu, relationship label, client ID or tenant ID.
 - Monthly report primary-logo precedence is organisation report logo, then public platform logo, then bundled logo; an entitled client logo is secondary. Never regenerate final/sent PDFs.
