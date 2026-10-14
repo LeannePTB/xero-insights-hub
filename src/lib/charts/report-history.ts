@@ -11,7 +11,7 @@ export function freezeReportCharts(rows: HistoryRow[], reports: { id: string; pe
   });
   const profit = months.map(date => {
     if(date === current.periodEnd) return {date,label:date.slice(0,7),value:current.profit,source:'current_report'};
-    const report = reports.filter(r => r.period_end === date && r.payload?.meta?.currency === current.currency).sort((a,b) => b.version-a.version || a.id.localeCompare(b.id))[0];
+    const report = reports.filter(r => r.period_end === date && r.payload?.meta?.currency === current.currency && (r.payload?.basis??'accrual')==='accrual').sort((a,b) => b.version-a.version || a.id.localeCompare(b.id))[0];
     const value = report?.payload?.profitAndLoss?.totals?.netProfit;
     if (!(typeof value === 'number' && Number.isFinite(value))) {
       const filled = monthEnd.find(m => m.month_end === date)?.net_profit;

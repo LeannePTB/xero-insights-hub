@@ -8,7 +8,7 @@ export async function loadStandardHistory(db: any, clientId: string, tenantId: s
   const result: {today:string;pnl:PnlObservation[];cash:{date:string;value:number|null}[];overdue:{date:string;value:number|null}[];scores:{date:string;value:number|null}[];note:string} = {today,pnl:[],cash:[],overdue:[],scores:[],note:'Stored observations only. Missing periods are unavailable, not zero.'};
   if(card==='health') {
     const {rows} = await readMergedHistory(db,[clientId],from,today,tenantId);
-    result.cash=rows.filter(r=>r.cash!==null).map(r=>({date:r.as_at,value:Number(r.cash)}));
+    result.cash=rows.filter(r=>r.as_at>=addMonths(today,-12)).map(r=>({date:r.as_at,value:r.cash===null?null:Number(r.cash)}));
     // No historical health scores are stored; never infer them from incomplete old snapshots.
     result.note+=' Cash includes nightly observations and backfilled month-ends using the bank settings at capture. Historical health scores are not stored.';
   }

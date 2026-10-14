@@ -420,6 +420,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
       ['Cash at bank trend', payload.charts.cash, 'line'],
       ['Net profit by month', payload.charts.profit, 'bar'],
     ] as const) {
+      if(title==='Net profit by month' && payload.charts.pnl) continue;
       const known = points.filter(p => p.value !== null);
       need(240);
       heading(`${title} (${m.currency})`);
@@ -604,6 +605,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
 
   // 3 & 4. Ageing ------------------------------------------------------------
   const ageing = (detail: AgeingDetail | null, title: string, label: string, section: string) => {
+    need(160);
     heading(title);
     if (!detail) {
       missing(failed.get(section) ?? "Not computed.");
