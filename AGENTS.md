@@ -31,3 +31,4 @@
 - Loans/Consolidations access is only `me_can_open_client_loans`/`me_can_open_consolidations`, called by readers, card and menu, so the rule exists once.
 - Report sections come from `card_catalogue.report_sections` via `client_report_sections`, frozen into new drafts' `includedSections`: one list, final/sent untouched.
 - Subdirectories have their own `AGENTS.md`; read it before changing files there.
+- Early access to Work-in-progress cards is an `org_early_access` row resolved only inside `client_cards_v2` for active members of that organisation, so the single card rule stays the only visibility path.
