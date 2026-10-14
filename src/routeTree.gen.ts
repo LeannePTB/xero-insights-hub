@@ -75,6 +75,7 @@ import { Route as AuthenticatedClientsClientIdAuditTenantIdRouteImport } from '.
 import { Route as AuthenticatedClientsClientIdPayablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.payables.$tenantId'
 import { Route as AuthenticatedClientsClientIdReceivablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.receivables.$tenantId'
 import { Route as AuthenticatedClientsClientIdSettingsCardsRouteImport } from './routes/_authenticated/clients.$clientId.settings.cards'
+import { Route as AuthenticatedClientsClientIdSettingsCostClassificationRouteImport } from './routes/_authenticated/clients.$clientId.settings.cost-classification'
 import { Route as AuthenticatedClientsClientIdSettingsCostsRouteImport } from './routes/_authenticated/clients.$clientId.settings.costs'
 import { Route as AuthenticatedClientsClientIdSettingsDangerRouteImport } from './routes/_authenticated/clients.$clientId.settings.danger'
 import { Route as AuthenticatedClientsClientIdSettingsGeneralRouteImport } from './routes/_authenticated/clients.$clientId.settings.general'
@@ -458,6 +459,12 @@ const AuthenticatedClientsClientIdSettingsCardsRoute =
     path: '/cards',
     getParentRoute: () => AuthenticatedClientsClientIdSettingsRoute,
   } as any)
+const AuthenticatedClientsClientIdSettingsCostClassificationRoute =
+  AuthenticatedClientsClientIdSettingsCostClassificationRouteImport.update({
+    id: '/cost-classification',
+    path: '/cost-classification',
+    getParentRoute: () => AuthenticatedClientsClientIdSettingsRoute,
+  } as any)
 const AuthenticatedClientsClientIdSettingsCostsRoute =
   AuthenticatedClientsClientIdSettingsCostsRouteImport.update({
     id: '/costs',
@@ -621,6 +628,7 @@ export interface FileRoutesByFullPath {
   '/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
   '/clients/$clientId/settings/cards': typeof AuthenticatedClientsClientIdSettingsCardsRoute
+  '/clients/$clientId/settings/cost-classification': typeof AuthenticatedClientsClientIdSettingsCostClassificationRoute
   '/clients/$clientId/settings/costs': typeof AuthenticatedClientsClientIdSettingsCostsRoute
   '/clients/$clientId/settings/danger': typeof AuthenticatedClientsClientIdSettingsDangerRoute
   '/clients/$clientId/settings/general': typeof AuthenticatedClientsClientIdSettingsGeneralRoute
@@ -699,6 +707,7 @@ export interface FileRoutesByTo {
   '/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
   '/clients/$clientId/settings/cards': typeof AuthenticatedClientsClientIdSettingsCardsRoute
+  '/clients/$clientId/settings/cost-classification': typeof AuthenticatedClientsClientIdSettingsCostClassificationRoute
   '/clients/$clientId/settings/costs': typeof AuthenticatedClientsClientIdSettingsCostsRoute
   '/clients/$clientId/settings/danger': typeof AuthenticatedClientsClientIdSettingsDangerRoute
   '/clients/$clientId/settings/general': typeof AuthenticatedClientsClientIdSettingsGeneralRoute
@@ -784,6 +793,7 @@ export interface FileRoutesById {
   '/_authenticated/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/_authenticated/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
   '/_authenticated/clients/$clientId/settings/cards': typeof AuthenticatedClientsClientIdSettingsCardsRoute
+  '/_authenticated/clients/$clientId/settings/cost-classification': typeof AuthenticatedClientsClientIdSettingsCostClassificationRoute
   '/_authenticated/clients/$clientId/settings/costs': typeof AuthenticatedClientsClientIdSettingsCostsRoute
   '/_authenticated/clients/$clientId/settings/danger': typeof AuthenticatedClientsClientIdSettingsDangerRoute
   '/_authenticated/clients/$clientId/settings/general': typeof AuthenticatedClientsClientIdSettingsGeneralRoute
@@ -869,6 +879,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/payables/$tenantId'
     | '/clients/$clientId/receivables/$tenantId'
     | '/clients/$clientId/settings/cards'
+    | '/clients/$clientId/settings/cost-classification'
     | '/clients/$clientId/settings/costs'
     | '/clients/$clientId/settings/danger'
     | '/clients/$clientId/settings/general'
@@ -947,6 +958,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/payables/$tenantId'
     | '/clients/$clientId/receivables/$tenantId'
     | '/clients/$clientId/settings/cards'
+    | '/clients/$clientId/settings/cost-classification'
     | '/clients/$clientId/settings/costs'
     | '/clients/$clientId/settings/danger'
     | '/clients/$clientId/settings/general'
@@ -1031,6 +1043,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clients/$clientId/payables/$tenantId'
     | '/_authenticated/clients/$clientId/receivables/$tenantId'
     | '/_authenticated/clients/$clientId/settings/cards'
+    | '/_authenticated/clients/$clientId/settings/cost-classification'
     | '/_authenticated/clients/$clientId/settings/costs'
     | '/_authenticated/clients/$clientId/settings/danger'
     | '/_authenticated/clients/$clientId/settings/general'
@@ -1544,6 +1557,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsClientIdSettingsCardsRouteImport
       parentRoute: typeof AuthenticatedClientsClientIdSettingsRoute
     }
+    '/_authenticated/clients/$clientId/settings/cost-classification': {
+      id: '/_authenticated/clients/$clientId/settings/cost-classification'
+      path: '/cost-classification'
+      fullPath: '/clients/$clientId/settings/cost-classification'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdSettingsCostClassificationRouteImport
+      parentRoute: typeof AuthenticatedClientsClientIdSettingsRoute
+    }
     '/_authenticated/clients/$clientId/settings/costs': {
       id: '/_authenticated/clients/$clientId/settings/costs'
       path: '/costs'
@@ -1787,6 +1807,7 @@ const AuthenticatedFirmsFirmIdRouteWithChildren =
 
 interface AuthenticatedClientsClientIdSettingsRouteChildren {
   AuthenticatedClientsClientIdSettingsCardsRoute: typeof AuthenticatedClientsClientIdSettingsCardsRoute
+  AuthenticatedClientsClientIdSettingsCostClassificationRoute: typeof AuthenticatedClientsClientIdSettingsCostClassificationRoute
   AuthenticatedClientsClientIdSettingsCostsRoute: typeof AuthenticatedClientsClientIdSettingsCostsRoute
   AuthenticatedClientsClientIdSettingsDangerRoute: typeof AuthenticatedClientsClientIdSettingsDangerRoute
   AuthenticatedClientsClientIdSettingsGeneralRoute: typeof AuthenticatedClientsClientIdSettingsGeneralRoute
@@ -1799,6 +1820,8 @@ const AuthenticatedClientsClientIdSettingsRouteChildren: AuthenticatedClientsCli
   {
     AuthenticatedClientsClientIdSettingsCardsRoute:
       AuthenticatedClientsClientIdSettingsCardsRoute,
+    AuthenticatedClientsClientIdSettingsCostClassificationRoute:
+      AuthenticatedClientsClientIdSettingsCostClassificationRoute,
     AuthenticatedClientsClientIdSettingsCostsRoute:
       AuthenticatedClientsClientIdSettingsCostsRoute,
     AuthenticatedClientsClientIdSettingsDangerRoute:
