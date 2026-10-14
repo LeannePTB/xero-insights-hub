@@ -22,6 +22,7 @@ create schema if not exists app_private;
 create table auth.users(
   id uuid primary key,
   email text,
+  email_confirmed_at timestamptz,
   raw_user_meta_data jsonb default '{}'::jsonb,
   created_at timestamptz default now(),
   deleted_at timestamptz
@@ -3580,16 +3581,7 @@ CREATE OR REPLACE FUNCTION public.upgrade_enquiry_context(_firm_id uuid)
  LANGUAGE plpgsql
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
-AS $function$
-DECLARE _org text; _email text; _clients jsonb; BEGIN
- PERFORM app_private.assert_aal2();
- IF NOT public.me_can_manage_cards(_firm_id) THEN RETURN NULL; END IF;
- SELECT name INTO _org FROM public.firms WHERE id=_firm_id;
- IF _org IS NULL THEN RETURN NULL; END IF;
- SELECT email INTO _email FROM auth.users WHERE id=auth.uid();
- SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name) ORDER BY name),'[]'::jsonb) INTO _clients FROM public.clients WHERE firm_id=_firm_id AND app_private.user_can_read_client(auth.uid(),id);
- RETURN jsonb_build_object('firmId',_firm_id,'organisation',_org,'email',_email,'clients',_clients,'advisory',coalesce((SELECT advisory_enabled OR (trial_advisory_enabled AND trial_ends_at>now()) FROM public.org_subscription_options WHERE firm_id=_firm_id),false));
-END; $function$
+AS $function$ DECLARE _org text; _email text; _clients jsonb; BEGIN PERFORM app_private.assert_aal2(); IF NOT public.me_can_manage_cards(_firm_id) THEN RETURN NULL; END IF; SELECT name INTO _org FROM public.firms WHERE id=_firm_id; IF _org IS NULL THEN RETURN NULL; END IF; SELECT email INTO _email FROM auth.users WHERE id=auth.uid() AND email_confirmed_at IS NOT NULL; IF _email IS NULL THEN RETURN NULL; END IF; SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name) ORDER BY name),'[]'::jsonb) INTO _clients FROM public.clients WHERE firm_id=_firm_id AND app_private.user_can_read_client(auth.uid(),id); RETURN jsonb_build_object('firmId',_firm_id,'organisation',_org,'email',_email,'clients',_clients,'advisory',coalesce((SELECT advisory_enabled OR (trial_advisory_enabled AND trial_ends_at>now()) FROM public.org_subscription_options WHERE firm_id=_firm_id),false)); END; $function$
 ;
 CREATE OR REPLACE FUNCTION public.submit_upgrade_enquiry(_firm_id uuid, _name text, _module_keys text[], _client_ids uuid[], _message text, _submission_key uuid)
  RETURNS uuid
@@ -5064,4 +5056,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: 21c04634314d65ba164a5e1c811df6394126252d75f518bdb50c11255ed0bc97
+-- catalogue-fingerprint: e2aaeb343b9dd07566d432f5bfa3625713470281ce0486bd47957b3e8d8f6ebd
