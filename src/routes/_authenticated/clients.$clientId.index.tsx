@@ -48,12 +48,12 @@ import { RefreshSnapshotsButton } from "@/components/dashboard/RefreshSnapshotsB
 import { OrganisationLapsedNotice } from "@/components/dashboard/OrganisationLapsedNotice";
 import { ClientTrialNotice } from "@/components/dashboard/ClientTrialNotice";
 import { PageContainer } from "@/components/PageContainer";
-import { NotesCard } from "@/components/dashboard/NotesCard";
 import { EMPTY_CATALOGUE } from "@/lib/cards/catalogue";
 import { RentReportWidget } from "@/components/dashboard/RentReportWidget";
 import { standardFallbackCards } from "@/components/dashboard/dashboard-card-layout";
 import { dashboardCardMeta, dashboardPackageSummary } from "@/components/dashboard/dashboard-card-layout";
 import { LockedModuleTiles } from '@/components/billing/LockedModuleTiles';
+import { ComingSoonRow } from '@/components/billing/ComingSoonRow';
 // import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
@@ -341,7 +341,6 @@ function ClientDashboard() {
       });
     }
 
-    if (widgets.includes("notes")) standard.push({ id: "notes", fullWidth: true, node: <NotesCard clientId={clientId} canEdit={isAdvisor} /> });
 
     // DETERMINISTIC DEFAULT ORDER. Cards are pushed above in whatever order the
     // code happens to read best; the order a person actually sees comes from
@@ -465,6 +464,7 @@ function ClientDashboard() {
           {catalogueQ.isLoading || widgetsQ.isLoading ? <p className="text-sm text-muted-foreground">Loading cards…</p> : catalogueQ.error ? <><p className="text-xs text-muted-foreground" role="status">Showing Standard cards only — the package list could not be loaded. Refresh to try again.</p><SortableCardGrid cards={standardFallbackCards(groupedCards).map(c => ({ ...c, group: 'standard', groupLabel: 'Standard' }))} savedOrder={savedOrder} onOrderChange={handleOrderChange}/></> : <SortableCardGrid cards={groupedCards} savedOrder={savedOrder} onOrderChange={handleOrderChange}/>}
 
           {!previewing && <LockedModuleTiles clientId={clientId}/>}
+          {!previewing && <ComingSoonRow clientId={clientId}/>}
 
           {orgs.length === 0 && <EmptyOrgs isAdvisor={isAdvisor} clientId={clientId} />}
         </div>

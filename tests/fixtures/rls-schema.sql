@@ -87,6 +87,7 @@ create table public.client_subscriptions (id uuid, client_id uuid, stripe_custom
 create table public.client_true_breakeven_inputs (id uuid, client_id uuid, tenant_id text, loan_principal numeric, credit_card_interest numeric, owner_drawings numeric, tax_payments numeric, ato_payment_plan numeric, equipment_finance numeric, other numeric, notes text, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_xero_orgs (id uuid, client_id uuid, xero_connection_id uuid, created_at timestamp with time zone);
 create table public.clients (id uuid, name text, owner_user_id uuid, created_at timestamp with time zone, updated_at timestamp with time zone, notes text, report_basis report_basis, firm_id uuid, cost_classification_enabled boolean, basis_overrides jsonb, max_xero_orgs integer, dashboard_widgets text[], consolidation_mode text, consolidation_org_ids uuid[], logo_path text, gst_cycle gst_cycle, payg_withholding_cycle payg_withholding_cycle, setup_ack jsonb, overview_hidden boolean);
+create table public.coming_soon_entries (entry_key text, name text, description text, timing text, sort_order integer, is_shown boolean, show_on_website boolean, module_key text, card_key text, updated_by uuid, updated_at timestamp with time zone);
 create table public.consolidation_group_members (id uuid, group_id uuid, client_id uuid, created_at timestamp with time zone);
 create table public.consolidation_groups (id uuid, firm_id uuid, name text, created_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.dashboard_card_order (user_id uuid, client_id uuid, "order" text[], updated_at timestamp with time zone);
@@ -137,7 +138,7 @@ create table public.trixie_threads (id uuid, user_id uuid, firm_id uuid, client_
 create table public.trixie_usage (id uuid, user_id uuid, firm_id uuid, client_id uuid, requested_at timestamp with time zone, completed_at timestamp with time zone, model text, gateway_run_id text, status text, input_tokens integer, output_tokens integer, reasoning_tokens integer, estimated_cost_usd numeric(12,6), error_code text);
 create table public.unreconciled_lines (id uuid, upload_id uuid, client_id uuid, account_name text, account_number text, row_index integer, txn_date date, payee text, reference text, spent numeric(14,2), received numeric(14,2), tax text, source_comment text, client_comment text, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.unreconciled_uploads (id uuid, client_id uuid, uploaded_by uuid, filename text, line_count integer, created_at timestamp with time zone);
-create table public.upgrade_enquiries (id uuid, submitter_id uuid, firm_id uuid, name text, email text, organisation_name text, module_keys text[], client_ids uuid[], message text, status text, submission_key uuid, created_at timestamp with time zone, updated_at timestamp with time zone, alert_message_id text, alert_error text);
+create table public.upgrade_enquiries (id uuid, submitter_id uuid, firm_id uuid, name text, email text, organisation_name text, module_keys text[], client_ids uuid[], message text, status text, submission_key uuid, created_at timestamp with time zone, updated_at timestamp with time zone, alert_message_id text, alert_error text, kind text, entry_key text);
 create table public.user_presence (user_id uuid, last_seen_at timestamp with time zone);
 create table public.user_roles (id uuid, user_id uuid, role app_role, created_at timestamp with time zone);
 create table public.xero_api_errors (id uuid, firm_id uuid, xero_connection_id uuid, tenant_id text, tenant_name text, path text, http_status integer, last_message text, occurrences integer, first_seen timestamp with time zone, last_seen timestamp with time zone, day date);
@@ -3642,7 +3643,7 @@ CREATE OR REPLACE FUNCTION app_private.card_group_cards(_group text, _include_wi
 AS $function$
   select coalesce(array(
     select c.card_key from public.card_catalogue c
-     where c.package = _group and (_include_wip or c.status = 'available')
+     where c.package = _group and (c.status = 'available' or (_include_wip and c.status = 'wip'))
      order by c.sort_order, c.card_key
   ), '{}'::text[])
 $function$
@@ -3768,6 +3769,170 @@ begin
           'card', _card_key, jsonb_build_object('ends_at', case when coalesce(_enabled,false) then _ends_at end));
 end;
 $function$
+;
+CREATE OR REPLACE FUNCTION app_private.coming_soon_still_coming(_module text, _card text)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select case
+    when _card is not null then not exists (select 1 from public.card_catalogue where card_key = _card and status = 'available')
+    when _module is not null then not exists (select 1 from public.card_catalogue where module_key = _module and status = 'available')
+    else true end
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.me_is_practice_for_firm(_firm_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select auth.uid() is not null and _firm_id is not null and (
+    app_private.me_is_super_admin()
+    or exists (select 1 from public.firm_members m where m.firm_id = _firm_id and m.user_id = auth.uid() and m.status = 'active'))
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.coming_soon_rows(_firm_id uuid)
+ RETURNS TABLE(entry_key text, name text, description text, timing text, early_access boolean)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select e.entry_key, e.name, e.description, e.timing,
+         exists (select 1 from unnest(app_private.firm_early_access_cards(_firm_id)) k
+                  join public.card_catalogue c on c.card_key = k
+                 where k = e.card_key or (e.module_key is not null and c.module_key = e.module_key))
+    from public.coming_soon_entries e
+   where e.is_shown and app_private.coming_soon_still_coming(e.module_key, e.card_key)
+   order by e.sort_order, e.name
+$function$
+;
+CREATE OR REPLACE FUNCTION public.coming_soon_for_client(_client_id uuid)
+ RETURNS TABLE(entry_key text, name text, description text, timing text, early_access boolean)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _firm uuid;
+begin
+  perform app_private.assert_aal2();
+  select c.firm_id into _firm from public.clients c where c.id = _client_id;
+  if _firm is null or not app_private.user_can_read_client(auth.uid(), _client_id)
+     or not app_private.me_is_practice_for_firm(_firm) then return; end if;
+  return query select * from app_private.coming_soon_rows(_firm);
+end; $function$
+;
+CREATE OR REPLACE FUNCTION public.coming_soon_for_firm(_firm_id uuid)
+ RETURNS TABLE(entry_key text, name text, description text, timing text, early_access boolean)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  if not app_private.me_is_practice_for_firm(_firm_id) then return; end if;
+  return query select * from app_private.coming_soon_rows(_firm_id);
+end; $function$
+;
+CREATE OR REPLACE FUNCTION public.public_coming_soon()
+ RETURNS TABLE(name text, description text, timing text)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select e.name, e.description, e.timing from public.coming_soon_entries e
+   where e.show_on_website and app_private.coming_soon_still_coming(e.module_key, e.card_key)
+   order by e.sort_order, e.name limit 20
+$function$
+;
+CREATE OR REPLACE FUNCTION public.admin_coming_soon_list()
+ RETURNS TABLE(entry_key text, name text, description text, timing text, sort_order integer, is_shown boolean, show_on_website boolean, module_key text, card_key text, now_available boolean, updated_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  perform public.assert_super_admin();
+  return query select e.entry_key, e.name, e.description, e.timing, e.sort_order, e.is_shown, e.show_on_website,
+    e.module_key, e.card_key, (e.module_key is not null or e.card_key is not null) and not app_private.coming_soon_still_coming(e.module_key, e.card_key), e.updated_at
+    from public.coming_soon_entries e order by e.sort_order, e.name;
+end; $function$
+;
+CREATE OR REPLACE FUNCTION public.admin_save_coming_soon(_entry_key text, _name text, _description text, _timing text, _sort_order integer, _is_shown boolean, _show_on_website boolean, _module_key text, _card_key text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  perform public.assert_super_admin();
+  insert into public.coming_soon_entries (entry_key, name, description, timing, sort_order, is_shown, show_on_website, module_key, card_key, updated_by, updated_at)
+  values (_entry_key, trim(_name), coalesce(trim(_description), ''), nullif(trim(coalesce(_timing, '')), ''), coalesce(_sort_order, 100),
+          coalesce(_is_shown, true), coalesce(_show_on_website, false), nullif(_module_key, ''), nullif(_card_key, ''), auth.uid(), now())
+  on conflict (entry_key) do update set name = excluded.name, description = excluded.description, timing = excluded.timing,
+    sort_order = excluded.sort_order, is_shown = excluded.is_shown, show_on_website = excluded.show_on_website,
+    module_key = excluded.module_key, card_key = excluded.card_key, updated_by = auth.uid(), updated_at = now();
+  insert into public.audit_log (actor_user_id, action, target_type, target_id, meta)
+  values (auth.uid(), 'coming_soon_saved', 'coming_soon', _entry_key,
+          jsonb_build_object('shown', coalesce(_is_shown, true), 'website', coalesce(_show_on_website, false), 'module', _module_key, 'card', _card_key));
+end; $function$
+;
+CREATE OR REPLACE FUNCTION public.admin_delete_coming_soon(_entry_key text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  perform public.assert_super_admin();
+  delete from public.coming_soon_entries where entry_key = _entry_key;
+  insert into public.audit_log (actor_user_id, action, target_type, target_id, meta)
+  values (auth.uid(), 'coming_soon_deleted', 'coming_soon', _entry_key, '{}');
+end; $function$
+;
+CREATE OR REPLACE FUNCTION public.register_coming_soon_interest(_client_id uuid, _entry_key text, _submission_key uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _firm uuid; _org text; _client text; _email text; _who text; _entry record; _id uuid; _created timestamptz;
+begin
+  perform app_private.assert_aal2();
+  select c.firm_id, c.name into _firm, _client from public.clients c where c.id = _client_id;
+  if _firm is null or not app_private.user_can_read_client(auth.uid(), _client_id)
+     or not app_private.me_is_practice_for_firm(_firm) then
+    raise exception 'NO_ACCESS' using errcode = '42501';
+  end if;
+  select * into _entry from public.coming_soon_entries e
+   where e.entry_key = _entry_key and e.is_shown and app_private.coming_soon_still_coming(e.module_key, e.card_key);
+  if not found or _submission_key is null then raise exception 'INVALID_INPUT'; end if;
+  select email into _email from auth.users where id = auth.uid() and email_confirmed_at is not null;
+  if _email is null then raise exception 'NO_ACCESS' using errcode = '42501'; end if;
+  select coalesce(nullif(trim(p.display_name), ''), _email) into _who from public.profiles p where p.id = auth.uid();
+  _who := left(coalesce(_who, _email), 100);
+  select name into _org from public.firms where id = _firm;
+  perform pg_advisory_xact_lock(hashtextextended('upgrade_enquiry:'||auth.uid()::text, 0));
+  select id, created_at into _id, _created from public.upgrade_enquiries where submitter_id = auth.uid() and submission_key = _submission_key;
+  if _id is null then
+    if (select count(*) from public.upgrade_enquiries where submitter_id = auth.uid() and created_at > now() - interval '1 hour') >= 3 then
+      raise exception 'ENQUIRY_LIMIT';
+    end if;
+    insert into public.upgrade_enquiries (submitter_id, firm_id, name, email, organisation_name, module_keys, client_ids, message, submission_key, kind, entry_key)
+    values (auth.uid(), _firm, _who, _email, _org,
+            case when _entry.module_key is not null then array[_entry.module_key] else '{}'::text[] end,
+            array[_client_id], 'Interested in: ' || _entry.name, _submission_key, 'interest', _entry_key)
+    returning id, created_at into _id, _created;
+    insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+    values (auth.uid(), _firm, 'coming_soon_interest', 'upgrade_enquiry', _id, jsonb_build_object('entry', _entry_key));
+  end if;
+  return jsonb_build_object('id', _id, 'name', _who, 'email', _email, 'organisation', _org, 'client', _client,
+                            'entry', _entry.name, 'createdAt', _created);
+end; $function$
 ;
 CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
  RETURNS trigger
@@ -3905,6 +4070,7 @@ alter table public.client_subscriptions enable row level security;
 alter table public.client_true_breakeven_inputs enable row level security;
 alter table public.client_xero_orgs enable row level security;
 alter table public.clients enable row level security;
+alter table public.coming_soon_entries enable row level security;
 alter table public.consolidation_group_members enable row level security;
 alter table public.consolidation_groups enable row level security;
 alter table public.dashboard_card_order enable row level security;
@@ -4175,6 +4341,13 @@ grant SELECT on table public.clients to service_role;
 grant TRIGGER on table public.clients to service_role;
 grant TRUNCATE on table public.clients to service_role;
 grant UPDATE on table public.clients to service_role;
+grant DELETE on table public.coming_soon_entries to service_role;
+grant INSERT on table public.coming_soon_entries to service_role;
+grant REFERENCES on table public.coming_soon_entries to service_role;
+grant SELECT on table public.coming_soon_entries to service_role;
+grant TRIGGER on table public.coming_soon_entries to service_role;
+grant TRUNCATE on table public.coming_soon_entries to service_role;
+grant UPDATE on table public.coming_soon_entries to service_role;
 grant DELETE on table public.consolidation_group_members to authenticated;
 grant INSERT on table public.consolidation_group_members to authenticated;
 grant SELECT on table public.consolidation_group_members to authenticated;
@@ -4825,7 +4998,6 @@ create policy "Support reads income tax instalments" on public.client_income_tax
 create policy mfa_aal2_required on public.client_income_tax_instalments as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "entitled users read client key figures" on public.client_key_figures as permissive for select to authenticated using ((user_can_access_client(auth.uid(), client_id) AND app_private.user_can_access_tenant(auth.uid(), tenant_id)));
 create policy mfa_aal2_required on public.client_key_figures as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "Client viewers read notes" on public.client_notes as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
 create policy "manage client notes by firm (delete)" on public.client_notes as permissive for delete to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
   WHERE ((c.id = client_notes.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
@@ -4907,6 +5079,7 @@ create policy "firm owners manage firm clients (update)" on public.clients as pe
 create policy mfa_aal2_required on public.clients as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "support grant reads firm clients" on public.clients as permissive for select to authenticated using (((firm_id IS NOT NULL) AND app_private.platform_staff_can_access_firm(auth.uid(), firm_id)));
 create policy "viewers read assigned clients" on public.clients as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), id));
+create policy mfa_aal2_required on public.coming_soon_entries as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "Firm people can manage consolidation group members (delete)" on public.consolidation_group_members as permissive for delete to authenticated using ((EXISTS ( SELECT 1
    FROM consolidation_groups g
   WHERE ((g.id = consolidation_group_members.group_id) AND app_private.has_firm_access(auth.uid(), g.firm_id)))));
@@ -5210,4 +5383,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: ae035210e86cec6dfdd345968d016962db3b78e7804c507e746c151a01de29ff
+-- catalogue-fingerprint: 651e9e43b48785438543195357cf86c35e493ebad7c8e6fa6c65363db8068d03

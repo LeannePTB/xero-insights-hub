@@ -1033,6 +1033,56 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       return "deny";
     }
   }
+  if (r.startsWith("cs:")) {
+    // Coming soon: display-only teasers for practice users; never a card grant.
+    await seedThenActAs(row.role, `
+      create or replace function app_private.setting_bool(_key text) returns boolean
+        language sql stable as $f$ select _key = 'card_model_v2' $f$;
+      create unique index if not exists org_subscription_options_firm_key on public.org_subscription_options (firm_id);
+      create unique index if not exists coming_soon_entries_key on public.coming_soon_entries (entry_key);
+      create unique index if not exists upgrade_enquiries_sub_key on public.upgrade_enquiries (submitter_id, submission_key);
+      delete from public.org_subscription_options where firm_id = '${ORG_A}'::uuid;
+      insert into public.org_subscription_options (firm_id, client_limit, advisory_enabled, consolidation_enabled, billing_mode)
+      values ('${ORG_A}'::uuid, 10, true, false, 'bookkeeping');
+      update public.card_catalogue set status = case when card_key = 'cashflow' then 'wip' else 'available' end;
+      delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
+      insert into public.client_cards (client_id, cards) select '${CLIENT_A}'::uuid, array_agg(card_key) from public.card_catalogue;
+      delete from public.coming_soon_entries;
+      insert into public.coming_soon_entries (entry_key, name, description, sort_order, is_shown, show_on_website, card_key)
+      values ('cash_teaser', 'Cash teaser', 'x', 1, true, false, 'cashflow');
+      delete from public.upgrade_enquiries;
+    `);
+    const interest = () => db.query(`select public.register_coming_soon_interest('${CLIENT_A}'::uuid, 'cash_teaser', gen_random_uuid())`);
+    try {
+      if (r.includes("admin_save_coming_soon")) {
+        const p = await probe(`select public.admin_save_coming_soon('cash_teaser', 'Cash', 'y', null, 1, true, false, null, 'cashflow')`);
+        return p.ok ? "allow" : "deny";
+      }
+      if (r.includes("fourth interest")) {
+        for (let i = 0; i < 3; i++) await interest();
+        const p = await probe(`select public.register_coming_soon_interest('${CLIENT_A}'::uuid, 'cash_teaser', gen_random_uuid())`);
+        return p.ok ? "allow" : "deny";
+      }
+      if (r.includes("register_coming_soon_interest")) {
+        await interest();
+        return "allow";
+      }
+      if (r.includes("leaves the WIP card refused")) {
+        const v = await db.query<{ c: string[] }>(`select public.client_visible_cards('${CLIENT_A}'::uuid) as c`);
+        const p = await probe(`select public.assert_widget_access('${TENANT_A}', 'cashflow')`);
+        return p.ok || (v.rows[0]?.c ?? []).includes("cashflow") ? "allow" : "deny";
+      }
+      const res = await db.query<{ k: string }>(`select entry_key as k from public.coming_soon_for_client('${CLIENT_A}'::uuid)`);
+      return res.rows.some((x) => x.k === "cash_teaser") ? "allow" : "deny";
+    } catch (e) {
+      if (process.env.MATRIX_DEBUG) console.log("CS", row.role, r, (e as Error).message);
+      return "deny";
+    } finally {
+      await db.query(`reset role`).catch(() => {});
+      await db.query(`delete from public.coming_soon_entries; delete from public.upgrade_enquiries`).catch(() => {});
+      await db.query(`update public.card_catalogue set status = 'available'`).catch(() => {});
+    }
+  }
   if (r.startsWith("ea:")) {
     // Early access (org_early_access): a Work-in-progress card behaves as Available
     // for practice members of the granted organisation only, through client_cards_v2.

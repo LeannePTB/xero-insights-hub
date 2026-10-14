@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **2553**. Known failures: **0**.
+Rows: **2580**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -197,6 +197,11 @@ None.
 | wip: assert_widget_access(Work-in-progress card) | execute | DENY | pglite | card_catalogue.status = 'wip' removes the card from app_private.client_available_cards, so client_cards_v2 (and every reader through assert_widget_access) refuses it; a System Administrator without access to the client still gets nothing |  |
 | wip: report sections include a Work-in-progress card | execute | DENY | pglite | client_report_sections ignores Work-in-progress cards for everyone, so no report draft freezes them |  |
 | wip: ticks survive Work in progress → Available | execute | ALLOW | pglite | Ticks in client_cards are never rewritten when a card goes Work in progress; switching back to Available restores the card with no re-ticking |  |
+| cs: coming_soon_for_client lists the shown entry | execute | ALLOW | pglite | Practice users (active members of the client's organisation) see Coming soon and may register interest |  |
+| cs: register_coming_soon_interest | execute | ALLOW | pglite | Practice users (active members of the client's organisation) see Coming soon and may register interest |  |
+| cs: shown Coming soon entry leaves the WIP card refused | execute | DENY | pglite | Coming soon never grants the card (client_cards_v2 unchanged); interest shares the 3/hour enquiry limit |  |
+| cs: fourth interest within an hour | execute | DENY | pglite | Coming soon never grants the card (client_cards_v2 unchanged); interest shares the 3/hour enquiry limit |  |
+| cs: admin_save_coming_soon | execute | DENY | pglite | Nobody else edits Coming soon entries |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — assert_widget_access(WIP card) | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — catalogue row | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -457,6 +462,7 @@ None.
 | loans: me_can_open_client_loans(grouped client, Consolidation ticked) | execute | DENY | pglite | Staff, Viewers, Business Owners, support passes, another organisation, a System Administrator with no membership, aal1 and signed-out callers are refused Loans and Consolidations at the server (PK 3, PK 5) |  |
 | wip: client_visible_cards shows a ticked Work-in-progress card | execute | DENY | pglite | card_catalogue.status = 'wip' removes the card from app_private.client_available_cards, so client_cards_v2 (and every reader through assert_widget_access) refuses it; a System Administrator without access to the client still gets nothing |  |
 | wip: assert_widget_access(Work-in-progress card) | execute | DENY | pglite | card_catalogue.status = 'wip' removes the card from app_private.client_available_cards, so client_cards_v2 (and every reader through assert_widget_access) refuses it; a System Administrator without access to the client still gets nothing |  |
+| cs: admin_save_coming_soon | execute | ALLOW | pglite | Only a System Administrator (aal2, audited) edits Coming soon entries |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — assert_widget_access(WIP card) | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — catalogue row | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -1126,6 +1132,8 @@ None.
 | loans: me_can_open_consolidations(organisation with Consolidation) | execute | DENY | pglite | Staff, Viewers, Business Owners, support passes, another organisation, a System Administrator with no membership, aal1 and signed-out callers are refused Loans and Consolidations at the server (PK 3, PK 5) |  |
 | loans: me_can_open_client_loans(grouped client, Consolidation ticked) | execute | DENY | pglite | Staff, Viewers, Business Owners, support passes, another organisation, a System Administrator with no membership, aal1 and signed-out callers are refused Loans and Consolidations at the server (PK 3, PK 5) |  |
 | client_report_sections(all Standard cards ticked) | execute | DENY | pglite | Caller-scoped through client_visible_cards: another organisation, aal1 and signed-out callers get nothing |  |
+| cs: coming_soon_for_client lists the shown entry | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| cs: register_coming_soon_interest | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ea: granted — client_visible_cards shows the WIP card | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
 | ea: granted — assert_widget_access(WIP card) | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
 | ea: granted — catalogue row | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
@@ -1312,6 +1320,8 @@ None.
 | loans: me_can_open_consolidations(organisation with Consolidation) | execute | DENY | pglite | Staff, Viewers, Business Owners, support passes, another organisation, a System Administrator with no membership, aal1 and signed-out callers are refused Loans and Consolidations at the server (PK 3, PK 5) |  |
 | loans: me_can_open_client_loans(grouped client, Consolidation ticked) | execute | DENY | pglite | Staff, Viewers, Business Owners, support passes, another organisation, a System Administrator with no membership, aal1 and signed-out callers are refused Loans and Consolidations at the server (PK 3, PK 5) |  |
 | client_report_sections(all Standard cards ticked) | execute | DENY | pglite | Caller-scoped through client_visible_cards: another organisation, aal1 and signed-out callers get nothing |  |
+| cs: coming_soon_for_client lists the shown entry | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| cs: register_coming_soon_interest | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ea: granted — client_visible_cards shows the WIP card | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
 | ea: granted — assert_widget_access(WIP card) | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
 | ea: granted — catalogue row | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
@@ -1537,6 +1547,11 @@ None.
 | loans: me_can_open_client_loans(grouped client, Consolidation ticked) | execute | DENY | pglite | Staff, Viewers, Business Owners, support passes, another organisation, a System Administrator with no membership, aal1 and signed-out callers are refused Loans and Consolidations at the server (PK 3, PK 5) |  |
 | wip: client_visible_cards shows a ticked Work-in-progress card | execute | DENY | pglite | card_catalogue.status = 'wip' removes the card from app_private.client_available_cards, so client_cards_v2 (and every reader through assert_widget_access) refuses it; a System Administrator without access to the client still gets nothing |  |
 | wip: assert_widget_access(Work-in-progress card) | execute | DENY | pglite | card_catalogue.status = 'wip' removes the card from app_private.client_available_cards, so client_cards_v2 (and every reader through assert_widget_access) refuses it; a System Administrator without access to the client still gets nothing |  |
+| cs: coming_soon_for_client lists the shown entry | execute | ALLOW | pglite | Practice users (active members of the client's organisation) see Coming soon and may register interest |  |
+| cs: register_coming_soon_interest | execute | ALLOW | pglite | Practice users (active members of the client's organisation) see Coming soon and may register interest |  |
+| cs: shown Coming soon entry leaves the WIP card refused | execute | DENY | pglite | Coming soon never grants the card (client_cards_v2 unchanged); interest shares the 3/hour enquiry limit |  |
+| cs: fourth interest within an hour | execute | DENY | pglite | Coming soon never grants the card (client_cards_v2 unchanged); interest shares the 3/hour enquiry limit |  |
+| cs: admin_save_coming_soon | execute | DENY | pglite | Nobody else edits Coming soon entries |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — assert_widget_access(WIP card) | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — catalogue row | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -1748,6 +1763,9 @@ None.
 | loans: me_can_open_consolidations(organisation with Consolidation) | execute | DENY | pglite | Staff, Viewers, Business Owners, support passes, another organisation, a System Administrator with no membership, aal1 and signed-out callers are refused Loans and Consolidations at the server (PK 3, PK 5) |  |
 | loans: me_can_open_client_loans(grouped client, Consolidation ticked) | execute | DENY | pglite | Staff, Viewers, Business Owners, support passes, another organisation, a System Administrator with no membership, aal1 and signed-out callers are refused Loans and Consolidations at the server (PK 3, PK 5) |  |
 | client_report_sections(all Standard cards ticked) | execute | DENY | pglite | Caller-scoped through client_visible_cards: another organisation, aal1 and signed-out callers get nothing |  |
+| cs: coming_soon_for_client lists the shown entry | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| cs: register_coming_soon_interest | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| cs: admin_save_coming_soon | execute | DENY | pglite | Nobody else edits Coming soon entries |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — assert_widget_access(WIP card) | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — catalogue row | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -1952,7 +1970,7 @@ None.
 | client_bank_account_classifications | read | ALLOW | pglite | Existing exact-client read predicate only; relationship and standing access remain read-only. |  |
 | firms | update | DENY | pglite, live | Spec §4; no UPDATE grant for authenticated — organisation name, logo and default cards are changed by server code, never by a direct REST write |  |
 | clients | read | ALLOW | pglite, live | Spec §3 client viewer |  |
-| client_notes | read | ALLOW | pglite, live | Spec §3 client viewer |  |
+| client_notes | read | DENY | pglite | Owner 14 Oct: notes are practice-only; Viewers and Business Owners see a note only inside a stored final/sent report payload |  |
 | firms | read | DENY | pglite, live | Spec §3 client viewer sees only that client |  |
 | firm_members | read | DENY | pglite, live | Spec §3 client viewer sees only that client |  |
 | audit_log | read | DENY | pglite, live | Spec §3 client viewer sees only that client |  |
@@ -2005,6 +2023,9 @@ None.
 | loans: me_can_open_client_loans(grouped client, Consolidation ticked) | execute | DENY | pglite | Staff, Viewers, Business Owners, support passes, another organisation, a System Administrator with no membership, aal1 and signed-out callers are refused Loans and Consolidations at the server (PK 3, PK 5) |  |
 | wip: client_visible_cards shows a ticked Work-in-progress card | execute | DENY | pglite | card_catalogue.status = 'wip' removes the card from app_private.client_available_cards, so client_cards_v2 (and every reader through assert_widget_access) refuses it; a System Administrator without access to the client still gets nothing |  |
 | wip: assert_widget_access(Work-in-progress card) | execute | DENY | pglite | card_catalogue.status = 'wip' removes the card from app_private.client_available_cards, so client_cards_v2 (and every reader through assert_widget_access) refuses it; a System Administrator without access to the client still gets nothing |  |
+| cs: coming_soon_for_client lists the shown entry | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| cs: register_coming_soon_interest | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| cs: admin_save_coming_soon | execute | DENY | pglite | Nobody else edits Coming soon entries |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — assert_widget_access(WIP card) | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — catalogue row | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -2091,10 +2112,13 @@ None.
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
 | client_bank_account_classifications | read | ALLOW | pglite | Existing exact-client read predicate only; relationship and standing access remain read-only. |  |
+| client_notes | read | DENY | pglite | Owner 14 Oct: notes are practice-only; Viewers and Business Owners see a note only inside a stored final/sent report payload |  |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
 | set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | loans: me_can_open_consolidations(organisation with Consolidation) | execute | DENY | pglite | Staff, Viewers, Business Owners, support passes, another organisation, a System Administrator with no membership, aal1 and signed-out callers are refused Loans and Consolidations at the server (PK 3, PK 5) |  |
 | loans: me_can_open_client_loans(grouped client, Consolidation ticked) | execute | DENY | pglite | Staff, Viewers, Business Owners, support passes, another organisation, a System Administrator with no membership, aal1 and signed-out callers are refused Loans and Consolidations at the server (PK 3, PK 5) |  |
+| cs: coming_soon_for_client lists the shown entry | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| cs: register_coming_soon_interest | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | set_client_module(a client) | execute | DENY | pglite | app_private.assert_card_manager: Staff, Viewers, Business Owners, support grants, other organisations and aal1 sessions cannot change a client's modules or cards |  |
 | set_client_card_enabled(a client) | execute | DENY | pglite | app_private.assert_card_manager: Staff, Viewers, Business Owners, support grants, other organisations and aal1 sessions cannot change a client's modules or cards |  |
 | start_figure_backfill(the history fill) | execute | DENY | pglite | History fill: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
@@ -2103,7 +2127,6 @@ None.
 | overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
 | me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
 | clients | read | ALLOW | pglite, live | PK section 2 path D — read every client in the organisation |  |
-| client_notes | read | ALLOW | pglite, live | PK section 2 path D — read every client in the organisation |  |
 | client_cost_classifications | read | ALLOW | pglite, live | PK section 2 path D — read every client in the organisation |  |
 | client_statutory_accounts | read | ALLOW | pglite, live | PK section 2 path D — read every client in the organisation |  |
 | client_true_breakeven_inputs | read | ALLOW | pglite, live | PK section 2 path D — read every client in the organisation |  |
@@ -2234,6 +2257,7 @@ None.
 | save_client_bank_account_classification() with unknown account | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
 | save_client_bank_account_classification() with invalid classification | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
 | client_bank_account_classifications | read | ALLOW | pglite | Existing exact-client read predicate only; relationship and standing access remain read-only. |  |
+| client_notes | read | DENY | pglite | Owner 14 Oct: notes are practice-only; Viewers and Business Owners see a note only inside a stored final/sent report payload |  |
 | client_income_tax_instalments | read | ALLOW | pglite, live | Path A / Path E — authorised readers can see exact-client tax instalments; aal2 required |  |
 | client_income_tax_instalments | insert | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
 | client_income_tax_instalments | update | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
@@ -2248,6 +2272,9 @@ None.
 | loans: me_can_open_client_loans(grouped client, Consolidation ticked) | execute | DENY | pglite | Staff, Viewers, Business Owners, support passes, another organisation, a System Administrator with no membership, aal1 and signed-out callers are refused Loans and Consolidations at the server (PK 3, PK 5) |  |
 | wip: client_visible_cards shows a ticked Work-in-progress card | execute | DENY | pglite | card_catalogue.status = 'wip' removes the card from app_private.client_available_cards, so client_cards_v2 (and every reader through assert_widget_access) refuses it; a System Administrator without access to the client still gets nothing |  |
 | wip: assert_widget_access(Work-in-progress card) | execute | DENY | pglite | card_catalogue.status = 'wip' removes the card from app_private.client_available_cards, so client_cards_v2 (and every reader through assert_widget_access) refuses it; a System Administrator without access to the client still gets nothing |  |
+| cs: coming_soon_for_client lists the shown entry | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| cs: register_coming_soon_interest | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| cs: admin_save_coming_soon | execute | DENY | pglite | Nobody else edits Coming soon entries |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — assert_widget_access(WIP card) | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — catalogue row | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |

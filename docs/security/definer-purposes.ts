@@ -407,6 +407,26 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "System Administrator only (aal2 + assert_super_admin): lists Work-in-progress cards with one organisation's early-access state. Product configuration only.",
   "public.admin_set_org_early_access":
     "System Administrator only (aal2 + assert_super_admin): grants (optional future end date) or revokes one organisation's early access to a Work-in-progress card, keeping the row for the record, and audits who/when/card/organisation. Grants no client data; visibility still goes through client_cards_v2.",
+  "app_private.coming_soon_still_coming":
+    "Pure product check: true while a Coming soon entry's linked card/module has no Available card. Execute revoked from PUBLIC, anon and authenticated.",
+  "app_private.me_is_practice_for_firm":
+    "Caller-scoped boolean: auth.uid() is an active firm_members row of the organisation or a System Administrator. Used only to gate Coming soon teasers and interest; grants no data. Execute revoked from PUBLIC, anon and authenticated.",
+  "app_private.coming_soon_rows":
+    "Shown, still-coming Coming soon entries with an early-access flag for one organisation. Product copy only. Execute revoked from PUBLIC, anon and authenticated; reached through the two practice-gated readers.",
+  "public.coming_soon_for_client":
+    "aal2; returns nothing unless the caller can read the client and is a practice user of its organisation (never Business Owners or Viewers). Teaser copy only; never touches client_cards_v2.",
+  "public.coming_soon_for_firm":
+    "aal2; practice users of the organisation only. Teaser copy only.",
+  "public.public_coming_soon":
+    "Anon-safe display reader: name, description and timing of entries ticked Show on website. No keys, links, organisation or client data.",
+  "public.admin_coming_soon_list":
+    "System Administrator only (aal2 + assert_super_admin): Coming soon entries with a now-available flag. Product configuration only.",
+  "public.admin_save_coming_soon":
+    "System Administrator only (aal2 + assert_super_admin): creates or edits a Coming soon entry, audited. Never changes card status, ticks or access.",
+  "public.admin_delete_coming_soon":
+    "System Administrator only (aal2 + assert_super_admin): removes a Coming soon entry, audited.",
+  "public.register_coming_soon_interest":
+    "aal2; practice users of the client's organisation only, verified email from auth.users, shared 3/hour enquiry limit under an advisory lock, idempotent submission key, audited. Inserts one upgrade_enquiries row of kind interest; returns only the alert fields.",
   "public.admin_set_card_status":
     "System Administrator only (aal2 + assert_super_admin): marks a catalogue card Available or Work in progress and audits the change. Changes product configuration only; never touches client ticks or client data.",
   "public.admin_set_card_entry":

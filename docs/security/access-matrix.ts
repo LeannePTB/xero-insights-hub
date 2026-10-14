@@ -470,11 +470,19 @@ export const MATRIX: MatrixRow[] = [
   // --------------------------------------------------------- client viewer
   ...rows(
     ["client_viewer"],
-    ["clients", "client_notes"],
+    ["clients"],
     ["read"],
     "allow",
     "Spec §3 client viewer",
     ["pglite", "live"],
+  ),
+  ...rows(
+    ["client_viewer", "standing_viewer", "business_owner"],
+    ["client_notes"],
+    ["read"],
+    "deny",
+    "Owner 14 Oct: notes are practice-only; Viewers and Business Owners see a note only inside a stored final/sent report payload",
+    ["pglite"],
   ),
   ...rows(
     ["client_viewer"],
@@ -1320,6 +1328,47 @@ export const MATRIX: MatrixRow[] = [
     "Ticks in client_cards are never rewritten when a card goes Work in progress; switching back to Available restores the card with no re-ticking",
     ["pglite"],
   ),
+  // ------------------------- Coming soon teasers (14 Oct 2026)
+  ...rows(
+    ["org_owner", "org_staff"],
+    ["cs: coming_soon_for_client lists the shown entry", "cs: register_coming_soon_interest"],
+    ["execute"],
+    "allow",
+    "Practice users (active members of the client's organisation) see Coming soon and may register interest",
+    ["pglite"],
+  ),
+  ...rows(
+    ["client_viewer", "standing_viewer", "business_owner", "other_org_member", "aal1_member", "anonymous"],
+    ["cs: coming_soon_for_client lists the shown entry", "cs: register_coming_soon_interest"],
+    ["execute"],
+    "deny",
+    "Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers",
+    ["pglite"],
+  ),
+  ...rows(
+    ["org_owner", "org_staff"],
+    ["cs: shown Coming soon entry leaves the WIP card refused", "cs: fourth interest within an hour"],
+    ["execute"],
+    "deny",
+    "Coming soon never grants the card (client_cards_v2 unchanged); interest shares the 3/hour enquiry limit",
+    ["pglite"],
+  ),
+  ...rows(
+    ["super_admin_no_membership"],
+    ["cs: admin_save_coming_soon"],
+    ["execute"],
+    "allow",
+    "Only a System Administrator (aal2, audited) edits Coming soon entries",
+    ["pglite"],
+  ),
+  ...rows(
+    ["org_owner", "org_staff", "client_viewer", "business_owner", "other_org_member"],
+    ["cs: admin_save_coming_soon"],
+    ["execute"],
+    "deny",
+    "Nobody else edits Coming soon entries",
+    ["pglite"],
+  ),
   // ------------------------- Early access to Work-in-progress cards (14 Oct 2026)
   ...rows(
     ["org_owner", "org_staff", "client_viewer", "business_owner", "other_org_member", "super_admin_no_membership"],
@@ -1750,7 +1799,6 @@ export const MATRIX: MatrixRow[] = [
     ["standing_viewer"],
     [
       "clients",
-      "client_notes",
       "client_cost_classifications",
       "client_statutory_accounts",
       "client_true_breakeven_inputs",
