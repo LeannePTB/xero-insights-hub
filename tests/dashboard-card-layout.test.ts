@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dashboardCardMeta, orderedCardIds, smallCardRowSizes } from '../src/components/dashboard/dashboard-card-layout';
+import { standardFallbackCards, dashboardCardMeta, orderedCardIds, smallCardRowSizes } from '../src/components/dashboard/dashboard-card-layout';
 import type { CardCatalogue } from '../src/lib/cards/catalogue';
 
 const catalogue: CardCatalogue = {
@@ -25,5 +25,9 @@ describe('dashboard catalogue ordering', () => {
     expect(smallCardRowSizes(4)).toEqual([2,2]);
     expect(smallCardRowSizes(5)).toEqual([3,2]);
     expect(smallCardRowSizes(7)).toEqual([2,3,2]);
+  });
+  it('falls back to Standard cards in default order when the catalogue is unavailable', () => {
+    const ids = ['t1:xero_audit','notes','t1:pnl','health','t1:cashflow','t1:receivables'].map(id => ({ id }));
+    expect(standardFallbackCards(ids).map(c => c.id)).toEqual(['health','t1:pnl','t1:receivables','notes']);
   });
 });
