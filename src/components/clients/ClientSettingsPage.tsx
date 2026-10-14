@@ -895,6 +895,18 @@ function CostClassificationSection({
     },
   );
 
+  // Deep link from the Setup checklist: scroll to the first untagged account.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash.replace("#", "") !== "cost-classification") return;
+    const t = window.setTimeout(() => {
+      document
+        .querySelector<HTMLElement>("[data-unclassified-account='true']")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, []);
+
   if (useContext(ActiveSettingsSection) !== "cost-classification") return null;
   if (widgetsQ.isLoading) return null;
   if (!usesCostSplit && !usesWages) return null;
