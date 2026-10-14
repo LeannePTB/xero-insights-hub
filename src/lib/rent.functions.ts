@@ -14,6 +14,17 @@ import {
   type RentPosition,
 } from "@/lib/rent";
 
+/**
+ * Work in progress (14 Oct 2026): the rent report is not offered to any
+ * organisation. Every function first requires a System Administrator, then
+ * still applies its normal client checks — System Administrator alone grants
+ * no client data, so this only narrows access.
+ */
+async function assertRentWip(supabase: any) {
+  const { assertSuperAdminDb } = await import("@/lib/auth/super-admin.server");
+  await assertSuperAdminDb(supabase);
+}
+
 const ClientTenant = z.object({
   clientId: z.string().uuid(),
   tenantId: z.string().trim().min(1).max(255),
@@ -115,6 +126,7 @@ export const getRentReport = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: unknown) => ClientTenant.parse(i))
   .handler(async ({ data, context }): Promise<RentReport> => {
+    await assertRentWip(context.supabase);
     const { assertWidgetAccess } = await import("@/lib/xero/access.server");
     await assertWidgetAccess(context.supabase, data.tenantId, "tax_obligations");
     const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
@@ -147,6 +159,7 @@ export const getRentPickers = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: unknown) => ClientTenant.parse(i))
   .handler(async ({ data, context }): Promise<RentPickers> => {
+    await assertRentWip(context.supabase);
     const { data: canEdit } = await context.supabase.rpc("can_manage_client_rental_properties", {
       _client_id: data.clientId,
     });
@@ -191,6 +204,7 @@ export const saveRentalProperty = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: unknown) => SaveInput.parse(i))
   .handler(async ({ data, context }) => {
+    await assertRentWip(context.supabase);
     const { error } = await context.supabase.rpc("save_client_rental_property", {
       _id: data.id as any,
       _client_id: data.clientId,
@@ -210,6 +224,7 @@ export const deleteRentalProperty = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: unknown) => z.object({ id: z.string().uuid() }).strict().parse(i))
   .handler(async ({ data, context }) => {
+    await assertRentWip(context.supabase);
     const { error } = await context.supabase.rpc("delete_client_rental_property", { _id: data.id });
     if (error) throw new Error("The rental property could not be removed.");
     return { ok: true };
@@ -232,6 +247,7 @@ export const getRentConsolidation = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: unknown) => z.object({ groupId: z.string().uuid() }).strict().parse(i))
   .handler(async ({ data, context }): Promise<RentConsolidation> => {
+    await assertRentWip(context.supabase);
     const { data: group, error } = await context.supabase
       .from("consolidation_groups")
       .select("name, consolidation_group_members(client_id)")
