@@ -233,7 +233,7 @@ function PropertyDialog({ open, onOpenChange, clientId, tenantId, initial, onSav
   );
 }
 
-export function RentReportWidget({ clientId, tenantId, tenantName }: { clientId: string; tenantId: string; tenantName: string }) {
+export function RentReportWidget({ clientId, tenantId, tenantName, embedded = false }: { clientId: string; tenantId: string; tenantName: string; embedded?: boolean }) {
   const queryClient = useQueryClient();
   const fetchReport = useServerFn(getRentReport);
   const fetchGroup = useServerFn(getRentConsolidation);
@@ -254,7 +254,7 @@ export function RentReportWidget({ clientId, tenantId, tenantName }: { clientId:
   const groupId = report.data?.groupId ?? null;
   const group = useQuery({
     queryKey: ["rent-consolidation", groupId],
-    queryFn: () => fetchGroup({ data: { groupId: groupId! } }),
+    queryFn: () => fetchGroup({ data: { groupId: groupId ?? "" } }),
     enabled: groupView && !!groupId,
     retry: false,
     staleTime: 30 * 60 * 1000,
@@ -268,7 +268,7 @@ export function RentReportWidget({ clientId, tenantId, tenantName }: { clientId:
 
   const data = report.data;
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+    <div className={embedded ? "min-w-0" : "rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft"}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{groupView ? group.data?.groupName ?? "Group" : tenantName}</p>

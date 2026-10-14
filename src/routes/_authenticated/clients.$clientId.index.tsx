@@ -337,7 +337,7 @@ function ClientDashboard() {
       advanced.push({
         id: "transaction_search",
         fullWidth: true,
-        node: <TransactionSearchWidget clientId={clientId} />,
+        node: <TransactionSearchWidget clientId={clientId} clientName={client.name} />,
       });
     }
 

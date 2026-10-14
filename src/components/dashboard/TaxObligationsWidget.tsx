@@ -1,3 +1,4 @@
+import { RentReportWidget } from "./RentReportWidget";
 import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
 import { paygQueryKey, paygQueryLimits } from "./payg-query";
 import { useMemo, useState } from "react";
@@ -133,6 +134,7 @@ export function TaxObligationsWidget({
           <div className="flex gap-2"><Button type="button" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button><Button type="submit" disabled={saveMutation.isPending}><Save className="mr-2 h-4 w-4" /> Save</Button></div>
         </form>
       )}
+      <details className="mt-4 border-t border-border pt-3 text-xs"><summary className="cursor-pointer font-medium text-link">Rent report</summary><div className="mt-3"><RentReportWidget embedded clientId={clientId} tenantId={tenantId} tenantName={tenantName}/></div></details>
     </div>
   );
 }
