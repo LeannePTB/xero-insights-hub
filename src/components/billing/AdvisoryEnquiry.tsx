@@ -39,6 +39,7 @@ export function AdvisoryEnquiry({firmId,compact=false}:{firmId:string;compact?:b
         <label className="block space-y-1 text-xs">Message<Textarea required maxLength={2000} value={message} onChange={e=>setMessage(e.target.value)}/></label>
         <Button type="submit" disabled={busy||!catalogue.data}><Send className="mr-2 h-3.5 w-3.5"/>{busy?'Saving…':'Send enquiry'}</Button>
       </form>}
+      {website.data?.calendlyUrl && <Button asChild variant="outline"><a href={website.data.calendlyUrl} target="_blank" rel="noopener noreferrer">Book a call<ArrowUpRight className="ml-2 h-3.5 w-3.5"/></a></Button>}
     </DialogContent></Dialog>
   </>;
 }
