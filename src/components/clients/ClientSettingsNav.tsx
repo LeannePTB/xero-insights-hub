@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 const ITEMS = [
   ["general", "General"], ["cards", "Cards & report branding"], ["people", "People"],
   ["xero", "Xero connections"], ["tax-reporting", "Tax & reporting"],
-  ["costs", "Cost & cash commitments"], ["danger", "Danger zone"],
+  ["cost-classification", "Cost classification"], ["costs", "Cost & cash commitments"], ["danger", "Danger zone"],
 ] as const;
 
 export function ClientSettingsNav({ clientId }: { clientId: string }) {
