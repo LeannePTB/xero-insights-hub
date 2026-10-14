@@ -45,7 +45,7 @@ describe("cost classification display", () => {
     });
 
     assert.equal(classificationChoice(seeded), "variable");
-    assert.equal(classificationSourceLabel(seeded), "Seeded from Xero · cost of sales");
+    assert.equal(classificationSourceLabel(seeded), "Seeded from Xero · cost of sales — confirm or change");
     assert.equal(classificationSourceLabel(chosen), "Chosen by hand");
   });
 });
