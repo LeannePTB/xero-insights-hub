@@ -1,5 +1,5 @@
 import { useCanManageClient } from "@/hooks/useCanManageClient";
-import { getCardCatalogue, getMyLoansAccess } from "@/lib/card-model.functions";
+import { getClientCatalogue, getMyLoansAccess } from "@/lib/card-model.functions";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
