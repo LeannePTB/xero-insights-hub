@@ -24,11 +24,13 @@ export function useTenantCurrency(tenantId: string | undefined): string {
 /** Shared currency/locale setup; only the fraction-digit setting varies. */
 function format(amount: number, currency: string, fractionDigits: number): string {
   const opts: Intl.NumberFormatOptions = {
-    style: "currency",
+    style: "currency", signDisplay: "negative",
     currency,
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
   };
+  // A value that rounds to zero is shown as zero, never "-A$0".
+  amount = noNegativeZero(amount, fractionDigits);
   try {
     return new Intl.NumberFormat(undefined, opts).format(amount);
   } catch {
@@ -46,3 +48,11 @@ export function formatMoneyExact(amount: number, currency: string = "AUD"): stri
   return format(amount, currency, 2);
 }
 
+
+/** Rounds to the displayed precision and drops the sign of a zero result. */
+export function noNegativeZero(amount: number, fractionDigits = 0): number {
+  if (!Number.isFinite(amount)) return amount;
+  const f = 10 ** fractionDigits;
+  const r = Math.round(amount * f) / f;
+  return r === 0 ? 0 : amount;
+}

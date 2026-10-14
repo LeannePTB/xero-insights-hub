@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_authenticated/clients/$clientId/receivab
 });
 
 function fmt(n: number, ccy = "AUD") {
-  return new Intl.NumberFormat(undefined, { style: "currency", currency: ccy, maximumFractionDigits: 2 }).format(n);
+  return new Intl.NumberFormat(undefined, { style: "currency", signDisplay: "negative", currency: ccy, maximumFractionDigits: 2 }).format(n);
 }
 
 function ReceivablesPage() {

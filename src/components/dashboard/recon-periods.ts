@@ -165,7 +165,7 @@ export function gstPeriodOptions(): GstPeriodOption[] {
 export function money(n: number | null | undefined) {
   if (n === null || n === undefined) return "—";
   return new Intl.NumberFormat("en-AU", {
-    style: "currency",
+    style: "currency", signDisplay: "negative",
     currency: "AUD",
     maximumFractionDigits: 2,
   }).format(n);

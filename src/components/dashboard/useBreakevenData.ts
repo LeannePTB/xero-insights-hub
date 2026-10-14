@@ -215,7 +215,7 @@ export function useBreakevenData({
 
 export function fmtAUD(n: number) {
   return new Intl.NumberFormat(undefined, {
-    style: "currency",
+    style: "currency", signDisplay: "negative",
     currency: "AUD",
     maximumFractionDigits: 0,
   }).format(n);

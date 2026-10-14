@@ -14,7 +14,7 @@ import { searchClientTransactions, type SearchHit } from "@/lib/xero/search.func
 function fmt(n: number, ccy: string) {
   try {
     return new Intl.NumberFormat(undefined, {
-      style: "currency",
+      style: "currency", signDisplay: "negative",
       currency: ccy,
       maximumFractionDigits: 2,
     }).format(n);

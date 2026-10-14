@@ -104,7 +104,7 @@ export function ScenarioWidget({
             <Stat label="Operating expenses" value={fmt(view.monthTotals.operating)} />
           </div>
 
-          <UnclassifiedNotice clientId={clientId} count={data?.unclassifiedCount ?? 0} />
+          <UnclassifiedNotice clientId={clientId} count={data?.unclassifiedCount ?? 0} names={data?.unclassifiedNames} />
 
 
 

@@ -1329,7 +1329,7 @@ function CashCommitmentsSection({
               Total paid out each month that is not an expense:{" "}
               <span className="font-mono text-foreground">
                 {new Intl.NumberFormat(undefined, {
-                  style: "currency",
+                  style: "currency", signDisplay: "negative",
                   currency: "AUD",
                   maximumFractionDigits: 0,
                 }).format(total)}

@@ -2,7 +2,7 @@ import { breakEvenComparison } from '@/lib/charts/geometry';
 export function BreakevenChart({ revenue, target }: { revenue: number; target: number }) {
   const c = breakEvenComparison(revenue, target);
   if (!c) return <p className="mt-4 text-xs text-muted-foreground">No positive break-even target available.</p>;
-  const fmt = (v: number) => v.toLocaleString('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 });
+  const fmt = (v: number) => v.toLocaleString('en-AU', { style: 'currency', signDisplay: 'negative', currency: 'AUD', maximumFractionDigits: 0 });
   const scale = Math.max(revenue, target) * 1.15;
   return <figure className="mt-4 space-y-2" aria-label="Monthly revenue versus break-even">
     <figcaption className="text-sm font-semibold">{c.difference >= 0 ? 'Above' : 'Below'} break-even by {fmt(Math.abs(c.difference))} ({Math.abs(c.pct).toFixed(1)}%)</figcaption>

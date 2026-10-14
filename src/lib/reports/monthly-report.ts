@@ -236,7 +236,7 @@ export function money(n: number | null | undefined, opts: { cents?: boolean; cur
   if (n === null || n === undefined || !Number.isFinite(n)) return "—";
   const digits = opts.cents ? 2 : 0;
   const abs = new Intl.NumberFormat("en-AU", {
-    style: "currency",
+    style: "currency", signDisplay: "negative",
     currency: opts.currency ?? "AUD",
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
