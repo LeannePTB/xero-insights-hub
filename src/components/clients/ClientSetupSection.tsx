@@ -92,7 +92,7 @@ export function ClientSetupSection({ clientId }: { clientId: string }) {
                 <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
                   <Link
-                    to="/clients/$clientId/settings"
+                    to={item.anchor === "cost-classification" ? "/clients/$clientId/settings/cost-classification" : "/clients/$clientId/settings"}
                     params={{ clientId }}
                     hash={item.anchor}
                     className="text-xs font-medium text-emphasis hover:underline"

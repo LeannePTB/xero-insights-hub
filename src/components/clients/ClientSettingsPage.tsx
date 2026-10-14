@@ -82,7 +82,7 @@ import {
   setCostClassificationEnabled,
 } from "@/lib/cost-classification.functions";
 
-export type ClientSettingsSection = "general" | "cards" | "people" | "xero" | "tax-reporting" | "costs" | "danger";
+export type ClientSettingsSection = "general" | "cards" | "people" | "xero" | "tax-reporting" | "cost-classification" | "costs" | "danger";
 const ActiveSettingsSection = createContext<ClientSettingsSection>("general");
 
 export function ClientSettingsPage({ clientId, section }: { clientId: string; section: ClientSettingsSection }) {
@@ -774,6 +774,7 @@ const SETTINGS_SECTION_BY_TITLE: Record<string, ClientSettingsSection> = {
   "How often this client lodges": "tax-reporting",
   "How this client codes GST, PAYG and super": "tax-reporting",
   "Bank accounts & credit cards": "tax-reporting",
+  "Cost classification": "cost-classification",
   "What you really need to bring in": "costs",
   "Danger zone": "danger",
 };
@@ -894,6 +895,20 @@ function CostClassificationSection({
     },
   );
 
+  const activeSection = useContext(ActiveSettingsSection);
+  // Deep link from the Setup checklist: scroll to the first untagged account.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash.replace("#", "") !== "cost-classification") return;
+    const t = window.setTimeout(() => {
+      document
+        .querySelector<HTMLElement>("[data-unclassified-account='true']")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  if (activeSection !== "cost-classification") return null;
   if (widgetsQ.isLoading) return null;
   if (!usesCostSplit && !usesWages) return null;
 
