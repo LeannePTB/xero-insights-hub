@@ -1,5 +1,6 @@
 import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
-import { staggered, xeroQueryRetry } from "@/lib/xero/live-load";
+import { isGateWait, staggered, xeroQueryRetry } from "@/lib/xero/live-load";
+import { XeroErrorNotice, XeroWaiting } from "./XeroLoadState";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -81,11 +82,9 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
 
 
 
-      {q.isLoading && <LoadingState />}
-      {q.error && (
-        <p className="mt-4 text-sm text-destructive">
-          Couldn't load business health: {(q.error as Error).message}
-        </p>
+      {q.isLoading && (isGateWait(q.failureReason) ? <XeroWaiting /> : <LoadingState />)}
+      {q.error && !q.data && (
+        <XeroErrorNotice error={q.error} onRetry={() => q.refetch()} isRetrying={q.isFetching} />
       )}
 
       {q.data && (

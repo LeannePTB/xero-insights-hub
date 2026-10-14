@@ -552,9 +552,15 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     // report the oldest of them rather than the moment our own query ran.
     const { liveSource, mergeSources } = await import("@/lib/xero/snapshot-source");
     const usedSources: (import("@/lib/xero/snapshot-source").SnapshotSource | null)[] = [];
-    const snap = async <T,>(reportKey: string, params: Record<string, string | undefined>): Promise<T | null> => {
+    // The P&L may be stored under the month-to-date OR the year-to-date key,
+    // depending on the range the card opened with; whichever key's stored
+    // parameters match the caller's exactly is used (never a near match).
+    const PNL_KEYS = ["profit_and_loss_mtd", "profit_and_loss_ytd"];
+    const snap = async <T,>(requestedKey: string, params: Record<string, string | undefined>): Promise<T | null> => {
       try {
-        if (!paramsMatchCatalogue(reportKey, params, todaySyd)) return null;
+        const candidates = requestedKey === "profit_and_loss_ytd" ? PNL_KEYS : [requestedKey];
+        const reportKey = candidates.find((k) => paramsMatchCatalogue(k, params, todaySyd));
+        if (!reportKey) return null;
         const hit = await readSnapshot({
           supabase: context.supabase,
           tenantId: data.tenantId,
