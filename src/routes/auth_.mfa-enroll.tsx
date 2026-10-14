@@ -1,3 +1,4 @@
+import { AuthLayout } from "@/components/auth/AuthLayout";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +13,7 @@ import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 export const Route = createFileRoute("/auth_/mfa-enroll")({
   staticData: { sitemap: false },
   ssr: false,
-  head: () => ({ meta: [{ title: "Set up MFA — Traction Advisory" }] }),
+  head: () => ({ meta: [{ title: "Set up two-step sign-in — Traction Advisory" }, { name: "description", content: "Secure your Traction Advisory account with two-step sign-in." }, { property: "og:title", content: "Set up two-step sign-in — Traction Advisory" }, { property: "og:description", content: "Secure your Traction Advisory account with two-step sign-in." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: MfaEnrollPage,
 });
 
@@ -108,9 +109,8 @@ function MfaEnrollPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-6">
-      <div className="w-full max-w-md">
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
+    <AuthLayout>
+        <div>
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-emphasis" />
             <h1 className="font-display text-lg font-semibold">Set up two-factor</h1>
@@ -157,7 +157,7 @@ function MfaEnrollPage() {
                   placeholder="000000"
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                  className="text-center tracking-[0.4em]"
+                  className="text-center tracking-normal"
                 />
                 <Button type="submit" className="w-full" disabled={!enroll || verifying || code.length !== 6}>
                   {verifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -178,7 +178,6 @@ function MfaEnrollPage() {
         <p className="mt-3 text-center text-xs text-muted-foreground">
           <Link to="/auth" className="underline">Back to sign in</Link>
         </p>
-      </div>
-    </div>
+    </AuthLayout>
   );
 }

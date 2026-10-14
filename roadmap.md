@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Refresh auth branding only; build OK, 226 regression/security tests and 18 live checks pass; public desktop/mobile auth presentation verified. Interactive MFA/valid-invite completion and approved Xero button artwork remain unverified.
 - [x] Build public practices-first sales homepage, preserve signed-in landing, add public sitemap/robots.
 - [x] Add audited AAL2 System Administrator website settings and prove read/write boundaries.
 - [x] Created public website-media bucket (25 MB cap); anon read OK, anon upload/overwrite/delete denied. Remaining: bucket-level MIME allowlist (tool cannot set it; INSERT policy enforces MIME) and AAL2 admin upload via UI.

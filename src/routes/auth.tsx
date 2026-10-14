@@ -1,5 +1,4 @@
-import { usePlatformBranding } from "@/hooks/usePlatformBranding";
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -11,10 +10,9 @@ import { requestSignup } from "@/lib/signup-request.functions";
 import { toast } from "sonner";
 import { logFailedSignIn } from "@/lib/audit.functions";
 import { Loader2, LogOut } from "lucide-react";
-import { BrandMark } from "@/components/BrandMark";
+import { AuthLayout } from "@/components/auth/AuthLayout";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 import { startXeroSignIn } from "@/lib/xero/signin.functions";
-import heroImage from "@/assets/hero-construction.jpg";
 import { siteUrl } from "@/lib/site-origin";
 import { useSignOut } from "@/lib/use-sign-out";
 import {
@@ -30,7 +28,7 @@ import { sessionIsActive } from "@/lib/session-activity.functions";
 export const Route = createFileRoute("/auth")({
   staticData: { sitemap: false },
   ssr: false,
-  head: () => ({ meta: [{ title: "Sign in — Traction Advisory" }] }),
+  head: () => ({ meta: [{ title: "Sign in — Traction Advisory" }, { name: "description", content: "Sign in to Traction Advisory’s Xero dashboards and monthly reports." }, { property: "og:title", content: "Sign in — Traction Advisory" }, { property: "og:description", content: "Sign in to Traction Advisory’s Xero dashboards and monthly reports." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: AuthPage,
 });
 
@@ -51,7 +49,6 @@ async function routeAfterAuth(navigate: (opts: { to: string; replace?: boolean }
 }
 
 function AuthPage() {
-  const platformBrand = usePlatformBranding();
   const navigate = useNavigate();
   const signOut = useSignOut();
   const [email, setEmail] = useState("");
@@ -220,50 +217,7 @@ function AuthPage() {
 
 
   return (
-    <div className="grid min-h-screen md:grid-cols-2">
-      <div className="relative isolate hidden flex-col justify-between overflow-hidden p-12 text-primary-foreground md:flex">
-        <img
-          src={heroImage}
-          alt="Builders framing a new home on an Australian construction site at golden hour"
-          className="absolute inset-0 z-0 h-full w-full object-cover"
-        />
-        <div
-          className="absolute inset-0 z-10 opacity-70 mix-blend-multiply"
-          style={{ background: "var(--gradient-hero)" }}
-        />
-        <div className="absolute inset-0 z-10 bg-gradient-to-b from-brand-navy/50 via-brand-navy/30 to-brand-navy/60" />
-        <div className="relative z-20">
-          <BrandMark onDark logoHeightClass="h-9" />
-        </div>
-
-        <div className="relative z-20">
-          <h2 className="text-lg font-bold leading-tight">
-            Built for decisions.
-            <br />
-            <span className="font-serif italic text-accent">Backed by data.</span>
-          </h2>
-          <p className="mt-4 max-w-md text-sm text-primary-foreground/85">
-            Clean Xero dashboards you will actually open — built around the metrics that matter.
-          </p>
-        </div>
-        <p className="relative z-20 text-xs text-primary-foreground/70">
-          © {new Date().getFullYear()} {platformBrand.productName} ·{" "}
-           <Link to="/security" className="underline underline-offset-2 hover:text-primary-foreground">
-            Report a security issue
-          </Link>
-          {" · "}
-          <Link to="/privacy" className="underline underline-offset-2 hover:text-primary-foreground">
-            Privacy
-          </Link>
-          {" · "}
-          <Link to="/terms" className="underline underline-offset-2 hover:text-primary-foreground">
-            Terms
-          </Link>
-        </p>
-      </div>
-
-      <div className="flex items-center justify-center p-6">
-        <div className="w-full max-w-sm">
+    <AuthLayout>
           {checkingSession ? (
             <div className="flex justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -356,7 +310,7 @@ function AuthPage() {
                 <p className="mt-1 text-sm text-muted-foreground">Sign in to your dashboards.</p>
               )}
 
-              <div className="space-y-3">
+              <div className="mt-5 space-y-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="email">Email</Label>
                   <Input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -410,24 +364,10 @@ function AuthPage() {
                     Request access
                   </button>
                 </p>
-                <p className="text-center text-xs text-muted-foreground">
-                  <Link to="/security" className="underline-offset-2 hover:text-foreground hover:underline">
-                    Report a security issue
-                  </Link>
-                  {" · "}
-                  <Link to="/privacy" className="underline-offset-2 hover:text-foreground hover:underline">
-                    Privacy
-                  </Link>
-                  {" · "}
-                  <Link to="/terms" className="underline-offset-2 hover:text-foreground hover:underline">
-                    Terms
-                  </Link>
-                </p>
+
               </div>
             </>
           )}
-        </div>
-      </div>
-    </div>
+    </AuthLayout>
   );
 }
