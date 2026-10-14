@@ -1024,7 +1024,8 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     try {
       const res = await db.query<{ ok: boolean }>(sql);
       return res.rows[0]?.ok === true ? "allow" : "deny";
-    } catch {
+    } catch (e) {
+      if (process.env.MATRIX_DEBUG) console.log("LOANS", row.role, r, (e as Error).message);
       return "deny";
     }
   }
@@ -1053,6 +1054,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       return "allow";
     } catch (e) {
       if ((e as Error).message.startsWith("report sections")) throw e;
+      if (process.env.MATRIX_DEBUG) console.log("SECTIONS", row.role, r, (e as Error).message);
       return "deny";
     }
   }
