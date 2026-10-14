@@ -217,8 +217,8 @@ const MEMBER_MANAGED_TABLES = CLIENT_DATA_TABLES.filter(
 
 export const MATRIX: MatrixRow[] = [
   ...rows(Object.keys(ROLE_LABELS) as Role[], ['get_public_website_settings()'], ['execute'], 'allow', 'Owner approved 14 Oct: narrow public website display fields only, no organisation/client data.', ['pglite']),
-  ...rows(['super_admin_no_membership'], ['save_public_website_settings()'], ['execute'], 'allow', 'Owner approved 14 Oct: audited canonical System Administrator at AAL2 only.', ['pglite']),
-  ...rows((Object.keys(ROLE_LABELS) as Role[]).filter(r => r !== 'super_admin_no_membership' && r !== 'super_admin_self_approving_support'), ['save_public_website_settings()'], ['execute'], 'deny', 'No anonymous, member, viewer, support or AAL1 website writes.', ['pglite']),
+  ...rows(['super_admin_no_membership', 'support_grant_active', 'support_grant_expired', 'support_grant_revoked'], ['save_public_website_settings()'], ['execute'], 'allow', 'Owner approved 14 Oct: audited canonical System Administrator at AAL2 only. These support fixtures independently hold super_admin; their support pass grants no website writes.', ['pglite']),
+  ...rows((Object.keys(ROLE_LABELS) as Role[]).filter(r => !['super_admin_no_membership', 'super_admin_self_approving_support', 'support_grant_active', 'support_grant_expired', 'support_grant_revoked'].includes(r)), ['save_public_website_settings()'], ['execute'], 'deny', 'No anonymous, member, viewer or AAL1 website writes; support alone grants none.', ['pglite']),
   ...rows(Object.keys(ROLE_LABELS) as Role[], ['platform_branding website direct writes'], WRITES, 'deny', 'Branding table remains grant-free; only audited save functions write.', ['pglite']),
   ...rows(
     Object.keys(ROLE_LABELS) as Role[],
