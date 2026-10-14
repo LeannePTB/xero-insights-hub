@@ -59,7 +59,7 @@ export function ClientCardSetupPanel({
   });
 
   const visible = useMemo(
-    () => new Set((q.data as any)?.visible ?? []),
+    () => new Set<string>((q.data as any)?.visible ?? []),
     [(q.data as any)?.visible],
   );
 
