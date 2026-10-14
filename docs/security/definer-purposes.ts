@@ -251,6 +251,12 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Records the request allowance Xero reported on a call, as telemetry. Service role only; execute revoked from anon and authenticated.",
   "public.xero_rate_limit_usage":
     "Per-file Xero request allowance for the admin screen. Asserts aal2 and super admin (Path C metadata).",
+  "public.xero_gate_acquire":
+    "Shared Xero request gate: grants one of a file's concurrency slots within its per-minute pacing, or tells the caller to wait. Service role only.",
+  "public.xero_gate_release": "Releases a Xero request-gate slot. Service role only.",
+  "public.xero_gate_backoff": "Pauses a Xero file's request gate after a 429 (Retry-After or backoff). Service role only.",
+  "public.xero_gate_status":
+    "Request-gate state per Xero file for the monitoring screen (waiting, in flight, held today). Asserts aal2 and super admin (Path C metadata).",
   "public.xero_rate_limit_posture":
     "Posture check: how close each Xero file is to its request limits, computed live. Asserts aal2 and super admin.",
 

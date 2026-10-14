@@ -4964,6 +4964,8 @@ create policy "Users manage own xero connections" on public.xero_connections as 
 create policy "firm members read firm xero connections" on public.xero_connections as permissive for select to authenticated using (((firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), firm_id)));
 create policy "firm owners manage firm xero connections" on public.xero_connections as permissive for select to authenticated using (((firm_id IS NOT NULL) AND app_private.is_firm_owner(auth.uid(), firm_id)));
 create policy mfa_aal2_required on public.xero_connections as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy mfa_aal2_required on public.xero_gate_slots as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy mfa_aal2_required on public.xero_gate_state as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "Users manage own oauth states (delete)" on public.xero_oauth_states as permissive for delete to authenticated using ((auth.uid() = user_id));
 create policy "Users manage own oauth states (insert)" on public.xero_oauth_states as permissive for insert to authenticated with check ((auth.uid() = user_id));
 create policy "Users manage own oauth states (select)" on public.xero_oauth_states as permissive for select to authenticated using ((auth.uid() = user_id));
@@ -4988,4 +4990,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: 18f29a35f1d0efcf396422a1118a3747dad951ec2c52e38661ee7f2b9de31722
+-- catalogue-fingerprint: 63429630129140fdd3fa40c2a3c821baacdeb93f437e75ce47a808f0e8fda9e5
