@@ -10,7 +10,7 @@
 - Submitter-owned enquiry reads recheck eligibility; System Administrator AAL2 list/status controls. No Staff/Viewer/Business Owner prompts or report promotions. Configured Calendly link is reused when present.
 
 ## Evidence
-- Full security gate initially passed: 261 tests, zero known failures, 18 live access checks. Subsequent added tests prove three/hour cap, duplicate retry and excluded-role context.
+- Final full security gate passed: 266 tests, zero known/unexpected failures, 18 live access checks. Added tests prove three/hour cap, duplicate retry, excluded-role context and unconfirmed-email refusal; live fixture/RPC/catalogue fingerprints match. Automatic preview build reports build OK; no separate manual build/typecheck was run.
 - Application regression suite: 217 passed. Synthetic three-page Standard PDF generated and all pages inspected; no real client data.
 - Signed-in end-to-end attempted using the requesting user's minted session: `/system/enquiries` correctly stopped at `/auth/mfa-verify`. No MFA bypass or real enquiry submission.
 - Linter: 170 findings across the same three categories; the four new authenticated-definer notices correspond to intentionally callable AAL2/authorisation-guarded enquiry functions, not public executability. No new anonymous-definer notice or RLS omission.
@@ -19,7 +19,6 @@
 ## Open before launch
 - Owner must complete two-step sign-in for real client dashboard/report and enquiry submit/read/status checks, including mobile. Synthetic PDF is evidence of rendering, not real data correctness.
 - Admin email notification is NOT wired: a recipient is not approved and existing mail history includes three failed/dead-letter sends. Enquiries save to the admin list; no success message claims an email was sent. Confirm one notification inbox and resolve mail delivery before wiring a single-recipient alert through the existing sender. No bulk admin-recipient loop.
-- Email identity is stamped from `auth.users` and must have a confirmed-email timestamp; unconfirmed callers receive no enquiry context and cannot submit.
 - Cash-basis P&L history has no saved cash-basis snapshots; income/expense historical coverage remains limited to saved reports/snapshots. No invented twelve-month history or extra Xero fetch.
 - Historical health scores and optional latest-report panel were not added; scores unavailable, panel optional/deferred.
 
