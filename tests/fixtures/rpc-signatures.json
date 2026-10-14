@@ -180,6 +180,12 @@
     },
     {
         "args": [
+        ],
+        "name": "admin_upgrade_enquiries",
+        "required": 0
+    },
+    {
+        "args": [
             "_firm_id"
         ],
         "name": "apply_org_card_defaults",
@@ -1375,6 +1381,14 @@
     },
     {
         "args": [
+            "_id",
+            "_status"
+        ],
+        "name": "set_upgrade_enquiry_status",
+        "required": 2
+    },
+    {
+        "args": [
             "_firm_id",
             "_user_id",
             "_scope",
@@ -1389,6 +1403,18 @@
         ],
         "name": "start_figure_backfill",
         "required": 0
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_name",
+            "_module_keys",
+            "_client_ids",
+            "_message",
+            "_submission_key"
+        ],
+        "name": "submit_upgrade_enquiry",
+        "required": 6
     },
     {
         "args": [
@@ -1444,6 +1470,13 @@
         ],
         "name": "trixie_monthly_summary",
         "required": 0
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "upgrade_enquiry_context",
+        "required": 1
     },
     {
         "args": [
