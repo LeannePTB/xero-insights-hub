@@ -54,7 +54,7 @@ function HeroMedia({settings}:{settings:WebsiteSettings}){
  <div className="sales-demo-label">Illustrative preview · fictional data</div>
  </div>;
 }
-export function SalesPage({settings}:{settings:WebsiteSettings}){
+export function SalesPage({settings}:{settings:WebsiteSettings&{packages?:CardCatalogue}}){
  const brand=usePlatformBranding();const embed=walkthroughEmbed(settings.walkthroughUrl);
  const cat=settings.packages??EMPTY_CATALOGUE;const labels=(f:(c:CatalogueCard)=>boolean)=>cat.cards.filter(f).map(c=>c.label);
  const packages=[{title:'Standard',icon:LayoutDashboard,description:'The essentials, clearly laid out.',price:settings.standardPrice,features:labels(c=>c.package==='standard')},{title:'Advisory',icon:Sparkles,description:'Choose the modules each client needs.',price:settings.advisoryPrice,features:activeModules(cat).map(m=>`${m.label} — ${m.description}`)},{title:'Consolidation',icon:Layers,description:'A connected view of the group.',price:settings.consolidationPrice,features:[...labels(c=>c.package==='consolidation'),'Optional extra with Advisory']},{title:'White label',icon:Palette,description:'Your practice. Your identity.',price:settings.whiteLabelPrice,features:['Your organisation’s name','Your organisation’s logo','Branded client experience','Independent optional extra']}];

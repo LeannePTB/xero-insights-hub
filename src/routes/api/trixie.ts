@@ -7,6 +7,7 @@ import { buildTrixieTools, readKnowledge, trixieInstructions } from "@/lib/trixi
 import { createTrixieRunIdFetch, incomingTrixieRunId, withTrixieRunId } from "@/lib/trixie/trixie-run-id.server";
 import { estimateTrixieCostUsd, maxOutputTokensForGuard } from "@/lib/trixie/trixie-cost";
 import { trixieGuide } from "@/lib/trixie/trixie-guide";
+import { catalogueGuideText, mapCatalogue } from "@/lib/cards/catalogue";
 import { pageMapText, trixiePageMap } from "@/lib/trixie/trixie-pagemap";
 
 type Payload = { messages?: UIMessage[]; pathname?: string; threadId?: string | null };
@@ -110,8 +111,14 @@ export const Route = createFileRoute("/api/trixie")({
           // matching help articles every turn (audience-filtered in the database).
           const question = lastUserText(messages);
           const knowledge = question ? await readKnowledge(c, question, 3).catch(() => ({ articles: [], sources: [] })) : { articles: [], sources: [] };
+          // Packages/modules come from the same database catalogue as the app.
+          const [cm, cc] = await Promise.all([
+            (c.supabase as any).from("card_modules").select("module_key, label, description, sort_order").order("sort_order"),
+            (c.supabase as any).from("card_catalogue").select("card_key, package, module_key, label, description, sort_order").order("sort_order"),
+          ]);
+          const packagesText = cm.error || cc.error ? "" : catalogueGuideText(mapCatalogue(cm.data, cc.data));
           const instructions = trixieInstructions(c, {
-            guide: trixieGuide(c.audience),
+            guide: [trixieGuide(c.audience), packagesText].filter(Boolean).join("\n"),
             pages: pageMapText(trixiePageMap({ mode: c.mode, audience: c.audience, firmId: c.firmId, clientId: c.clientId })),
             articles: knowledge.articles,
           });

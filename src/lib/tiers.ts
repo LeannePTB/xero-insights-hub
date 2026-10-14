@@ -37,29 +37,6 @@ export const ALL_WIDGETS: WidgetKey[] = [
   "transaction_search",
 ];
 
-// Fallback defaults (used only if the DB has no row for a tier).
-const ADVANCED: WidgetKey[] = [
-  "health",
-  "receivables",
-  "payables",
-  "pnl",
-  "notes",
-  "superannuation",
-  "accounting_breakeven",
-  "true_breakeven",
-  "cashflow",
-  "cashflow_scenario",
-  "xero_audit",
-  "loan_consolidation",
-  "gst_reconciliation",
-  "transaction_search",
-];
-export const DEFAULT_TIER_WIDGETS: Record<DashboardTier, WidgetKey[]> = {
-  basic: ["health", "receivables", "payables", "pnl", "notes"],
-  advisory: ADVANCED,
-  investigate: ADVANCED,
-  multi_company: ADVANCED,
-};
 
 export const TIER_LABEL: Record<DashboardTier, string> = {
   basic: "Standard",
@@ -209,7 +186,4 @@ export function tierLabel(key: string, catalogueLabel?: string | null): string {
 }
 export function tierDescription(key: string, catalogueDescription?: string | null): string {
   return catalogueDescription ?? (TIER_DESCRIPTION as Record<string, string>)[key] ?? "";
-}
-export function defaultWidgetsFor(key: string): WidgetKey[] {
-  return (DEFAULT_TIER_WIDGETS as Record<string, WidgetKey[]>)[key] ?? DEFAULT_TIER_WIDGETS.basic;
 }
