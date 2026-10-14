@@ -258,3 +258,9 @@ Separate from the card-model migration; no file or object shared with it.
 - [ ] Owner to confirm Demo Company Oct 2025–Jun 2026 cash at bank in Xero (backfill shows -$8,703.20 with zero profit those months)
 
 - [x] 14 Oct: Cash flow scenario menu item removed; rent report hidden as System-Administrator-only work in progress (UI not shown anywhere).
+
+- [x] DRTABT clients missing from overview (hidden-organisation flag) — fixed
+- [x] Overview: remove cross-client totals; add attention counts
+- [x] Organisation landing = overview; Add client page
+- [x] Work-in-progress card status; Rent report as WIP card
+- [x] Remove hourly history-fill schedule
