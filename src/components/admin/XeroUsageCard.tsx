@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { listXeroRateLimits } from "@/lib/xero-rate-limits.functions";
+import { listXeroGateStatus, listXeroRateLimits } from "@/lib/xero-rate-limits.functions";
 
 // Xero's published per-organisation limits, used only to show a remaining
 // figure as a share of the allowance.
@@ -37,6 +37,15 @@ export function XeroUsageCard() {
     queryFn: () => fetchRows(),
     retry: false,
   });
+
+  const fetchGate = useServerFn(listXeroGateStatus);
+  const gateQ = useQuery({
+    queryKey: ["xero-gate-status"],
+    queryFn: () => fetchGate(),
+    retry: false,
+    refetchInterval: 30_000,
+  });
+  const gate = new Map((gateQ.data ?? []).map((g) => [g.tenantId, g]));
 
   const rows = q.data ?? [];
   const today = new Date().toISOString().slice(0, 10);
@@ -71,6 +80,7 @@ export function XeroUsageCard() {
             {rows.map((r) => {
               const dayPct = pct(r.dayRemaining, DAY_LIMIT);
               const minPct = pct(r.minuteRemaining, MINUTE_LIMIT);
+              const g = r.day === today ? gate.get(r.tenantId) : undefined;
               return (
                 <li
                   key={r.key}
@@ -106,6 +116,16 @@ export function XeroUsageCard() {
                         ? ` (from ${new Date(r.peakHourStart).toISOString().slice(11, 16)} UTC)`
                         : ""}
                     </span>
+                    {g?.waitingNow && (
+                      <Badge variant="info" className="text-xs">
+                        Waiting for Xero allowance
+                      </Badge>
+                    )}
+                    {g && g.waitsToday > 0 && (
+                      <span className="text-muted-foreground">
+                        Held by our gate today: {g.waitsToday.toLocaleString()}
+                      </span>
+                    )}
                     {r.rejections > 0 ? (
                       <Badge variant="info" className="text-xs">
                         {r.rejections} paused by Xero

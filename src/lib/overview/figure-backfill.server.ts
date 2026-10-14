@@ -12,7 +12,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sydneyDate } from "@/lib/sydney-time";
 import { completedMonthEnds, nextAttempt } from "./figure-backfill";
 
-const FILES_PER_TICK = 5;
+const FILES_PER_TICK = 5; // processed one file after another, never in parallel
 
 type Item = { id: string; client_id: string; firm_id: string; tenant_id: string; attempts: number };
 
@@ -66,7 +66,30 @@ async function backfillFile(db: any, item: Item): Promise<{ cash: number; profit
   const { classifiedAccounts } = await import("@/lib/xero/bank-classifications.server");
   const { parsePnl, totalsForPeriod } = await import("@/lib/reports/monthly-report.server");
 
-  const conn = await getConnectionByTenant(item.tenant_id);
+  const { FILL_GAP_MS, fillShouldPause } = await import("@/lib/xero/request-gate");
+  const { XERO_RATE_LIMIT_MESSAGE } = await import("@/lib/xero/api.server");
+
+  // Never alongside a snapshot refresh (nightly or re-sync) for the same file.
+  const { data: busy } = await db.from("xero_snapshot_runs").select("id")
+    .eq("tenant_id", item.tenant_id).is("finished_at", null)
+    .gte("started_at", new Date(Date.now() - 30 * 60_000).toISOString()).limit(1);
+  if ((busy ?? []).length) throw new Error(XERO_RATE_LIMIT_MESSAGE);
+
+  const conn0 = await getConnectionByTenant(item.tenant_id);
+  // Strictly one request at a time for this file, with a gap between requests,
+  // pausing (rescheduled, not dropped) when Xero's remaining allowance is low.
+  let first = true;
+  const paced = async <T,>(path: string, params: Record<string, string | undefined> = {}): Promise<T> => {
+    if (!first) await new Promise((r) => setTimeout(r, FILL_GAP_MS));
+    first = false;
+    const { data: lim } = await db.from("xero_rate_limits").select("day_remaining_low, min_remaining_low, min_low_at")
+      .eq("tenant_id", item.tenant_id).eq("day", new Date().toISOString().slice(0, 10)).maybeSingle();
+    const minuteFresh = lim?.min_low_at && Date.now() - new Date(lim.min_low_at).getTime() < 60_000;
+    if (fillShouldPause(lim?.day_remaining_low ?? null, minuteFresh ? (lim?.min_remaining_low ?? null) : null)) {
+      throw new Error(XERO_RATE_LIMIT_MESSAGE);
+    }
+    return xeroGet<T>(conn0, path, params);
+  };
   const months = completedMonthEnds(sydneyDate());
   const last = months[months.length - 1];
 
@@ -77,7 +100,7 @@ async function backfillFile(db: any, item: Item): Promise<{ cash: number; profit
 
   const { data: ov } = await db.from("client_statutory_accounts").select("account_name, category").eq("client_id", item.client_id);
   const overrides = statutoryOverrideMap((ov ?? []) as any[]);
-  const accountsRaw = await xeroGet<any>(conn, "Accounts");
+  const accountsRaw = await paced<any>("Accounts");
   // Same selected-accounts overlay as today's Cash at bank (current settings).
   const accounts = await classifiedAccounts(db, item.tenant_id, accountsRaw, item.client_id);
 
@@ -85,7 +108,7 @@ async function backfillFile(db: any, item: Item): Promise<{ cash: number; profit
   let cashCount = 0;
   for (const date of months) {
     if (hasNightly.has(date)) continue;
-    const bs = await xeroGet<any>(conn, "Reports/BalanceSheet", { date });
+    const bs = await paced<any>("Reports/BalanceSheet", { date });
     const a = analyseBalanceSheet(bs, accounts, overrides);
     if (a.cashAtBank.status === "assessed") {
       rows.set(date, { ...(rows.get(date) ?? {}), cash: a.cashAtBank.total });
@@ -94,7 +117,7 @@ async function backfillFile(db: any, item: Item): Promise<{ cash: number; profit
   }
 
   let profitCount = 0;
-  const pnl = await xeroGet<any>(conn, "Reports/ProfitAndLoss", {
+  const pnl = await paced<any>("Reports/ProfitAndLoss", {
     fromDate: `${last.slice(0, 7)}-01`, toDate: last, periods: String(months.length - 1), timeframe: "MONTH",
   });
   const report = pnl?.Reports?.[0];

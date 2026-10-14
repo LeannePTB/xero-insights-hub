@@ -1,0 +1,2 @@
+create policy mfa_aal2_required on public.xero_gate_slots as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy mfa_aal2_required on public.xero_gate_state as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());

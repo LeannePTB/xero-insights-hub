@@ -140,6 +140,8 @@ create table public.user_roles (id uuid, user_id uuid, role app_role, created_at
 create table public.xero_api_errors (id uuid, firm_id uuid, xero_connection_id uuid, tenant_id text, tenant_name text, path text, http_status integer, last_message text, occurrences integer, first_seen timestamp with time zone, last_seen timestamp with time zone, day date);
 create table public.xero_assessment_contact (id text, legal_name text, trading_name text, abn_acn text, address text, website text, app_name text, xero_client_id text, contact_name text, contact_role text, contact_email text, contact_phone text, assessment_date text, api_usage_description text, updated_at timestamp with time zone);
 create table public.xero_connections (id uuid, user_id uuid, tenant_id text, tenant_name text, tenant_type text, expires_at timestamp with time zone, scopes text, created_at timestamp with time zone, updated_at timestamp with time zone, firm_id uuid, access_token_enc bytea, refresh_token_enc bytea, enc_version smallint, status text, disconnected_at timestamp with time zone, base_currency text, disconnected_reason text, authorisation_checked_at timestamp with time zone, payroll_access_status text, payroll_access_checked_at timestamp with time zone, payroll_access_http_status integer);
+create table public.xero_gate_slots (tenant_id text, slot integer, holder uuid, expires_at timestamp with time zone);
+create table public.xero_gate_state (tenant_id text, paused_until timestamp with time zone, minute_start timestamp with time zone, minute_count integer, last_wait_at timestamp with time zone, waits_day date, waits_count integer, updated_at timestamp with time zone);
 create table public.xero_oauth_states (state text, user_id uuid, code_verifier text, created_at timestamp with time zone, return_origin text, expires_at timestamp with time zone, client_id uuid, flow text, known_tenant_ids text[], pending_tenant_ids text[], completed_at timestamp with time zone, firm_id uuid);
 create table public.xero_pending_onboards (id uuid, user_id uuid, access_token_enc bytea, refresh_token_enc bytea, token_expires_at timestamp with time zone, scopes text, tenants jsonb, created_at timestamp with time zone, expires_at timestamp with time zone);
 create table public.xero_rate_limits (tenant_id text, day date, firm_id uuid, xero_connection_id uuid, tenant_name text, day_remaining_low integer, day_low_at timestamp with time zone, min_remaining_low integer, min_low_at timestamp with time zone, app_min_remaining_low integer, app_min_low_at timestamp with time zone, calls_observed integer, rate_limited_count integer, last_problem text, last_retry_after_seconds integer, last_rate_limited_at timestamp with time zone, hour_start timestamp with time zone, hour_calls integer, peak_hour_calls integer, peak_hour_start timestamp with time zone, first_seen timestamp with time zone, last_seen timestamp with time zone);
@@ -3762,6 +3764,8 @@ alter table public.user_roles enable row level security;
 alter table public.xero_api_errors enable row level security;
 alter table public.xero_assessment_contact enable row level security;
 alter table public.xero_connections enable row level security;
+alter table public.xero_gate_slots enable row level security;
+alter table public.xero_gate_state enable row level security;
 alter table public.xero_oauth_states enable row level security;
 alter table public.xero_pending_onboards enable row level security;
 alter table public.xero_rate_limits enable row level security;
@@ -4447,6 +4451,20 @@ grant SELECT on table public.xero_connections to service_role;
 grant TRIGGER on table public.xero_connections to service_role;
 grant TRUNCATE on table public.xero_connections to service_role;
 grant UPDATE on table public.xero_connections to service_role;
+grant DELETE on table public.xero_gate_slots to service_role;
+grant INSERT on table public.xero_gate_slots to service_role;
+grant REFERENCES on table public.xero_gate_slots to service_role;
+grant SELECT on table public.xero_gate_slots to service_role;
+grant TRIGGER on table public.xero_gate_slots to service_role;
+grant TRUNCATE on table public.xero_gate_slots to service_role;
+grant UPDATE on table public.xero_gate_slots to service_role;
+grant DELETE on table public.xero_gate_state to service_role;
+grant INSERT on table public.xero_gate_state to service_role;
+grant REFERENCES on table public.xero_gate_state to service_role;
+grant SELECT on table public.xero_gate_state to service_role;
+grant TRIGGER on table public.xero_gate_state to service_role;
+grant TRUNCATE on table public.xero_gate_state to service_role;
+grant UPDATE on table public.xero_gate_state to service_role;
 grant DELETE on table public.xero_oauth_states to authenticated;
 grant INSERT on table public.xero_oauth_states to authenticated;
 grant SELECT on table public.xero_oauth_states to authenticated;
@@ -4946,6 +4964,8 @@ create policy "Users manage own xero connections" on public.xero_connections as 
 create policy "firm members read firm xero connections" on public.xero_connections as permissive for select to authenticated using (((firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), firm_id)));
 create policy "firm owners manage firm xero connections" on public.xero_connections as permissive for select to authenticated using (((firm_id IS NOT NULL) AND app_private.is_firm_owner(auth.uid(), firm_id)));
 create policy mfa_aal2_required on public.xero_connections as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy mfa_aal2_required on public.xero_gate_slots as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy mfa_aal2_required on public.xero_gate_state as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "Users manage own oauth states (delete)" on public.xero_oauth_states as permissive for delete to authenticated using ((auth.uid() = user_id));
 create policy "Users manage own oauth states (insert)" on public.xero_oauth_states as permissive for insert to authenticated with check ((auth.uid() = user_id));
 create policy "Users manage own oauth states (select)" on public.xero_oauth_states as permissive for select to authenticated using ((auth.uid() = user_id));
@@ -4970,4 +4990,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: 72406fd07ec5ec4bf9fa7c30c423683845a45cce83f848f58e36055ebd5b2f26
+-- catalogue-fingerprint: 63429630129140fdd3fa40c2a3c821baacdeb93f437e75ce47a808f0e8fda9e5

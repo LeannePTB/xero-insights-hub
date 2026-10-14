@@ -90,6 +90,40 @@ async function fetchWithTimeout(url: string, init: RequestInit = {}) {
   }
 }
 
+/**
+ * Every outbound Xero TENANT call goes through the shared request gate:
+ * at most XERO_GATE_CONCURRENCY in flight per file across all instances,
+ * ~XERO_GATE_PER_MINUTE per minute, and a 429 pauses the whole file for
+ * Retry-After (or an exponential backoff with jitter). Queued, not dropped.
+ */
+async function gatedFetch(conn: { tenant_id: string }, url: string, init: RequestInit = {}) {
+  const gate = await import("./request-gate");
+  const store = {
+    acquire: async (tenantId: string) => {
+      const { data, error } = await (supabaseAdmin as any).rpc("xero_gate_acquire", {
+        _tenant_id: tenantId, _cap: gate.XERO_GATE_CONCURRENCY, _per_minute: gate.XERO_GATE_PER_MINUTE, _lease_seconds: gate.XERO_GATE_LEASE_SECONDS,
+      });
+      if (error) throw new Error("gate unavailable");
+      return (data as string | null) ?? null;
+    },
+    release: async (holder: string) => { await (supabaseAdmin as any).rpc("xero_gate_release", { _holder: holder }); },
+    backoff: async (tenantId: string, seconds: number) => {
+      await (supabaseAdmin as any).rpc("xero_gate_backoff", { _tenant_id: tenantId, _seconds: Math.ceil(seconds) });
+    },
+  };
+  try {
+    const res = await gate.runThroughGate(conn.tenant_id, () => fetchWithTimeout(url, init), { store });
+    if (res.status === 429) {
+      const ra = parseInt(res.headers.get("retry-after") || "", 10);
+      await store.backoff(conn.tenant_id, gate.backoffSeconds(Number.isFinite(ra) ? ra : null, 1)).catch(() => {});
+    }
+    return res;
+  } catch (e) {
+    if (e instanceof gate.XeroGateTimeoutError) throw new Error(XERO_RATE_LIMIT_MESSAGE);
+    throw e;
+  }
+}
+
 // Decrypt a connection row. If the encrypted columns are missing (legacy row
 // written before encryption was rolled out), fall back to plaintext and
 // transparently re-encrypt for next time.
@@ -453,7 +487,15 @@ export async function xeroGet<T = unknown>(
 ): Promise<T> {
   const { memoiseXeroGet, xeroMemoKey } = await import("./request-memo.server");
   const key = xeroMemoKey("accounting", conn.tenant_id, path, params);
-  return memoiseXeroGet<T>(key, () => xeroGetUncached<T>(conn, path, params, retries, rateRetries));
+  return memoiseXeroGet<T>(key, async () => {
+    // Identical calls within one request are already shared by the memo.
+    // Cross-request sharing is deliberately NOT done: the server runtime does
+    // not allow one request to await I/O started by another.
+    const result = await xeroGetUncached<T>(conn, path, params, retries, rateRetries);
+    const { logXeroRead } = await import("@/lib/audit.server");
+    await logXeroRead(conn, path);
+    return result;
+  });
 }
 
 async function xeroGetUncached<T = unknown>(
@@ -488,7 +530,7 @@ async function xeroGetUncached<T = unknown>(
   await enforceXeroFileCeiling(conn.tenant_id);
 
 
-  const res = await fetchWithTimeout(url, {
+  const res = await gatedFetch(conn, url, {
     headers: {
       Authorization: `Bearer ${conn.access_token}`,
       "Xero-tenant-id": conn.tenant_id,
@@ -528,8 +570,6 @@ async function xeroGetUncached<T = unknown>(
     await logXeroApiError(conn, path, res.status, body.slice(0, 500));
     throw new Error(`Xero ${path}: ${res.status} ${body}`);
   }
-  const { logXeroRead } = await import("@/lib/audit.server");
-  await logXeroRead(conn, path);
   return (await res.json()) as T;
 
 }
@@ -606,7 +646,7 @@ async function xeroGetAssetsUncached<T = unknown>(
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") clean[k] = v;
   const q = new URLSearchParams(clean).toString();
   await enforceXeroFileCeiling(conn.tenant_id);
-  const res = await fetchWithTimeout(`${ASSETS_BASE}/${path}${q ? "?" + q : ""}`, {
+  const res = await gatedFetch(conn, `${ASSETS_BASE}/${path}${q ? "?" + q : ""}`, {
     headers: {
       Authorization: `Bearer ${conn.access_token}`,
       "Xero-tenant-id": conn.tenant_id,
@@ -706,7 +746,7 @@ async function xeroGetPayrollUncached<T = unknown>(
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") clean[k] = v;
   const q = new URLSearchParams(clean).toString();
   await enforceXeroFileCeiling(conn.tenant_id);
-  const res = await fetchWithTimeout(`${PAYROLL_BASE}/${path}${q ? "?" + q : ""}`, {
+  const res = await gatedFetch(conn, `${PAYROLL_BASE}/${path}${q ? "?" + q : ""}`, {
     headers: {
       Authorization: `Bearer ${conn.access_token}`,
       "Xero-tenant-id": conn.tenant_id,
@@ -812,7 +852,7 @@ async function xeroGetFinanceUncached<T = unknown>(
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") clean[k] = v;
   const q = new URLSearchParams(clean).toString();
   await enforceXeroFileCeiling(conn.tenant_id);
-  const res = await fetchWithTimeout(`${FINANCE_BASE}/${path}${q ? "?" + q : ""}`, {
+  const res = await gatedFetch(conn, `${FINANCE_BASE}/${path}${q ? "?" + q : ""}`, {
     headers: {
       Authorization: `Bearer ${conn.access_token}`,
       "Xero-tenant-id": conn.tenant_id,

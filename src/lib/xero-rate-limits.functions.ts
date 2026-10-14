@@ -50,3 +50,28 @@ export const listXeroRateLimits = createServerFn({ method: "GET" })
       lastSeen: r.last_seen as string,
     }));
   });
+
+/** Request-gate state per Xero file (System Administrator, aal2 — checked in the database). */
+export type XeroGateRow = {
+  tenantId: string;
+  inFlight: number;
+  waitingNow: boolean;
+  lastWaitAt: string | null;
+  waitsToday: number;
+  pausedUntil: string | null;
+};
+
+export const listXeroGateStatus = createServerFn({ method: "GET" })
+  .middleware([requireAal2])
+  .handler(async ({ context }): Promise<XeroGateRow[]> => {
+    const { data, error } = await (context.supabase as any).rpc("xero_gate_status");
+    if (error) throw new Error("Xero gate status unavailable");
+    return ((data ?? []) as any[]).map((r) => ({
+      tenantId: r.tenant_id as string,
+      inFlight: (r.in_flight as number) ?? 0,
+      waitingNow: !!r.waiting_now,
+      lastWaitAt: (r.last_wait_at as string | null) ?? null,
+      waitsToday: (r.waits_today as number) ?? 0,
+      pausedUntil: (r.paused_until as string | null) ?? null,
+    }));
+  });

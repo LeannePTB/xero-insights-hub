@@ -139,6 +139,8 @@ export const APPEND_ONLY_TABLES = [
   "login_events",
   "xero_api_errors",
   "xero_rate_limits",
+  "xero_gate_slots",
+  "xero_gate_state",
 ] as const;
 
 const WRITES: Operation[] = ["insert", "update", "delete"];

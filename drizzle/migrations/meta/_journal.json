@@ -295,6 +295,20 @@
       "when": 1791954286523,
       "tag": "0041_loans_owner_practice_and_report_sections",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1791955287924,
+      "tag": "0042_xero_request_gate",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1791955490764,
+      "tag": "0043_xero_gate_aal2_guard",
+      "breakpoints": true
     }
   ]
 }
