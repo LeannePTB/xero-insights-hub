@@ -6,6 +6,7 @@ import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
 import { XeroUsageCard } from "@/components/admin/XeroUsageCard";
 import { XeroErrorBreakdownCard } from "@/components/admin/XeroErrorBreakdownCard";
 import { OrphanXeroConnectionsCard } from "@/components/admin/OrphanXeroConnectionsCard";
+import { FigureBackfillCard } from "@/components/admin/FigureBackfillCard";
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/system/xero")({
@@ -31,6 +32,7 @@ function XeroMonitoringPage() {
     <PageContainer className="space-y-6">
       <FirmPageHeader title="Xero monitoring" />
       <XeroUsageCard />
+      <FigureBackfillCard />
       <XeroErrorBreakdownCard />
       <OrphanXeroConnectionsCard firms={firms} />
     </PageContainer>
