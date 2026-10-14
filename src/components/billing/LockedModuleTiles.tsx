@@ -14,7 +14,7 @@ export function LockedModuleTiles({ clientId }: { clientId: string }) {
   const fetchLocked = useServerFn(getMyLockedModules), fetchCatalogue = useServerFn(getCardCatalogue);
   const locked = useQuery({ queryKey: ['client-locked-modules', clientId], queryFn: () => fetchLocked({ data: { clientId } }), retry: false });
   const catalogue = useQuery({ queryKey: ['card-catalogue'], queryFn: () => fetchCatalogue(), retry: false });
-  const [open, setOpen] = usePersistedDisclosure('ta:locked-modules-open', true);
+  const [open, setOpen] = usePersistedDisclosure('ta:section:locked-modules');
   const tiles = lockedModuleTiles(catalogue.data?.catalogue, locked.data?.modules ?? []);
   if (tiles.length === 0) return null;
   return (
