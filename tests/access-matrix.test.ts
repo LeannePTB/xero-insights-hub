@@ -122,6 +122,7 @@ const CONTEXT: Record<Role, Ctx> = {
  */
 const q = (v: string) => `'${v}'`;
 const TARGET: Record<string, Record<string, string>> = {
+  upgrade_enquiries: {id:q('e0000002-1111-4111-8111-111111111111'),submitter_id:q(U.ownerA),firm_id:q(ORG_A),name:q('Enquiry A'),email:q('a@example.invalid'),organisation_name:q('Org A'),module_keys:"'{}'::text[]",client_ids:"'{}'::uuid[]",message:q('Hello'),status:q('new'),submission_key:q('f0000000-0000-0000-0000-000000000000'),created_at:'now()'},
   firms: { id: q(ORG_A), name: q("Org A"), owner_user_id: q(U.ownerA) },
   firm_members: {
     id: q("f0000001-1111-4111-8111-111111111111"),
@@ -424,6 +425,9 @@ const pkOf = (t: string) => PK[t] ?? "id";
 
 /** Database functions callable in the fixture, with a synthetic argument set. */
 const EXEC: Record<string, string> = {
+  "public.submit_upgrade_enquiry()": `select public.submit_upgrade_enquiry('${ORG_A}', 'Name', '{}'::text[], '{}'::uuid[], 'Message', gen_random_uuid())`,
+  "public.admin_upgrade_enquiries()": `select * from public.admin_upgrade_enquiries()`,
+  "public.set_upgrade_enquiry_status()": `select public.set_upgrade_enquiry_status('e0000002-1111-4111-8111-111111111111', 'contacted')`,
   "public.user_can_access_firm()": `select public.user_can_access_firm(auth.uid(), '${ORG_A}')`,
   "public.user_can_access_client()": `select public.user_can_access_client(auth.uid(), '${CLIENT_A}')`,
   "public.client_entitlement()": `select * from public.client_entitlement('${CLIENT_A}')`,
@@ -1777,6 +1781,13 @@ beforeAll(async () => {
   // application object changes.
   await db.exec(`alter table public.practice_team add primary key (user_id);`);
   await db.exec(`alter table public.platform_branding add primary key (id);`);
+  await db.exec(`alter table public.upgrade_enquiries alter column id set default gen_random_uuid();
+    alter table public.upgrade_enquiries alter column status set default 'new';
+    alter table public.upgrade_enquiries alter column created_at set default now();
+    alter table public.upgrade_enquiries alter column updated_at set default now();
+    alter table public.upgrade_enquiries add unique(submitter_id,submission_key);
+    revoke all on function public.submit_upgrade_enquiry(uuid,text,text[],uuid[],text,uuid), public.admin_upgrade_enquiries(), public.set_upgrade_enquiry_status(uuid,text), public.upgrade_enquiry_context(uuid) from public,anon;
+    grant execute on function public.submit_upgrade_enquiry(uuid,text,text[],uuid[],text,uuid), public.admin_upgrade_enquiries(), public.set_upgrade_enquiry_status(uuid,text), public.upgrade_enquiry_context(uuid) to authenticated;`);
   // The product catalogue is data since 14 Oct 2026; the structural fixture
   // holds no rows, so seed it from the same snapshot the catalogue test reads.
   await db.exec(`alter table public.card_modules add primary key (module_key);

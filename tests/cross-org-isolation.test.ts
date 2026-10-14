@@ -36,6 +36,7 @@ const OWNER_B = "99999999-2222-4222-8222-222222222222";
 
 /** Column name → the Organisation B value that attributes a row to Org B. */
 const B_VALUES: Record<string, string> = {
+  submitter_id: OWNER_B,
   firm_id: ORG_B,
   client_id: CLIENT_B,
   tenant_id: TENANT_B,
@@ -55,6 +56,7 @@ const NOT_SEEDABLE: Record<string, string> = {};
  * organisations (Project Knowledge, access path C). Each is metadata only.
  */
 const PATH_C_METADATA = new Set([
+  "upgrade_enquiries", // owner-approved platform enquiries; no linked figures
   "firms", // organisation list
   "firm_members", // member list (owner-approved Path C item)
   "access_invites", // invites
