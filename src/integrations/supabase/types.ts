@@ -3481,6 +3481,60 @@ export type Database = {
           },
         ]
       }
+      xero_gate_slots: {
+        Row: {
+          expires_at: string
+          holder: string
+          slot: number
+          tenant_id: string
+        }
+        Insert: {
+          expires_at: string
+          holder: string
+          slot: number
+          tenant_id: string
+        }
+        Update: {
+          expires_at?: string
+          holder?: string
+          slot?: number
+          tenant_id?: string
+        }
+        Relationships: []
+      }
+      xero_gate_state: {
+        Row: {
+          last_wait_at: string | null
+          minute_count: number
+          minute_start: string
+          paused_until: string | null
+          tenant_id: string
+          updated_at: string
+          waits_count: number
+          waits_day: string | null
+        }
+        Insert: {
+          last_wait_at?: string | null
+          minute_count?: number
+          minute_start?: string
+          paused_until?: string | null
+          tenant_id: string
+          updated_at?: string
+          waits_count?: number
+          waits_day?: string | null
+        }
+        Update: {
+          last_wait_at?: string | null
+          minute_count?: number
+          minute_start?: string
+          paused_until?: string | null
+          tenant_id?: string
+          updated_at?: string
+          waits_count?: number
+          waits_day?: string | null
+        }
+        Relationships: []
+      }
       xero_oauth_states: {
         Row: {
           client_id: string | null
@@ -5093,6 +5147,32 @@ export type Database = {
           path: string
           rate_limited: number
           tenant_name: string
+        }[]
+      }
+      xero_gate_acquire: {
+        Args: {
+          _cap: number
+          _lease_seconds: number
+          _per_minute: number
+          _tenant_id: string
+        }
+        Returns: string
+      }
+      xero_gate_backoff: {
+        Args: { _seconds: number; _tenant_id: string }
+        Returns: undefined
+      }
+      xero_gate_release: { Args: { _holder: string }; Returns: undefined }
+      xero_gate_status: {
+        Args: never
+        Returns: {
+          in_flight: number
+          last_wait_at: string
+          paused_until: string
+          tenant_id: string
+          tenant_name: string
+          waiting_now: boolean
+          waits_today: number
         }[]
       }
       xero_missing_scopes: {
