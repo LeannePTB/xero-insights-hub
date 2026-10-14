@@ -55,17 +55,10 @@ async function resolveGroup(supabase: any, userId: string, groupId: string): Pro
   // Invariant 3 and rule 6: active membership of the organisation decides, and
   // the rule has one implementation — public.user_can_write_firm (membership
   // only, never a support grant, never bare super_admin).
-  const { data: isMember, error: memberErr } = await supabase.rpc("user_can_write_firm", {
-    _user_id: userId,
-    _firm_id: group.firm_id,
-  });
-  if (memberErr || isMember !== true) {
-    throw new Error("You don't have access to this organisation.");
-  }
-
-  // Consolidated views are an organisation-level feature gated by the plan.
-  const { assertFirmWidget } = await import("@/lib/widget-access.server");
-  await assertFirmWidget(supabase, group.firm_id, "loan_consolidation");
+  // Owner or active Traction Advisory team member (public.me_can_open_consolidations).
+  void userId;
+  const { data: canOpen, error: openErr } = await supabase.rpc("me_can_open_consolidations", { _firm_id: group.firm_id });
+  if (openErr || canOpen !== true) throw new Error("You don't have access to this organisation.");
 
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

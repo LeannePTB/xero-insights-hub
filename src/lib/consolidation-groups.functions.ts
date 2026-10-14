@@ -37,23 +37,12 @@ async function assertFirmAccess(
   // and the rule lives in the database (public.user_can_write_firm — membership
   // only). Read-only surfaces may additionally be reached through a live Path B
   // support grant, resolved by public.user_can_access_firm.
-  const { data: isMember } = await supabase.rpc("user_can_write_firm", {
-    _user_id: userId,
-    _firm_id: firmId,
-  });
-  if (isMember !== true) {
-    let allowed = false;
-    if (opts?.allowSupportRead) {
-      const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
-      allowed = await platformStaffCanAccessFirm(userId, firmId);
-    }
-    if (!allowed) throw new Error("You don't have access to this organisation.");
-  }
-
-  // Consolidation groups are part of the organisation-level consolidation
-  // feature — the plan decides. Fails closed.
-  const { assertFirmWidget } = await import("@/lib/widget-access.server");
-  await assertFirmWidget(supabase, firmId, "loan_consolidation");
+  // Owner decision 14 Oct 2026: Organisation Owner or active Traction
+  // Advisory team member, Consolidation purchased. One rule in the database
+  // (public.me_can_open_consolidations); support passes are refused.
+  void userId; void opts;
+  const { data: canOpen } = await supabase.rpc("me_can_open_consolidations", { _firm_id: firmId });
+  if (canOpen !== true) throw new Error("You don't have access to this organisation.");
 }
 
 async function firmIdForGroup(admin: any, groupId: string): Promise<string> {

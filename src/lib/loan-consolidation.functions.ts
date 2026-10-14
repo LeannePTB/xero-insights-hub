@@ -536,21 +536,10 @@ async function resolveLoanGroup(
     .maybeSingle();
   if (!group) throw new Error("Consolidation group not found.");
 
-  // Invariant 3: super_admin alone grants nothing. Active membership decides.
-  // Read-only surfaces may additionally be reached through a live Path B
-  // support grant, resolved by the database rule (user_can_access_firm).
-  let allowed = await firmMemberActive(supabase, userId, (group as any).firm_id);
-  if (!allowed && opts?.allowSupportRead) {
-    const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
-    allowed = await platformStaffCanAccessFirm(userId, (group as any).firm_id);
-  }
-  if (!allowed) throw new Error("You don't have access to this organisation.");
-
-
-  // The organisation's plan must include loan consolidation (fails closed).
-  const { assertFirmWidget } = await import("@/lib/widget-access.server");
-  await assertFirmWidget(supabase, (group as any).firm_id, "loan_consolidation");
-
+  // Owner or active Traction Advisory team member, Consolidation purchased
+  // (public.me_can_open_consolidations). No support or Viewer path.
+  const { data: canOpen } = await supabase.rpc("me_can_open_consolidations", { _firm_id: (group as any).firm_id });
+  if (canOpen !== true) throw new Error("You don't have access to this organisation.");
 
   const { data: members } = await supabaseAdmin
     .from("consolidation_group_members")
