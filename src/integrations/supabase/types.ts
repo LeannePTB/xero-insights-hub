@@ -4146,6 +4146,15 @@ export type Database = {
           expense_accounts: number
         }[]
       }
+      client_setup_cost_accounts: {
+        Args: { _client_ids: string[] }
+        Returns: {
+          account_name: string
+          account_type: string
+          client_id: string
+          tagged: boolean
+        }[]
+      }
       client_viewers: {
         Args: { _client_id: string }
         Returns: {
