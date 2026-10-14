@@ -257,3 +257,31 @@
  .sales-actions > a, .sales-actions > button { padding-inline: 14px; font-size: 12px; }
 }
 @media(prefers-reduced-motion:reduce) { .sales-page * { scroll-behavior: auto; animation: none; transition: none; } }
+
+/* Shared auth presentation; route-owned security logic is unchanged. */
+.auth-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 100svh; }
+.auth-brand-panel { background: var(--gradient-hero); color: var(--primary-foreground); padding: 48px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+.auth-logo-link { align-self: flex-start; }
+.auth-logo { width: 220px; height: 72px; object-fit: contain; object-position: left center; }
+.auth-brand-message { margin-block: auto; padding-top: 48px; max-width: 560px; }
+.auth-brand-message h2 { color: var(--primary-foreground); font-size: 18px; line-height: 26px; }
+.auth-brand-message p { color: var(--primary-foreground); margin-top: 16px; max-width: 350px; line-height: 22px; }
+.auth-illustration { margin-top: 32px; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 8px; }
+.auth-form-panel { background: var(--card); color: var(--card-foreground); padding: 32px 40px 24px; display: flex; flex-direction: column; min-width: 0; }
+.auth-home-link { display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; color: var(--link); font-size: 11px; min-height: 32px; }
+.auth-form-content { width: 100%; max-width: 384px; margin: auto; padding-block: 40px; }
+.auth-form-content h1 { font-size: 18px; line-height: 24px; }
+.auth-form-content input, .auth-form-content button { min-height: 40px; }
+.auth-form-content a, .auth-form-content button.underline, .auth-form-content button[class*="underline-offset"] { color: var(--link); }
+.auth-form-content button:disabled { cursor: not-allowed; }
+.auth-footer { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 8px; font-size: 11px; color: var(--muted-foreground); }
+.auth-footer a { color: var(--link); }
+.auth-layout a:hover { text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 767px) {
+  .auth-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .auth-brand-panel { padding: 18px 24px; }
+  .auth-logo { width: 180px; height: 54px; }
+  .auth-brand-message { display: none; }
+  .auth-form-panel { padding: 16px 24px 24px; }
+  .auth-form-content { padding-block: 28px; }
+}

@@ -25,4 +25,5 @@
 - Bank-reconciliation warnings come only from per-account dates in `client_key_figures.bank_reconciliation`, scoped by the same bank-account settings overlay as cash and a recent-line window (`src/lib/overview/bank-reconciliation.ts`), because file-wide oldest-line dates surfaced closed accounts and years-old leftovers; missing data shows nothing.
 - Protected money is compared with cash at bank only through `src/lib/health/protected-money-share.ts`, because the health rule, Overview, reports and Trixie must agree on one definition.
 - Viewer is one read-only login type whose scope (All clients via firm_viewer_access, Selected via client_access external_adviser rows) is changed only through `set_viewer_scope`, because the two storage paths must switch atomically without a new predicate.
-- User-facing login-type names live in `LOGIN_TYPE_LABEL` in `src/lib/access-labels.ts` while database keys stay unchanged, so renames never touch access rules.
+- Login labels use `LOGIN_TYPE_LABEL`; database keys stay unchanged to preserve access rules.
+- AuthLayout shares presentation only; auth routes retain security and redirect logic.
