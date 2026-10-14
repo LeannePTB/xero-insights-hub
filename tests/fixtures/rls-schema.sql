@@ -728,6 +728,51 @@ AS $function$
   select _widget = any(public.client_allowed_widgets(_client_id))
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.firm_allowed_widgets(_firm_id uuid)
+ RETURNS text[]
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare result text[];
+begin
+  perform app_private.assert_aal2();
+
+  if auth.uid() is not null
+     and not public.user_can_access_firm(auth.uid(), _firm_id)
+     and not app_private.is_super_admin(auth.uid()) then
+    return '{}'::text[];
+  end if;
+
+  if app_private.setting_bool('card_model_v2') then
+    select coalesce(array(
+      select w from unnest(public.org_addon_widgets()) as w
+       where public.firm_has_consolidation(_firm_id)
+      union
+      select distinct w2
+        from public.clients c
+        cross join lateral unnest(app_private.client_cards_v2(c.id)) as w2
+       where c.firm_id = _firm_id
+         and not (w2 = any(public.org_addon_widgets()))
+    ), '{}'::text[]) into result;
+    return result;
+  end if;
+
+  select coalesce(array(
+    select w from unnest(public.org_addon_widgets()) as w
+     where public.firm_has_consolidation(_firm_id)
+    union
+    select distinct w2
+      from public.clients c
+      cross join lateral unnest(public.client_allowed_widgets(c.id)) as w2
+     where c.firm_id = _firm_id
+       and not (w2 = any(public.org_addon_widgets()))
+  ), '{}'::text[]) into result;
+
+  return result;
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.firm_can_use_widget(_firm_id uuid, _widget text)
  RETURNS boolean
  LANGUAGE sql

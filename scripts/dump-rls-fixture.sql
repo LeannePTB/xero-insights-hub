@@ -41,7 +41,7 @@ fns as (
         'assert_super_admin','user_can_read_client',
         'record_view_as','xero_error_breakdown','set_org_trial','set_org_purchase',
         'org_card_defaults','set_org_card_defaults','apply_org_card_defaults','rename_my_organisation',
-        'set_client_module','set_client_card_enabled','copy_client_cards','admin_set_card_entry','admin_set_card_module','me_can_manage_cards','me_can_open_consolidations','me_can_open_client_loans','client_report_sections','firm_can_use_widget','start_figure_backfill','figure_backfill_status',
+        'set_client_module','set_client_card_enabled','copy_client_cards','admin_set_card_entry','admin_set_card_module','me_can_manage_cards','me_can_open_consolidations','me_can_open_client_loans','client_report_sections','firm_can_use_widget','firm_allowed_widgets','start_figure_backfill','figure_backfill_status',
         'my_firm_memberships','me_is_practice_member','overview_clients',
          'set_overview_alert_state','user_can_write_firm',
          'can_manage_client_income_tax_instalments','save_client_income_tax_instalment',
