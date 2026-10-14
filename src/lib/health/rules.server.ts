@@ -427,7 +427,9 @@ function xeroDate(v: any): number | null {
 export function debtorBook(
   payload: any,
   asAtMs: number,
-): { total: number; overdue: number; over90: number; byContact: Map<string, number> } {
+): { total: number; overdue: number; over60: number; over90: number; byContact: Map<string, number> } {
+  const over60Cutoff = asAtMs - 60 * 86_400_000;
+  let over60 = 0;
   const over90Cutoff = asAtMs - R06_DEBTORS.over90Days * 86_400_000;
   let total = 0;
   let overdue = 0;
@@ -439,11 +441,12 @@ export function debtorBook(
     total += due;
     const dueDate = xeroDate(inv?.DueDate);
     if (dueDate !== null && dueDate < asAtMs) overdue += due;
+    if (dueDate !== null && dueDate < over60Cutoff) over60 += due;
     if (dueDate !== null && dueDate < over90Cutoff) over90 += due;
     const contact = inv?.Contact?.Name ?? "Unnamed customer";
     byContact.set(contact, (byContact.get(contact) ?? 0) + due);
   }
-  return { total, overdue, over90, byContact };
+  return { total, overdue, over60, over90, byContact };
 }
 
 export function ruleDebtors(row: SnapshotRow): { finding: Finding | null; unavailable?: string } {

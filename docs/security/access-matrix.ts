@@ -1287,6 +1287,39 @@ export const MATRIX: MatrixRow[] = [
     "Caller-scoped through client_visible_cards: another organisation, aal1 and signed-out callers get nothing",
     ["pglite"],
   ),
+  // ------------------------- Work-in-progress cards (14 Oct 2026)
+  ...rows(
+    ["org_owner", "org_staff", "client_viewer", "business_owner", "super_admin_no_membership"],
+    ["wip: client_visible_cards shows a ticked Work-in-progress card", "wip: assert_widget_access(Work-in-progress card)"],
+    ["execute"],
+    "deny",
+    "card_catalogue.status = 'wip' removes the card from app_private.client_available_cards, so client_cards_v2 (and every reader through assert_widget_access) refuses it; a System Administrator without access to the client still gets nothing",
+    ["pglite"],
+  ),
+  ...rows(
+    ["support_grant_active"],
+    ["wip: client_visible_cards shows a ticked Work-in-progress card", "wip: assert_widget_access(Work-in-progress card)"],
+    ["execute"],
+    "allow",
+    "Testing exception: a System Administrator sees a purchased Work-in-progress card, labelled, only on a client they can already read (here through an approved read-only support grant)",
+    ["pglite"],
+  ),
+  ...rows(
+    ["support_grant_active", "org_owner"],
+    ["wip: report sections include a Work-in-progress card"],
+    ["execute"],
+    "deny",
+    "client_report_sections ignores Work-in-progress cards for everyone, so no report draft freezes them",
+    ["pglite"],
+  ),
+  ...rows(
+    ["org_owner"],
+    ["wip: ticks survive Work in progress → Available"],
+    ["execute"],
+    "allow",
+    "Ticks in client_cards are never rewritten when a card goes Work in progress; switching back to Available restores the card with no re-ticking",
+    ["pglite"],
+  ),
   // ------------------------- card readers refuse outside the purchase (14 Oct 2026)
   ...rows(
     ["org_owner", "org_staff", "client_viewer", "business_owner"],
@@ -1425,6 +1458,11 @@ export const MATRIX: MatrixRow[] = [
     "PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first",
     ["pglite"],
   ),
+  // Pages /firms/:firmId (organisation overview, 14 Oct 2026) and /firms/:firmId/overview
+  // read only overview_clients(_firm_id); the firm id is a filter. The organisation's
+  // "Hide from overview" flag applies to the all-organisations view only.
+  // /firms/:firmId/add-client reuses getMyFirm plus the existing add-client writes and
+  // plan-limit triggers — no new reader or write.
   ...rows(
     ["org_owner"],
     ["overview_clients() — own organisation's clients", "me_is_practice_member()"],

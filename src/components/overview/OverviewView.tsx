@@ -1,4 +1,5 @@
-import { OverviewCharts } from "./OverviewCharts";
+import { ATTENTION, attentionCounts, matchesAttention, type AttentionKey } from "@/lib/overview/attention";
+import { Plus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -38,10 +39,11 @@ function date(s: string | null) {
   return s ? new Date(s).toLocaleDateString("en-AU", { day: "numeric", month: "short" }) : "—";
 }
 
-export function OverviewView({ firmId }: { firmId?: string }) {
+export function OverviewView({ firmId, title }: { firmId?: string; title?: string }) {
   const fetchOverview = useServerFn(getClientOverview);
   const q = useQuery({ queryKey: ["client-overview", firmId ?? "all"], queryFn: () => fetchOverview({ data: firmId ? { firmId } : {} }) });
   const [filter, setFilter] = useState<Bucket | null>(null);
+  const [attention, setAttention] = useState<AttentionKey | null>(null);
   const [search, setSearch] = useState("");
   const [grouped, setGrouped] = useState(false);
   const navigate = useNavigate();
@@ -76,9 +78,11 @@ export function OverviewView({ firmId }: { firmId?: string }) {
     for (const r of rows) c[r.bucket] = (c[r.bucket] ?? 0) + 1;
     return c;
   }, [rows]);
+  const attn = useMemo(() => attentionCounts(rows), [rows]);
   const shown = rows.filter(
     (r) =>
       (!filter || r.bucket === filter) &&
+      (!attention || matchesAttention(r, attention)) &&
       (!search ||
         r.clientName.toLowerCase().includes(search.toLowerCase()) ||
         r.firmName.toLowerCase().includes(search.toLowerCase())),
@@ -94,7 +98,7 @@ export function OverviewView({ firmId }: { firmId?: string }) {
     <PageContainer as="div" width="full" className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-lg font-semibold">Client overview</h1>
+          <h1 className="text-lg font-semibold">{title ?? "Client overview"}</h1>
           <p className="text-sm text-muted-foreground">
             Every client you look after, worst first. Figures come from the overnight Xero snapshot.
           </p>
@@ -102,7 +106,29 @@ export function OverviewView({ firmId }: { firmId?: string }) {
         <ResyncHeader clientIds={resyncIds} lastSynced={lastSynced} queue={queue} />
       </div>
 
-      {q.data?.charts && <OverviewCharts data={q.data.charts} latest={q.data.latestReport} />}
+      {/* Counts only: figures from different companies are never added together. */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5" aria-label="Clients needing attention">
+        {ATTENTION.map((a) => (
+          <button
+            key={a.key}
+            onClick={() => setAttention(attention === a.key ? null : a.key)}
+            aria-pressed={attention === a.key}
+            className={`rounded-lg border p-3 text-left transition-colors ${
+              attention === a.key ? "border-primary bg-primary/10" : "bg-card hover:bg-muted/50"
+            }`}
+          >
+            <div className="text-kpi font-semibold">{attn[a.key]}</div>
+            <div className="text-xs text-muted-foreground">{a.label}</div>
+          </button>
+        ))}
+        <button
+          onClick={() => { setAttention(null); setFilter(null); }}
+          className="rounded-lg border bg-card p-3 text-left transition-colors hover:bg-muted/50"
+        >
+          <div className="text-kpi font-semibold">{rows.length}</div>
+          <div className="text-xs text-muted-foreground">Active clients</div>
+        </button>
+      </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {BUCKETS.map((b) => (
           <button
@@ -137,6 +163,15 @@ export function OverviewView({ firmId }: { firmId?: string }) {
         </div>
       ) : q.isError ? (
         <p className="text-sm text-destructive">The client overview could not be loaded. Try again shortly.</p>
+      ) : !rows.length && firmId ? (
+        <div className="rounded-lg border bg-card p-6">
+          <p className="text-sm">Welcome — this organisation has no clients yet.</p>
+          <Button asChild className="mt-3">
+            <Link to="/firms/$firmId/add-client" params={{ firmId }}>
+              <Plus className="mr-2 h-4 w-4" /> Add your first client
+            </Link>
+          </Button>
+        </div>
       ) : !rows.length ? (
         <p className="text-sm text-muted-foreground">No clients to show.</p>
       ) : (

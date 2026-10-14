@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAal2 } from "@/lib/auth/require-aal2";
-import { mapCatalogue, type CardCatalogue } from "@/lib/cards/catalogue";
+import { mapCatalogue, offeredCatalogue, type CardCatalogue } from "@/lib/cards/catalogue";
 
 /**
  * Admin reads and writes for the purchase + ticked-list card model (v2).
@@ -453,13 +453,16 @@ export const applyOrgCardDefaults = createServerFn({ method: "POST" })
 // ticks are a grouping over the same client_cards list (client_cards_v2).
 // ---------------------------------------------------------------------------
 
-async function readCatalogue(db: any): Promise<CardCatalogue> {
+async function readCatalogue(db: any, includeWip = false): Promise<CardCatalogue> {
   const [m, c] = await Promise.all([
     db.from("card_modules").select("module_key, label, description, sort_order").order("sort_order"),
-    db.from("card_catalogue").select("card_key, package, module_key, label, description, sort_order, report_sections").order("sort_order"),
+    db.from("card_catalogue").select("card_key, package, module_key, label, description, sort_order, report_sections, status").order("sort_order"),
   ]);
   if (m.error || c.error) throw rpcError("The card catalogue is unavailable.");
-  return mapCatalogue(m.data, c.data);
+  // RLS returns Work-in-progress rows to System Administrators only; offer
+  // surfaces drop them regardless so they never appear as tickable.
+  const all = mapCatalogue(m.data, c.data);
+  return includeWip ? all : offeredCatalogue(all);
 }
 
 async function canManageCards(db: any, firmId: string | null): Promise<boolean> {
@@ -469,7 +472,20 @@ async function canManageCards(db: any, firmId: string | null): Promise<boolean> 
 
 export const getCardCatalogue = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .handler(async ({ context }) => ({ catalogue: await readCatalogue(context.supabase as any) }));
+  .inputValidator((i: unknown) => z.object({ includeWip: z.boolean().optional() }).strict().optional().parse(i))
+  .handler(async ({ data, context }) => ({ catalogue: await readCatalogue(context.supabase as any, data?.includeWip === true) }));
+
+export const saveCardStatus = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) => z.object({ cardKey: z.string().regex(/^[a-z][a-z_]{1,39}$/), status: z.enum(["available", "wip"]) }).strict().parse(i))
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase as any).rpc("admin_set_card_status", { _card_key: data.cardKey, _status: data.status });
+    if (error) {
+      if (/Forbidden|NO_ACCESS|insufficient|super/i.test(error.message)) throw new Error("Forbidden");
+      throw new Error("The status could not be saved.");
+    }
+    return { ok: true };
+  });
 
 const cardEntrySchema = z.object({
   cardKey: z.string().regex(/^[a-z][a-z_]{1,39}$/),

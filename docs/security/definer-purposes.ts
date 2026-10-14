@@ -395,6 +395,10 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "aal2, caller-scoped through client_visible_cards (CLIENT_ACCESS_DENIED otherwise): the monthly report sections a new draft includes, from card_catalogue.report_sections of the visible cards. Returns section keys only, no client data.",
   "public.me_can_manage_cards":
     "Presentation signal: whether the caller may change card/module ticks for one organisation (Organisation Owner or System Administrator, aal2). Grants nothing; every write re-checks through app_private.assert_card_manager. Returns only a boolean.",
+  "app_private.client_purchasable_cards":
+    "Cards a client's organisation purchase offers, optionally including Work-in-progress catalogue rows. Execute revoked from PUBLIC, anon and authenticated; reached only from app_private.client_available_cards (offered cards) and app_private.client_cards_v2, which adds Work-in-progress cards solely for a System Administrator who can already read the client. Holds no authorisation of its own.",
+  "public.admin_set_card_status":
+    "System Administrator only (aal2 + assert_super_admin): marks a catalogue card Available or Work in progress and audits the change. Changes product configuration only; never touches client ticks or client data.",
   "public.admin_set_card_entry":
     "Moves one catalogue card between packages/Advisory modules and edits its description. aal2 + System Administrator via public.assert_super_admin, validated (Advisory cards need an existing module), audited with old and new package/module. Product catalogue only; no organisation or client data. Changes what every purchase includes; client_cards_v2 still intersects with each client's ticks.",
   "public.start_figure_backfill":

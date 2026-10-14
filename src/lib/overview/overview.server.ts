@@ -289,8 +289,6 @@ export async function buildOverview(
   feed: import("./feed.server").FeedEvent[];
   cleared: import("./feed.server").FeedEvent[];
   feedNotes: string[];
-  charts: import("./charts.server").OverviewCharts;
-  latestReport: { clientId: string; clientName: string; periodEnd: string; sentAt: string } | null;
 }> {
   const ctx = await loadOverviewContext(sb, firmId);
   const { logClientDataRead } = await import("@/lib/audit.server");
@@ -313,9 +311,11 @@ export async function buildOverview(
     const m7 = moveFor(s, "cash", 7);
     const ar = latest(ctx.rowsByClient.get(c.client_id) ?? [], "invoices_accrec_open");
     let debtorsOverduePct: number | null = null;
+    let debtorsOver60: number | null = null;
     if (ar?.complete) {
       const book = debtorBook(ar.payload, new Date(ar.as_at).getTime());
       debtorsOverduePct = book.total > 0 ? (book.overdue / book.total) * 100 : null;
+      debtorsOver60 = book.over60;
     }
     const all = [...(ctx.rowsByClient.get(c.client_id) ?? []), ...(ctx.datedByClient.get(c.client_id) ?? [])];
     const freshAsAt = all.reduce<string | null>((m, r) => (!m || r.fetched_at > m ? r.fetched_at : m), null);
@@ -352,6 +352,8 @@ export async function buildOverview(
       })(),
       netProfitMtd: today?.netProfitMtd ?? null,
       debtorsOverduePct,
+      debtorsOver60,
+      xeroNeedsAttention: (ctx.connections.get(c.client_id) ?? []).some((k) => k.status !== "connected"),
       lastReportSentAt: ctx.lastSent.get(c.client_id) ?? null,
       freshAsAt,
       canResync: manageable.has(c.client_id),
@@ -371,13 +373,5 @@ export async function buildOverview(
   out.sort((a, b) => b.rank - a.rank || a.clientName.localeCompare(b.clientName));
   const { buildFeed } = await import("./feed.server");
   const feed = buildFeed(ctx);
-  const { buildOverviewCharts } = await import('./charts.server');
-  const charts = await buildOverviewCharts(sb, ctx, out);
-  let latestReport = null;
-  if (ctx.clients.length) {
-    const { data } = await sb.from('client_reports').select('client_id, period_end, sent_at').in('client_id', ctx.clients.map(c => c.client_id)).eq('report_key', 'monthly_management').eq('status','sent').order('sent_at',{ascending:false}).limit(1).maybeSingle();
-    const client = ctx.clients.find(c => c.client_id === data?.client_id);
-    if (data?.sent_at && client) latestReport = {clientId:client.client_id,clientName:client.client_name,periodEnd:String(data.period_end),sentAt:String(data.sent_at)};
-  }
-  return { rows: out, feed: feed.events, cleared: feed.cleared, feedNotes: feed.notes, charts, latestReport };
+  return { rows: out, feed: feed.events, cleared: feed.cleared, feedNotes: feed.notes };
 }

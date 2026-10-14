@@ -1,7 +1,7 @@
 import type { CardCatalogue } from '@/lib/cards/catalogue';
 
 // Presentation only: callers pass the cards already granted by the database.
-export const MODULE_ORDER = ['cash_flow', 'profit', 'tax_compliance', 'bookkeeping_checks'];
+export const MODULE_ORDER = ['cash_flow', 'profit', 'tax_compliance', 'bookkeeping_checks', 'rental_properties'];
 export const GROUP_ORDER = ['standard', ...MODULE_ORDER, 'consolidation'];
 export const STANDARD_ORDER = ['health', 'pnl', 'receivables', 'payables', 'notes'];
 const WIDE_CARDS = new Set(['health', 'pnl', 'cashflow', 'cashflow_scenario', 'accounting_breakeven', 'transaction_search', 'gst_reconciliation', 'notes', 'loan_consolidation']);
@@ -17,7 +17,7 @@ export function dashboardCardMeta(id: string, catalogue: CardCatalogue) {
       ? catalogue.modules.find(m => m.key === card.module)?.label ?? 'Advisory'
       : card?.package === 'consolidation' ? 'Consolidation' : 'Standard',
     rank: card?.package === 'standard' ? STANDARD_ORDER.indexOf(key) : catalogue.cards.findIndex(c => c.key === key),
-    groupRank: group === 'standard' ? 0 : group === 'consolidation' ? 5 : 1 + MODULE_ORDER.indexOf(group ?? ''),
+    groupRank: group === 'standard' ? 0 : group === 'consolidation' ? 1 + MODULE_ORDER.length : 1 + MODULE_ORDER.indexOf(group ?? ''),
     fullWidth: WIDE_CARDS.has(key),
   };
 }

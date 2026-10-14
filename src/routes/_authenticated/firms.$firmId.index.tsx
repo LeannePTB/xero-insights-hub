@@ -6,12 +6,10 @@ import { getMyFirm } from "@/lib/firms.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Loader2 } from "lucide-react";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
-import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
-import { AddClientsPanel } from "@/components/firm/AddClientsPanel";
+import { OverviewView } from "@/components/overview/OverviewView";
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
 
 import { toast } from "sonner";
-import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/")({
   staticData: { sitemap: false },
@@ -28,12 +26,12 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId/")({
       { title: "Organisation — Traction Advisory" },
       {
         name: "description",
-        content: "Manage this organisation's clients, Xero files and consolidation groups.",
+        content: "Every client in this organisation, worst first, with what needs attention.",
       },
       { property: "og:title", content: "Organisation — Traction Advisory" },
       {
         property: "og:description",
-        content: "Manage this organisation's clients, Xero files and consolidation groups.",
+        content: "Every client in this organisation, worst first, with what needs attention.",
       },
     ],
   }),
@@ -95,7 +93,6 @@ function FirmPage() {
   }
 
   const firm = firmQ.data.firm;
-  const plan = firmQ.data.plan;
 
   return (
     <div className="min-h-screen bg-background">
@@ -105,47 +102,23 @@ function FirmPage() {
           note="Layout and controls only; data access is unchanged"
         />
       )}
-      <PageContainer>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="font-display text-lg font-semibold">{firm.name}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Clients for this organisation. Add or remove them here.
-            </p>
-          </div>
-        </div>
-
-        {xeroPick && (
-          <XeroOnboardPickerDialog
-            firmId={firmId}
-            state={xeroPick}
-            onDone={() => {
-              qc.invalidateQueries({ queryKey: ["clients", firmId] });
-              navigate({
-                to: "/firms/$firmId",
-                params: { firmId },
-                search: (prev: any) => ({ ...prev, xero_pick: undefined }),
-                replace: true,
-              });
-            }}
-          />
-        )}
-
-        {!previewing && (
-          <div className="mt-6">
-            <AddClientsPanel firmId={firmId} />
-          </div>
-        )}
-
-        <div className="mt-8">
-          <FirmClientsSection
-            firmId={firmId}
-            firmName={firm.name}
-            clientLimit={plan.clientLimit}
-            showAddActions={false}
-          />
-        </div>
-      </PageContainer>
+      {xeroPick && (
+        <XeroOnboardPickerDialog
+          firmId={firmId}
+          state={xeroPick}
+          onDone={() => {
+            qc.invalidateQueries({ queryKey: ["clients", firmId] });
+            navigate({
+              to: "/firms/$firmId",
+              params: { firmId },
+              search: (prev: any) => ({ ...prev, xero_pick: undefined }),
+              replace: true,
+            });
+          }}
+        />
+      )}
+      {/* firmId is a filter inside the caller-scoped overview reader, never a grant. */}
+      <OverviewView firmId={firmId} title={firm.name} />
     </div>
   );
 }

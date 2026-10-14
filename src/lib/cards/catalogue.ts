@@ -13,6 +13,8 @@ export type CatalogueCard = {
   description: string;
   /** Monthly report sections this card adds (card_catalogue.report_sections). */
   reportSections?: string[];
+  /** "wip" = Work in progress: not offered. Only System Administrators can read WIP rows. */
+  status?: "available" | "wip";
 };
 export type CardCatalogue = { modules: CatalogueModule[]; cards: CatalogueCard[] };
 
@@ -21,6 +23,12 @@ export const PACKAGE_LABEL: Record<CardPackage, string> = {
   advisory: "Advisory",
   consolidation: "Consolidation",
 };
+
+/** The catalogue as offered: Work-in-progress cards removed, and any module left empty with them. */
+export function offeredCatalogue(catalogue: CardCatalogue): CardCatalogue {
+  const cards = catalogue.cards.filter((c) => c.status !== "wip");
+  return { cards, modules: catalogue.modules.filter((m) => cards.some((c) => c.module === m.key)) };
+}
 
 export const EMPTY_CATALOGUE: CardCatalogue = { modules: [], cards: [] };
 
@@ -89,6 +97,7 @@ export function mapCatalogue(modules: any[] | null, cards: any[] | null): CardCa
       label: c.label,
       description: c.description ?? "",
       reportSections: Array.isArray(c.report_sections) ? (c.report_sections as string[]) : [],
+      status: c.status === "wip" ? "wip" : "available",
     })),
   };
 }

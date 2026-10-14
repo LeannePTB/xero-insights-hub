@@ -329,6 +329,7 @@ export type Database = {
           package: string
           report_sections: string[]
           sort_order: number
+          status: string
           updated_at: string
           updated_by: string | null
         }
@@ -340,6 +341,7 @@ export type Database = {
           package: string
           report_sections?: string[]
           sort_order?: number
+          status?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -351,6 +353,7 @@ export type Database = {
           package?: string
           report_sections?: string[]
           sort_order?: number
+          status?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -4076,6 +4079,10 @@ export type Database = {
       }
       admin_set_card_module: {
         Args: { _description: string; _label: string; _module_key: string }
+        Returns: undefined
+      }
+      admin_set_card_status: {
+        Args: { _card_key: string; _status: string }
         Returns: undefined
       }
       admin_set_self_firm_membership: {
