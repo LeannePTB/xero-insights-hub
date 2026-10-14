@@ -565,3 +565,24 @@ export const getMyClientVisibleCards = createServerFn({ method: "POST" })
     if (error || !Array.isArray(cards)) return { cards: [] };
     return { cards: (cards as unknown[]).filter((c): c is string => typeof c === "string") };
   });
+
+const LoansAccessInput = z
+  .object({ clientId: z.string().uuid().optional(), firmId: z.string().uuid().optional() })
+  .strict();
+
+/**
+ * Menu signal for Loans (client) and Consolidations (organisation). Mirrors
+ * public.me_can_open_client_loans / me_can_open_consolidations — the same
+ * rules every Loans/Consolidation server reader enforces. Fails closed.
+ */
+export const getMyLoansAccess = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) => LoansAccessInput.parse(i))
+  .handler(async ({ data, context }): Promise<{ clientLoans: boolean; consolidations: boolean }> => {
+    const db = context.supabase as any;
+    const [c, f] = await Promise.all([
+      data.clientId ? db.rpc("me_can_open_client_loans", { _client_id: data.clientId }) : { data: false },
+      data.firmId ? db.rpc("me_can_open_consolidations", { _firm_id: data.firmId }) : { data: false },
+    ]);
+    return { clientLoans: !c.error && c.data === true, consolidations: !f.error && f.data === true };
+  });
