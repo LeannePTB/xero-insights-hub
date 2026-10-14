@@ -101,7 +101,7 @@ function AdminOrganisations({ firms, loading, error }: { firms: FirmRow[]; loadi
       </div>
     </div>
 
-    <div className="hidden overflow-x-auto rounded-md border lg:block">
+    <div className="hidden overflow-x-auto rounded-md border border-border bg-card lg:block">
       <table className="w-full min-w-[1050px] text-sm">
         <thead className="bg-muted/50 text-left text-xs text-muted-foreground"><tr>
           <SortableHead label="Organisation" value="name" current={sort} direction={direction} onSort={changeSort} />
@@ -146,6 +146,6 @@ function ClientUsage({ row }: { row: AdminOrganisationRow }) { const used = row.
 function OptionState({ row, option }: { row: AdminOrganisationRow; option: "advisory" | "consolidation" | "branding" | "whiteLabel" }) { const state = row.purchase ? organisationOptionDisplay(row.purchase).find((item) => item.key === option) : undefined; return <span className="inline-flex items-center gap-1.5">{state?.on ? <Check className="h-4 w-4 text-success" aria-label="On" /> : <span className="text-muted-foreground">—</span>}{state?.trial && <span className="text-xs text-info">trial</span>}</span>; }
 function Attention({ row }: { row: AdminOrganisationRow }) { const count = organisationNeedsAttention(row); if (!count) return <span className="text-muted-foreground">—</span>; const copy = `${count} client${count === 1 ? "" : "s"} need lodgement cycles`; return <Tooltip><TooltipTrigger asChild><span className="inline-flex items-center gap-1 text-info"><AlertCircle className="h-4 w-4" /><span className="tabular-nums">{count}</span></span></TooltipTrigger><TooltipContent>{copy}</TooltipContent></Tooltip>; }
 
-function MemberOrganisations({ firms, loading }: { firms: { id: string; name: string }[]; loading: boolean }) { if (loading) return <CenteredLoader />; return <div className="overflow-hidden rounded-md border"><table className="w-full text-sm"><tbody>{firms.map((firm) => <tr key={firm.id} className="border-t first:border-t-0"><td className="px-4 py-3 font-medium"><Link to="/firms/$firmId/overview" params={{ firmId: firm.id }} className="block">{firm.name}</Link></td></tr>)}</tbody></table></div>; }
+function MemberOrganisations({ firms, loading }: { firms: { id: string; name: string }[]; loading: boolean }) { if (loading) return <CenteredLoader />; return <div className="overflow-hidden rounded-md border border-border bg-card"><table className="w-full text-sm"><tbody>{firms.map((firm) => <tr key={firm.id} className="border-t first:border-t-0"><td className="px-4 py-3 font-medium"><Link to="/firms/$firmId/overview" params={{ firmId: firm.id }} className="block">{firm.name}</Link></td></tr>)}</tbody></table></div>; }
 function CenteredLoader() { return <div className="grid min-h-64 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>; }
 function AccessDenied() { return <PageContainer width="readable"><div className="flex items-start gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-4"><ShieldAlert className="h-5 w-5 text-destructive" /><div><p className="font-medium text-destructive">System Admin access required</p><p className="mt-1 text-sm text-muted-foreground">This area is for platform staff.</p></div></div></PageContainer>; }
