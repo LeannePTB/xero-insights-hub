@@ -1,4 +1,6 @@
 import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
+import { isGateWait, staggered, xeroQueryRetry } from "@/lib/xero/live-load";
+import { XeroErrorNotice, XeroWaiting } from "./XeroLoadState";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -49,7 +51,8 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
     queryKey: ["business-health", tenantId, clientId, toISO(fromDate), toISO(toDate)],
     enabled: !!tenantId,
     staleTime: 5 * 60 * 1000,
-    queryFn: () =>
+    ...xeroQueryRetry,
+    queryFn: () => staggered(() =>
       fetchHealth({
         data: {
           tenantId: tenantId ?? '',
@@ -57,7 +60,7 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
           fromDate: toISO(fromDate),
           toDate: toISO(toDate),
         },
-      }),
+      })),
   });
 
 
@@ -79,11 +82,9 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
 
 
 
-      {q.isLoading && <LoadingState />}
-      {q.error && (
-        <p className="mt-4 text-sm text-destructive">
-          Couldn't load business health: {(q.error as Error).message}
-        </p>
+      {q.isLoading && (isGateWait(q.failureReason) ? <XeroWaiting /> : <LoadingState />)}
+      {!!q.error && !q.data && (
+        <XeroErrorNotice error={q.error} onRetry={() => q.refetch()} isRetrying={q.isFetching} />
       )}
 
       {q.data && (

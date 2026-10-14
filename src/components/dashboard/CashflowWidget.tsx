@@ -1,4 +1,5 @@
 import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
+import { staggered, xeroQueryRetry } from "@/lib/xero/live-load";
 import { VectorChart } from "@/components/charts/VectorChart";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -45,9 +46,9 @@ export function CashflowWidget({
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-cashflow", tenantId, fromStr, toStr],
-    queryFn: () => fetchCashflow({ data: { tenantId, fromDate: fromStr, toDate: toStr } }),
+    queryFn: () => staggered(() => fetchCashflow({ data: { tenantId, fromDate: fromStr, toDate: toStr } })),
     enabled: shouldLoad,
-    retry: false,
+    ...xeroQueryRetry,
   });
 
   const netTone =

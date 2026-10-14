@@ -1,4 +1,5 @@
 import { DashboardCardHeader } from "./DashboardCardHeader";
+import { staggered, xeroQueryRetry } from "@/lib/xero/live-load";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -56,9 +57,16 @@ function Line({
 }
 
 function netGst(data: GstResponse) {
-  const sales = data.gstOnSales ?? 0;
-  const purchases = data.gstOnPurchases ?? 0;
-  return { net: sales - purchases, sales, purchases };
+  // Never turn a missing input into $0.00: no net figure without both parts.
+  if (data.gstOnSales === null || data.gstOnPurchases === null) return { net: null, sales: data.gstOnSales, purchases: data.gstOnPurchases };
+  return { net: data.gstOnSales - data.gstOnPurchases, sales: data.gstOnSales, purchases: data.gstOnPurchases };
+}
+
+/** Plain-language name of the GST inputs that could not be read. */
+export function missingGstInputs(data: Pick<GstResponse, "gstOnSales" | "gstOnPurchases">): string | null {
+  const missing = [data.gstOnSales === null ? "GST on sales" : null, data.gstOnPurchases === null ? "GST on purchases" : null].filter(Boolean);
+  if (!missing.length) return null;
+  return `${missing.join(" and ")} could not be read from Xero for this period, so no GST figure is shown.`;
 }
 
 /**
@@ -130,8 +138,8 @@ export function GstReconciliationWidget({
   const settingRequired = gstCycle == null;
   const q = useQuery({
     queryKey: ["gst-reconciliation", clientId, tenantId, window, asAt],
-    queryFn: () => fetchGst({ data: { clientId, tenantId, asAt, window } }),
-    retry: false,
+    queryFn: () => staggered(() => fetchGst({ data: { clientId, tenantId, asAt, window } })),
+    ...xeroQueryRetry,
     staleTime: 5 * 60 * 1000,
     // A client who is not registered for GST has no period to fetch.
     enabled: !notRegistered && !settingRequired,
@@ -183,6 +191,15 @@ export function GstReconciliationWidget({
           <div className="mt-6">
             {(() => {
               const { net } = netGst(data);
+              if (net === null) {
+                return (
+                  <>
+                    <p className="text-xs text-muted-foreground">Estimated GST for this period</p>
+                    <p className="font-display text-lg font-semibold text-muted-foreground">Not available</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{missingGstInputs(data)}</p>
+                  </>
+                );
+              }
               const isRefund = net < 0;
               return (
                 <>
@@ -302,7 +319,7 @@ export function GstReconciliationWidget({
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive">
-                      <AlertTriangle className="h-3.5 w-3.5" /> Doesn't tie by {fmt(data.difference)}
+                      <AlertTriangle className="h-3.5 w-3.5" /> {data.difference === null ? "Can't check — inputs missing" : <>Doesn't tie by {fmt(data.difference)}</>}
                     </span>
                   )}
                   <ChevronDown

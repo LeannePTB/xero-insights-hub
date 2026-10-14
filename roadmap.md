@@ -251,3 +251,5 @@ Separate from the card-model migration; no file or object shared with it.
 - [ ] Packages & modules: signed-in visual check (blocked by two-step sign-in); System Admin per-client module screen for clients they cannot open (not built).
 - [x] Keep daily key figures ≥13 months; one-off 12-month history fill from Xero (System Admin → Xero monitoring)
 - [ ] Owner: publish, press "Fill 12 months of history", then remove the hourly fill job once finished
+- [ ] Measure Xero calls per full Advisory dashboard load (needs signed-in session)
+- [ ] Owner to confirm Demo Company Oct 2025–Jun 2026 cash at bank in Xero (backfill shows -$8,703.20 with zero profit those months)

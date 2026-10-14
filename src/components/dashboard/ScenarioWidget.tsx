@@ -1,4 +1,5 @@
 import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
+import { staggered, xeroQueryRetry } from "@/lib/xero/live-load";
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -38,9 +39,9 @@ export function ScenarioWidget({
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["scenario", clientId, tenantId, fromStr, toStr],
-    queryFn: () => fetchScenario({ data: { clientId, tenantId, fromDate: fromStr, toDate: toStr } }),
+    queryFn: () => staggered(() => fetchScenario({ data: { clientId, tenantId, fromDate: fromStr, toDate: toStr } })),
     enabled: shouldLoad,
-    retry: false,
+    ...xeroQueryRetry,
   });
 
   const resetMut = useMutation({

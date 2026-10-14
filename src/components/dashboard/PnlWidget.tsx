@@ -1,4 +1,5 @@
 import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
+import { staggered, xeroQueryRetry } from "@/lib/xero/live-load";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
@@ -62,14 +63,14 @@ export function PnlWidget({
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-pnl", tenantId, fromStr, toStr, priorFromStr, priorToStr, basis],
     queryFn: async () => {
-      const current = await fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "pnl", basis } });
+      const current = await staggered(() => fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "pnl", basis } }));
       await wait(1_500);
-      const priorReport = await fetchPnl({ data: { tenantId, fromDate: priorFromStr, toDate: priorToStr, widget: "pnl", basis } });
+      const priorReport = await staggered(() => fetchPnl({ data: { tenantId, fromDate: priorFromStr, toDate: priorToStr, widget: "pnl", basis } }));
       return { current, prior: priorReport };
     },
     enabled: shouldLoad,
     staleTime: 5 * 60 * 1000,
-    retry: false,
+    ...xeroQueryRetry,
   });
 
   const current = data?.current;

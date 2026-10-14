@@ -1,6 +1,7 @@
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
+import { GATE_WAIT_MESSAGE, isGateWait } from "@/lib/xero/live-load";
 
 function extractErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -27,6 +28,9 @@ export function isXeroReconnectError(error: unknown): boolean {
 export function friendlyXeroError(error: unknown) {
   const message = extractErrorMessage(error);
   const lower = message.toLowerCase();
+
+  // Our own request queue held the call; Xero did not refuse anything.
+  if (message.includes(GATE_WAIT_MESSAGE)) return `${GATE_WAIT_MESSAGE}.`;
 
   if (lower.includes("xero reconnect required")) {
     return "Xero says this connection needs to be reconnected before this data can load.";
@@ -98,6 +102,16 @@ export function XeroErrorNotice({
   onReconnect?: () => void;
 }) {
   const needsReconnect = isXeroReconnectError(error);
+  if (isGateWait(error)) {
+    // Still queued after every automatic retry: keep it calm, never an error.
+    return (
+      <div className="mt-4 flex items-center gap-2 rounded-lg border border-border bg-muted/50 p-4 text-sm text-muted-foreground" role="status">
+        {isRetrying ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+        <span>{GATE_WAIT_MESSAGE}.</span>
+        <Button size="sm" variant="ghost" className="ml-auto" onClick={onRetry} disabled={isRetrying}>Load now</Button>
+      </div>
+    );
+  }
   return (
     <div className="mt-4 rounded-lg border border-border bg-muted/50 p-4 text-sm text-foreground">
       <div className="flex items-start gap-2">
@@ -113,6 +127,14 @@ export function XeroErrorNotice({
           Try again
         </Button>
       </div>
+    </div>
+  );
+}
+/** Shown while a live card is queued behind our own Xero request gate. */
+export function XeroWaiting() {
+  return (
+    <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground" role="status">
+      <Loader2 className="h-4 w-4 animate-spin" /> {GATE_WAIT_MESSAGE}
     </div>
   );
 }

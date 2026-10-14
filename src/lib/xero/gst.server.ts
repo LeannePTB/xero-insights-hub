@@ -295,20 +295,21 @@ export async function computeGstReconciliation(
   }
 
   try {
-    [invoices, creditNotes, bankTx] = await Promise.all([
-      pageAll<any>(conn, "Invoices", "Invoices", {
-        where: `Date>=${dtFrom}&&Date<=${dtTo}&&(Status=="AUTHORISED"||Status=="PAID")`,
-        order: "Date ASC",
-      }),
-      pageAll<any>(conn, "CreditNotes", "CreditNotes", {
-        where: `Date>=${dtFrom}&&Date<=${dtTo}&&Status!="DELETED"&&Status!="VOIDED"&&Status!="DRAFT"`,
-        order: "Date ASC",
-      }),
-      pageAll<any>(conn, "BankTransactions", "BankTransactions", {
-        where: `Date>=${dtFrom}&&Date<=${dtTo}&&Status!="DELETED"&&Status!="VOIDED"`,
-        order: "Date ASC",
-      }),
-    ]);
+    // One after another, not in parallel: three paged reads at once used to
+    // queue behind the per-file request gate and time out, leaving both GST
+    // inputs blank.
+    invoices = await pageAll<any>(conn, "Invoices", "Invoices", {
+      where: `Date>=${dtFrom}&&Date<=${dtTo}&&(Status=="AUTHORISED"||Status=="PAID")`,
+      order: "Date ASC",
+    });
+    creditNotes = await pageAll<any>(conn, "CreditNotes", "CreditNotes", {
+      where: `Date>=${dtFrom}&&Date<=${dtTo}&&Status!="DELETED"&&Status!="VOIDED"&&Status!="DRAFT"`,
+      order: "Date ASC",
+    });
+    bankTx = await pageAll<any>(conn, "BankTransactions", "BankTransactions", {
+      where: `Date>=${dtFrom}&&Date<=${dtTo}&&Status!="DELETED"&&Status!="VOIDED"`,
+      order: "Date ASC",
+    });
 
     let sales = 0;
     let purchases = 0;
