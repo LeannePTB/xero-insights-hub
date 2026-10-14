@@ -319,7 +319,7 @@ export function GstReconciliationWidget({
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive">
-                      <AlertTriangle className="h-3.5 w-3.5" /> Doesn't tie by {fmt(data.difference)}
+                      <AlertTriangle className="h-3.5 w-3.5" /> {data.difference === null ? "Can't check — inputs missing" : <>Doesn't tie by {fmt(data.difference)}</>}
                     </span>
                   )}
                   <ChevronDown
