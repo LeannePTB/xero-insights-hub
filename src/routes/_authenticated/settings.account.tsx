@@ -17,6 +17,7 @@ import { deleteAllMyTrixieThreads } from "@/lib/trixie/trixie-threads.functions"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/settings/account")({
+  staticData: { sitemap: false },
   head: () => ({ meta: [{ title: "Account — Traction Advisory" }] }),
   component: AccountSettings,
 });

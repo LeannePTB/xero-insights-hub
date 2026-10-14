@@ -7,6 +7,7 @@ import { ArrowLeft, Loader2, Activity } from "lucide-react";
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/settings/activity")({
+  staticData: { sitemap: false },
   head: () => ({ meta: [{ title: "Login activity — Traction Advisory" }] }),
   component: ActivityPage,
 });

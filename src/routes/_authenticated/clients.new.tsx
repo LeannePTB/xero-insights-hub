@@ -13,6 +13,7 @@ import { listStandingViewers } from "@/lib/viewers.functions";
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/clients/new")({
+  staticData: { sitemap: false },
   head: () => ({ meta: [{ title: "New client — Traction Advisory" }] }),
   validateSearch: (search: Record<string, unknown>) => ({
     firmId: typeof search.firmId === "string" ? search.firmId : undefined,

@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/")({
+  staticData: { sitemap: false },
   validateSearch: (
     search: Record<string, unknown>,
   ): { viewAs?: string; xero_onboarded?: string; xero_error?: string; xero_pick?: string } => ({

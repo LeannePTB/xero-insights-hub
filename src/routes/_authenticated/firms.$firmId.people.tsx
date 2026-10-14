@@ -5,6 +5,7 @@ import { useFirmSettingsSummary } from "@/components/firm/useFirmSettingsSummary
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/people")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "People & access — Organisation" },

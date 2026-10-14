@@ -41,6 +41,7 @@ import {
 
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/loans/")({
+  staticData: { sitemap: false },
   component: LoanMatrixTab,
 });
 

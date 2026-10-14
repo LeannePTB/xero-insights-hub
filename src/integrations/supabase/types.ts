@@ -1852,6 +1852,7 @@ export type Database = {
           product_name: string | null
           updated_at: string
           updated_by: string | null
+          website_settings: Json
         }
         Insert: {
           email_sender_name?: string | null
@@ -1862,6 +1863,7 @@ export type Database = {
           product_name?: string | null
           updated_at?: string
           updated_by?: string | null
+          website_settings?: Json
         }
         Update: {
           email_sender_name?: string | null
@@ -1872,6 +1874,7 @@ export type Database = {
           product_name?: string | null
           updated_at?: string
           updated_by?: string | null
+          website_settings?: Json
         }
         Relationships: []
       }
@@ -4087,6 +4090,7 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_public_website_settings: { Args: never; Returns: Json }
       grant_client_access: {
         Args: {
           _client_id: string
@@ -4422,6 +4426,10 @@ export type Database = {
           _logo_light: string
           _product_name: string
         }
+        Returns: undefined
+      }
+      save_public_website_settings: {
+        Args: { _settings: Json }
         Returns: undefined
       }
       save_trixie_alert_settings: {

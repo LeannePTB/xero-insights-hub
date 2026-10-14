@@ -29,6 +29,7 @@ function constantTimeEquals(a: string, b: string): boolean {
 }
 
 export const Route = createFileRoute("/api/public/security/run-access-tests")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       POST: async ({ request }) => {

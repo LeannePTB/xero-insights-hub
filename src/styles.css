@@ -229,3 +229,31 @@
 /* Compact readable text applies even to legacy arbitrary-size utility call sites. */
 @utility tracking-tight { letter-spacing: 0; }
 @utility tracking-tighter { letter-spacing: 0; }
+
+/* Marketing-only type scale; in-app type tokens remain unchanged. */
+.sales-page { font-size: 14px; }
+.sales-wrap { width: min(1160px, calc(100% - 48px)); margin-inline: auto; }
+.sales-section { padding-block: 80px; }
+.sales-eyebrow { font-size: 11px; line-height: 18px; font-weight: 600; color: var(--link); }
+.sales-title { font-size: 56px; line-height: 1.12; color: var(--emphasis); }
+.sales-headline { font-family: var(--font-display); font-size: 36px; line-height: 1.2; font-weight: 600; }
+.sales-lead { font-size: 17px; line-height: 28px; }
+.sales-section-title { font-size: 34px; line-height: 1.2; }
+.sales-tour-title { font-size: 28px; line-height: 1.25; }
+.sales-feature-title { font-size: 18px; line-height: 25px; }
+.sales-copy { font-size: 14px; line-height: 24px; }
+.sales-product { border: 1px solid var(--border); border-radius: 8px 8px 0 0; overflow: hidden; box-shadow: var(--shadow-soft); }
+.sales-hero { background: var(--info-surface); }
+.sales-demo-label { background: var(--card); color: var(--muted-foreground); font-size: 11px; padding: 8px; }
+@media(max-width:640px) {
+ .sales-wrap { width: calc(100% - 32px); }
+ .sales-section { padding-block: 52px; }
+ .sales-title { font-size: 36px; }
+ .sales-headline { font-size: 26px; }
+ .sales-section-title { font-size: 28px; }
+ .sales-tour-title { font-size: 24px; }
+ .sales-lead { font-size: 15px; line-height: 24px; }
+ .sales-actions { justify-content: center; gap: 8px; }
+ .sales-actions > a, .sales-actions > button { padding-inline: 14px; font-size: 12px; }
+}
+@media(prefers-reduced-motion:reduce) { .sales-page * { scroll-behavior: auto; animation: none; transition: none; } }

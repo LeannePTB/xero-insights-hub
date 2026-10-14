@@ -20,6 +20,7 @@ type StateRow = {
 
 
 export const Route = createFileRoute("/api/public/xero/callback")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       GET: async ({ request }) => {

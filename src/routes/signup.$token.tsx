@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { BrandMark } from "@/components/BrandMark";
 
 export const Route = createFileRoute("/signup/$token")({
+  staticData: { sitemap: false },
   head: () => ({ meta: [{ title: "Accept invite — Traction Advisory" }] }),
   component: SignupPage,
   errorComponent: ({ error }) => (

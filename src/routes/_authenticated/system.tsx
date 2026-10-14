@@ -7,6 +7,7 @@ import { getMyContext } from "@/lib/roles.functions";
  * functions still enforce System Administrator + aal2 in the database.
  */
 export const Route = createFileRoute("/_authenticated/system")({
+  staticData: { sitemap: false },
   beforeLoad: async ({ context }) => {
     const ctx = await (context as any).queryClient.ensureQueryData({
       queryKey: ["my-context"],

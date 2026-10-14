@@ -48,6 +48,7 @@ import { useCanManageClient } from "@/hooks/useCanManageClient";
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/loans-accounts")({
+  staticData: { sitemap: false },
   head: () => ({ meta: [{ title: "Loan accounts — Traction Advisory" }] }),
   component: LoansAccountsPage,
 });

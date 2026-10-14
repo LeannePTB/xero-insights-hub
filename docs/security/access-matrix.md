@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **2144**. Known failures: **0**.
+Rows: **2243**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -16,6 +16,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| save_public_website_settings() | execute | DENY | pglite | No anonymous, member, viewer or AAL1 website writes; support alone grants none. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
@@ -172,6 +177,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| save_public_website_settings() | execute | DENY | pglite | No anonymous, member, viewer or AAL1 website writes; support alone grants none. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
@@ -347,6 +357,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| save_public_website_settings() | execute | DENY | pglite | No anonymous, member, viewer or AAL1 website writes; support alone grants none. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
@@ -362,6 +377,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| save_public_website_settings() | execute | DENY | pglite | No anonymous, member, viewer or AAL1 website writes; support alone grants none. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
@@ -373,6 +393,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| save_public_website_settings() | execute | DENY | pglite | No anonymous, member, viewer or AAL1 website writes; support alone grants none. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
@@ -384,6 +409,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| save_public_website_settings() | execute | DENY | pglite | No anonymous, member, viewer or AAL1 website writes; support alone grants none. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
@@ -589,6 +619,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| save_public_website_settings() | execute | DENY | pglite | No anonymous, member, viewer or AAL1 website writes; support alone grants none. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
@@ -787,6 +822,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| save_public_website_settings() | execute | DENY | pglite | No anonymous, member, viewer or AAL1 website writes; support alone grants none. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
@@ -954,6 +994,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| save_public_website_settings() | execute | DENY | pglite | No anonymous, member, viewer or AAL1 website writes; support alone grants none. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
@@ -1076,6 +1121,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| save_public_website_settings() | execute | DENY | pglite | No anonymous, member, viewer or AAL1 website writes; support alone grants none. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
@@ -1179,6 +1229,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| save_public_website_settings() | execute | DENY | pglite | No anonymous, member, viewer or AAL1 website writes; support alone grants none. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
@@ -1221,6 +1276,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| save_public_website_settings() | execute | DENY | pglite | No anonymous, member, viewer or AAL1 website writes; support alone grants none. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
@@ -1342,6 +1402,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| save_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: audited canonical System Administrator at AAL2 only. These support fixtures independently hold super_admin; their support pass grants no website writes. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
@@ -1514,6 +1579,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| save_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: audited canonical System Administrator at AAL2 only. These support fixtures independently hold super_admin; their support pass grants no website writes. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
@@ -1635,6 +1705,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| save_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: audited canonical System Administrator at AAL2 only. These support fixtures independently hold super_admin; their support pass grants no website writes. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
@@ -1756,6 +1831,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| save_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: audited canonical System Administrator at AAL2 only. These support fixtures independently hold super_admin; their support pass grants no website writes. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
@@ -1974,6 +2054,10 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
@@ -1983,6 +2067,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| save_public_website_settings() | execute | DENY | pglite | No anonymous, member, viewer or AAL1 website writes; support alone grants none. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
@@ -2114,6 +2203,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| save_public_website_settings() | execute | DENY | pglite | No anonymous, member, viewer or AAL1 website writes; support alone grants none. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
@@ -2249,6 +2343,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| get_public_website_settings() | execute | ALLOW | pglite | Owner approved 14 Oct: narrow public website display fields only, no organisation/client data. |  |
+| save_public_website_settings() | execute | DENY | pglite | No anonymous, member, viewer or AAL1 website writes; support alone grants none. |  |
+| platform_branding website direct writes | insert | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | update | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
+| platform_branding website direct writes | delete | DENY | pglite | Branding table remains grant-free; only audited save functions write. |  |
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |

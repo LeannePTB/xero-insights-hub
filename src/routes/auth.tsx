@@ -28,6 +28,7 @@ import { sessionIsActive } from "@/lib/session-activity.functions";
 
 
 export const Route = createFileRoute("/auth")({
+  staticData: { sitemap: false },
   ssr: false,
   head: () => ({ meta: [{ title: "Sign in — Traction Advisory" }] }),
   component: AuthPage,

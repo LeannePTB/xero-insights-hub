@@ -112,6 +112,8 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Owner renames their own organisation after aal2 and an owner-only check (firms.owner_user_id = auth.uid()), with an audit row in the same transaction.",
   "public.get_platform_branding":
     "Documented anon-callable exception: returns only public platform display branding (product name, logos, favicon, sender name) so sign-in pages can show it. No organisation, client or personal data.",
+  "public.get_public_website_settings": "Owner-approved anonymous reader: only booking, public media, walkthrough and price display fields; never client data or actor identity.",
+  "public.save_public_website_settings": "Validates website fields, asserts aal2 and canonical System Administrator, then saves and audits field names atomically; no direct table grants.",
   "public.save_platform_branding":
     "Saves platform display branding after aal2 and super-admin checks (Path C metadata only), with an audit row in the same transaction.",
   "public.me_is_super_admin": "Whether the caller is a platform super admin.",

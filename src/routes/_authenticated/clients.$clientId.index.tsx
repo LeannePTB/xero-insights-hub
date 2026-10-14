@@ -52,6 +52,7 @@ import { PageContainer } from "@/components/PageContainer";
 // import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
+  staticData: { sitemap: false },
   validateSearch: (search: Record<string, unknown>): { viewAs?: string; firmId?: string } => ({
     ...(typeof search.viewAs === "string" ? { viewAs: search.viewAs } : {}),
     ...(typeof search.firmId === "string" ? { firmId: search.firmId } : {}),

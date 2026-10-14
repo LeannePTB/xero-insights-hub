@@ -10,6 +10,7 @@ import { Loader2, ShieldCheck } from "lucide-react";
 import { postAuthDestination } from "@/lib/session-cutoff";
 
 export const Route = createFileRoute("/auth_/mfa-verify")({
+  staticData: { sitemap: false },
   ssr: false,
   head: () => ({ meta: [{ title: "Verify — Traction Advisory" }] }),
   component: MfaVerifyPage,

@@ -8,6 +8,7 @@ import { Loader2, RefreshCw, HandCoins, ExternalLink } from "lucide-react";
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/receivables/$tenantId")({
+  staticData: { sitemap: false },
   head: () => ({ meta: [{ title: "Receivables — Traction Advisory" }] }),
   component: ReceivablesPage,
 });

@@ -4,6 +4,7 @@ import { ClientSettingsNav } from "@/components/clients/ClientSettingsNav";
 import { ClientPageHeader } from "@/components/clients/ClientPageHeader";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/settings")({
+  staticData: { sitemap: false },
   beforeLoad: ({ params, location }) => {
     if (location.pathname.endsWith("/settings")) {
       const callback = location.search as { xero?: string; error?: string };

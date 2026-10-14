@@ -50,6 +50,7 @@ const STATUS_BADGE: Record<ReconRow["status"], { label: string; cls: string }> =
 };
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/loans")({
+  staticData: { sitemap: false },
   head: () => ({ meta: [{ title: "Loan Consolidation — Traction Advisory" }] }),
   component: LoansPage,
 });

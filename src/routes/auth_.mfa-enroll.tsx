@@ -10,6 +10,7 @@ import { Loader2, ShieldCheck } from "lucide-react";
 import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 
 export const Route = createFileRoute("/auth_/mfa-enroll")({
+  staticData: { sitemap: false },
   ssr: false,
   head: () => ({ meta: [{ title: "Set up MFA — Traction Advisory" }] }),
   component: MfaEnrollPage,

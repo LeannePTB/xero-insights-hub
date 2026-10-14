@@ -10,6 +10,7 @@ import { Loader2 } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 
 export const Route = createFileRoute("/set-password")({
+  staticData: { sitemap: false },
   head: () => ({ meta: [{ title: "Set your password — Traction Advisory" }] }),
   component: SetPasswordPage,
 });

@@ -32,6 +32,7 @@ import {
 } from "@/lib/loan-consolidation.functions";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/loans/accounts")({
+  staticData: { sitemap: false },
   component: LoanPairingsTab,
 });
 

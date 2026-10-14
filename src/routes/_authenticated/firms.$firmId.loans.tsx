@@ -4,6 +4,7 @@ import { useFirmWidgets } from "@/hooks/useFirmWidget";
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/loans")({
+  staticData: { sitemap: false },
   validateSearch: (search: Record<string, unknown>) => ({
     group: typeof search['group'] === "string" ? (search['group'] as string) : undefined,
   }),

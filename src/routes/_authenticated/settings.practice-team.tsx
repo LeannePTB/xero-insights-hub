@@ -6,6 +6,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
  * existing links and bookmarks still work.
  */
 export const Route = createFileRoute("/_authenticated/settings/practice-team")({
+  staticData: { sitemap: false },
   beforeLoad: () => {
     throw redirect({ to: "/system/staff" });
   },

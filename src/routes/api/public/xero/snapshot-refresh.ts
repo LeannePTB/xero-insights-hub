@@ -16,6 +16,7 @@ function constantTimeEquals(a: string, b: string): boolean {
 }
 
 export const Route = createFileRoute("/api/public/xero/snapshot-refresh")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       POST: async ({ request }) => {

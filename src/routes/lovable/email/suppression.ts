@@ -52,6 +52,7 @@ function mapReasonToMessage(reason: string): string {
 }
 
 export const Route = createFileRoute("/lovable/email/suppression")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       POST: async ({ request }) => {

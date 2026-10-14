@@ -101,7 +101,7 @@ create table public.org_card_defaults (firm_id uuid, cards text[], created_at ti
 create table public.org_subscription_options (firm_id uuid, client_limit integer, advisory_enabled boolean, consolidation_enabled boolean, billing_mode text, created_at timestamp with time zone, updated_at timestamp with time zone, trial_advisory_enabled boolean, trial_consolidation_enabled boolean, trial_ends_at timestamp with time zone, branding_enabled boolean, trial_branding_enabled boolean, white_label_enabled boolean, trial_white_label_enabled boolean);
 create table public.overview_alert_states (id uuid, client_id uuid, event_key text, severity_at_ack smallint, acknowledged_by uuid, acknowledged_at timestamp with time zone, snoozed_by uuid, snoozed_at timestamp with time zone, snoozed_until timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.plan_levels (id uuid, scope text, key text, label text, description text, client_limit integer, xero_org_limit integer, allows_multi_org boolean, widgets text[], sort_order integer, enabled boolean, created_at timestamp with time zone, updated_at timestamp with time zone, allowed_tiers text[], is_free boolean);
-create table public.platform_branding (id boolean, product_name text, logo_light text, logo_dark text, favicon text, email_sender_name text, updated_at timestamp with time zone, updated_by uuid);
+create table public.platform_branding (id boolean, product_name text, logo_light text, logo_dark text, favicon text, email_sender_name text, updated_at timestamp with time zone, updated_by uuid, website_settings jsonb);
 create table public.practice_team (user_id uuid, added_by uuid, created_at timestamp with time zone);
 create table public.profiles (id uuid, email text, display_name text, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.rate_limit_buckets (key text, window_start timestamp with time zone, count integer);
@@ -3107,6 +3107,38 @@ BEGIN
 END;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.get_public_website_settings()
+ RETURNS jsonb
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$ SELECT jsonb_build_object('calendlyUrl',b.website_settings->>'calendlyUrl','heroVideoPath',b.website_settings->>'heroVideoPath','heroPosterPath',b.website_settings->>'heroPosterPath','walkthroughUrl',b.website_settings->>'walkthroughUrl','standardPrice',b.website_settings->>'standardPrice','advisoryPrice',b.website_settings->>'advisoryPrice','consolidationPrice',b.website_settings->>'consolidationPrice','whiteLabelPrice',b.website_settings->>'whiteLabelPrice') FROM public.platform_branding b WHERE b.id = true $function$
+;
+CREATE OR REPLACE FUNCTION public.save_public_website_settings(_settings jsonb)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE k text; v text;
+BEGIN
+ PERFORM app_private.assert_aal2();
+ PERFORM public.assert_super_admin();
+ IF jsonb_typeof(_settings) IS DISTINCT FROM 'object' THEN RAISE EXCEPTION 'Invalid settings'; END IF;
+ FOR k,v IN SELECT key,value FROM jsonb_each_text(_settings) LOOP
+  IF k NOT IN ('calendlyUrl','heroVideoPath','heroPosterPath','walkthroughUrl','standardPrice','advisoryPrice','consolidationPrice','whiteLabelPrice') OR length(v)>500 OR (v IS NOT NULL AND jsonb_typeof(_settings->k)<>'string') THEN RAISE EXCEPTION 'Invalid settings'; END IF;
+  IF v IS NOT NULL AND v<>'' THEN
+   IF k='calendlyUrl' AND v !~ '^https://calendly[.]com/[A-Za-z0-9/_-]+$' THEN RAISE EXCEPTION 'Invalid booking URL'; END IF;
+   IF k='walkthroughUrl' AND v !~ '^https://(www[.])?(youtube[.]com/watch[?]v=[A-Za-z0-9_-]{11}|youtu[.]be/[A-Za-z0-9_-]{11}|loom[.]com/share/[a-fA-F0-9]{32})$' THEN RAISE EXCEPTION 'Invalid walkthrough URL'; END IF;
+   IF k='heroVideoPath' AND v !~ '^hero/[a-f0-9-]{36}[.]mp4$' THEN RAISE EXCEPTION 'Invalid media path'; END IF;
+   IF k='heroPosterPath' AND v !~ '^poster/[a-f0-9-]{36}[.](png|jpg|webp)$' THEN RAISE EXCEPTION 'Invalid media path'; END IF;
+   IF k LIKE '%Price' AND length(v)>80 THEN RAISE EXCEPTION 'Invalid price label'; END IF;
+  END IF;
+ END LOOP;
+ INSERT INTO public.platform_branding(id,website_settings,updated_at,updated_by) VALUES(true,_settings,now(),auth.uid()) ON CONFLICT(id) DO UPDATE SET website_settings=excluded.website_settings,updated_at=now(),updated_by=auth.uid();
+ INSERT INTO public.audit_log(actor_user_id,action,target_type,target_id,meta) VALUES(auth.uid(),'public_website_settings_saved','platform_branding','platform',jsonb_build_object('fields',ARRAY(SELECT jsonb_object_keys(_settings))));
+END $function$
+;
 CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -4446,4 +4478,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: a87dcd4a4454478c019cc86e66b306628a080c3134198c1f97b8dcc1f401848b
+-- catalogue-fingerprint: 0034adbd4170455e2bf54c09180fe8df566a1515b12d801a24402da4d4d5b40a

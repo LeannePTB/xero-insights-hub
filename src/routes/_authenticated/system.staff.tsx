@@ -39,6 +39,7 @@ import { PageContainer } from "@/components/PageContainer";
 
 
 export const Route = createFileRoute("/_authenticated/system/staff")({
+  staticData: { sitemap: false },
   head: () => ({ meta: [
     { title: "Platform staff — Traction Advisory" },
     { name: "description", content: "Manage Traction Advisory platform staff and Traction Advisory team membership." },

@@ -24,6 +24,7 @@ function callerIp(request: Request): string {
 }
 
 export const Route = createFileRoute("/email/unsubscribe")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       GET: async ({ request }) => {

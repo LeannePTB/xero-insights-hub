@@ -13,6 +13,7 @@ import { reportVideoFrom } from "@/lib/reports/report-video";
 
 
 export const Route = createFileRoute("/report/$token")({
+  staticData: { sitemap: false },
   ssr: false,
   head: () => ({
     meta: [

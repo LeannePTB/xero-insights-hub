@@ -4,6 +4,7 @@ import { SupportAccessCard } from "@/components/admin/SupportAccessCard";
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/settings/support")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "Support access — Organisation settings" },

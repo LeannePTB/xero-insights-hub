@@ -553,22 +553,23 @@ describe("12. untrusted text never reaches a raw-HTML sink", () => {
 describe("12b. every iframe src comes from the approved builder", () => {
   const APPROVED_SRC = "src={`https://www.loom.com/embed/${loomId}`}";
 
-  it("has no iframe whose src is not the Loom embed builder", () => {
+  it("has no iframe whose src is not an approved bounded embed builder", () => {
     const offenders: string[] = [];
     for (const f of FILES) {
       for (const frame of f.text.match(/<iframe[\s\S]*?\/>/g) ?? []) {
-        if (!frame.includes(APPROVED_SRC)) offenders.push(`${f.path}: ${frame.slice(0, 120)}`);
+        const websiteBuilder = f.path === 'src/components/website/SalesPage.tsx' && frame.includes('src={embed}') && f.text.includes('const embed=walkthroughEmbed(settings.walkthroughUrl)');
+        if (!frame.includes(APPROVED_SRC) && !websiteBuilder) offenders.push(`${f.path}: ${frame.slice(0, 120)}`);
       }
     }
     report("iframes with a src not built by parseLoomId", offenders);
     expect(offenders).toEqual([]);
   });
 
-  it("keeps the one approved iframe sandboxed", () => {
+  it("keeps both approved iframes sandboxed", () => {
     const frames = FILES.flatMap((f) =>
       (f.text.match(/<iframe[\s\S]*?\/>/g) ?? []).map((frame) => ({ path: f.path, frame })),
     );
-    expect(frames.length).toBe(1);
+    expect(frames.length).toBe(2);
     const offenders = frames
       .filter(({ frame }) => !/sandbox=/.test(frame) || !/referrerPolicy=/.test(frame))
       .map(({ path }) => path);

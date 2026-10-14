@@ -4,6 +4,7 @@ import { OrgPurchaseCard } from "@/components/admin/OrgPurchaseCard";
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/settings/subscription")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "Subscription — Organisation settings" },
