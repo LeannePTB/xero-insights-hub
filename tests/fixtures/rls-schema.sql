@@ -81,6 +81,7 @@ create table public.client_income_tax_instalments (id uuid, client_id uuid, tena
 create table public.client_key_figures (id uuid, client_id uuid, firm_id uuid, tenant_id text, as_at date, cash numeric, debtors_total numeric, debtors_overdue numeric, creditors numeric, protected_money numeric, revenue_mtd numeric, net_profit_mtd numeric, created_at timestamp with time zone, updated_at timestamp with time zone, bank_reconciled_to date, credit_card_debt numeric, last_xero_login_at timestamp with time zone, bank_reconciliation jsonb);
 create table public.client_notes (id uuid, client_id uuid, author_id uuid, body text, created_at timestamp with time zone, updated_at timestamp with time zone, include_in_report boolean);
 create table public.client_rental_properties (id uuid, client_id uuid, tenant_id text, name text, match_type text, match_ids text[], expected_amount numeric(14,2), frequency text, lease_start date, created_by uuid, updated_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
+create table public.client_report_pending_videos (client_id uuid, period_end date, video_url text, video_heading text, video_message text, video_set_by uuid, video_set_at timestamp with time zone);
 create table public.client_reports (id uuid, client_id uuid, firm_id uuid, tenant_id text, report_key text, period_end date, title text, payload jsonb, payload_version integer, pdf_path text, status text, version integer, complete boolean, generated_by uuid, generated_at timestamp with time zone, finalised_at timestamp with time zone, sent_at timestamp with time zone, sent_to text[], video_url text, video_heading text, video_message text, video_set_by uuid, video_set_at timestamp with time zone);
 create table public.client_statutory_accounts (id uuid, client_id uuid, tenant_id text, account_name text, category statutory_category, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_subscriptions (id uuid, client_id uuid, stripe_customer_id text, stripe_subscription_id text, plan_name text, subscription_type client_subscription_type, status client_subscription_status, current_period_end timestamp with time zone, trial_end timestamp with time zone, past_due_since timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone, dashboard_tier dashboard_tier, promotion_code text, coupon_id text, comp_reason text, comped_by uuid, comped_at timestamp with time zone);
@@ -2798,7 +2799,7 @@ begin
     select 'client'::text, c.id, c.name, f.id, f.name
       from public.clients c join public.firms f on f.id = c.firm_id
      where c.overview_hidden and not f.overview_hidden
-       and app_private.user_can_write_client(auth.uid(), c.id)
+       and public.user_can_write_client(auth.uid(), c.id)
     union all
     select 'organisation'::text, f.id, f.name, f.id, f.name
       from public.firms f
@@ -2942,6 +2943,19 @@ begin
        and (_firm_id is not null or (not c.overview_hidden and not f.overview_hidden))
      order by f.name, c.name
      limit 1000;
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.me_can_manage_client(_client_id uuid)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  if auth.uid() is null then return false; end if;
+  return app_private.user_can_write_client(auth.uid(), _client_id);
 end;
 $function$
 ;
@@ -3934,6 +3948,44 @@ begin
                             'entry', _entry.name, 'createdAt', _created);
 end; $function$
 ;
+CREATE OR REPLACE FUNCTION public.get_pending_report_video(_client_id uuid, _period_end date)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE v jsonb;
+BEGIN
+ PERFORM app_private.assert_aal2();
+ IF auth.uid() IS NULL OR NOT public.me_can_manage_client(_client_id) THEN RAISE EXCEPTION 'Report not available.' USING ERRCODE='42501'; END IF;
+ SELECT jsonb_build_object('video_url',p.video_url,'video_heading',p.video_heading,'video_message',p.video_message) INTO v FROM public.client_report_pending_videos p WHERE p.client_id=_client_id AND p.period_end=_period_end;
+ IF v IS NULL THEN SELECT jsonb_build_object('video_url',r.video_url,'video_heading',r.video_heading,'video_message',r.video_message) INTO v FROM public.client_reports r WHERE r.client_id=_client_id AND r.period_end=_period_end AND r.report_key='monthly_management' ORDER BY r.version DESC LIMIT 1; END IF;
+ RETURN coalesce(v,'{}'::jsonb);
+END $function$
+;
+CREATE OR REPLACE FUNCTION public.save_report_video(_client_id uuid, _period_end date, _report_id uuid DEFAULT NULL::uuid, _url text DEFAULT NULL::text, _heading text DEFAULT NULL::text, _message text DEFAULT NULL::text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE r public.client_reports%rowtype; f uuid; u text:=nullif(btrim(_url),''); h text:=nullif(btrim(_heading),''); m text:=nullif(btrim(_message),'');
+BEGIN
+ PERFORM app_private.assert_aal2();
+ IF auth.uid() IS NULL OR NOT public.me_can_manage_client(_client_id) THEN RAISE EXCEPTION 'Report not available.' USING ERRCODE='42501'; END IF;
+ IF _period_end IS NULL OR length(u)>500 OR length(h)>120 OR length(m)>600 OR (u IS NOT NULL AND u !~ '^https?://([A-Za-z0-9-]+\.)*loom\.com/(share|embed)/[A-Za-z0-9]{16,64}/?(\?[^#]*)?(#.*)?$') THEN RAISE EXCEPTION 'Invalid report video.'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended(_client_id::text||_period_end::text,0));
+ SELECT firm_id INTO f FROM public.clients WHERE id=_client_id;
+ IF _report_id IS NOT NULL THEN
+  SELECT * INTO r FROM public.client_reports WHERE id=_report_id AND client_id=_client_id AND period_end=_period_end FOR UPDATE;
+  IF r.id IS NULL OR r.status <> 'draft' THEN RAISE EXCEPTION 'This report video is locked.' USING ERRCODE='42501'; END IF;
+ END IF;
+ IF u IS NULL THEN h:=NULL; m:=NULL; END IF;
+ INSERT INTO public.client_report_pending_videos(client_id,period_end,video_url,video_heading,video_message,video_set_by,video_set_at) VALUES (_client_id,_period_end,u,h,m,auth.uid(),now()) ON CONFLICT(client_id,period_end) DO UPDATE SET video_url=excluded.video_url,video_heading=excluded.video_heading,video_message=excluded.video_message,video_set_by=excluded.video_set_by,video_set_at=excluded.video_set_at;
+ IF _report_id IS NOT NULL THEN UPDATE public.client_reports SET video_url=u,video_heading=h,video_message=m,video_set_by=CASE WHEN u IS NULL THEN NULL ELSE auth.uid() END,video_set_at=CASE WHEN u IS NULL THEN NULL ELSE now() END WHERE id=r.id AND status='draft'; END IF;
+ INSERT INTO public.audit_log(id,actor_user_id,firm_id,action,target_type,target_id,meta) VALUES(gen_random_uuid(),auth.uid(),f,CASE WHEN u IS NULL THEN 'client_report_video_cleared' ELSE 'client_report_video_set' END,'client',_client_id,jsonb_build_object('period_end',_period_end,'report_id',_report_id));
+END $function$
+;
 CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -4047,6 +4099,22 @@ BEGIN
 END;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.attach_pending_report_video()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE p public.client_report_pending_videos%rowtype;
+BEGIN
+ IF TG_OP='UPDATE' AND OLD.status IN ('final','sent') AND (NEW.status='draft' OR ROW(NEW.video_url,NEW.video_heading,NEW.video_message,NEW.video_set_by,NEW.video_set_at) IS DISTINCT FROM ROW(OLD.video_url,OLD.video_heading,OLD.video_message,OLD.video_set_by,OLD.video_set_at)) THEN RAISE EXCEPTION 'This report video is locked.'; END IF;
+ IF NEW.status='draft' AND (TG_OP='INSERT' OR NEW.generated_at IS DISTINCT FROM OLD.generated_at) THEN
+  SELECT * INTO p FROM public.client_report_pending_videos WHERE client_id=NEW.client_id AND period_end=NEW.period_end;
+  IF FOUND THEN NEW.video_url:=p.video_url; NEW.video_heading:=p.video_heading; NEW.video_message:=p.video_message; NEW.video_set_by:=CASE WHEN p.video_url IS NULL THEN NULL ELSE p.video_set_by END; NEW.video_set_at:=CASE WHEN p.video_url IS NULL THEN NULL ELSE p.video_set_at END; END IF;
+ END IF;
+ RETURN NEW;
+END $function$
+;
 alter table public.access_invites enable row level security;
 alter table public.audit_finding_snoozes enable row level security;
 alter table public.audit_findings enable row level security;
@@ -4064,6 +4132,7 @@ alter table public.client_income_tax_instalments enable row level security;
 alter table public.client_key_figures enable row level security;
 alter table public.client_notes enable row level security;
 alter table public.client_rental_properties enable row level security;
+alter table public.client_report_pending_videos enable row level security;
 alter table public.client_reports enable row level security;
 alter table public.client_statutory_accounts enable row level security;
 alter table public.client_subscriptions enable row level security;
@@ -4281,6 +4350,14 @@ grant SELECT on table public.client_rental_properties to service_role;
 grant TRIGGER on table public.client_rental_properties to service_role;
 grant TRUNCATE on table public.client_rental_properties to service_role;
 grant UPDATE on table public.client_rental_properties to service_role;
+grant SELECT on table public.client_report_pending_videos to authenticated;
+grant DELETE on table public.client_report_pending_videos to service_role;
+grant INSERT on table public.client_report_pending_videos to service_role;
+grant REFERENCES on table public.client_report_pending_videos to service_role;
+grant SELECT on table public.client_report_pending_videos to service_role;
+grant TRIGGER on table public.client_report_pending_videos to service_role;
+grant TRUNCATE on table public.client_report_pending_videos to service_role;
+grant UPDATE on table public.client_report_pending_videos to service_role;
 grant SELECT on table public.client_reports to authenticated;
 grant DELETE on table public.client_reports to service_role;
 grant INSERT on table public.client_reports to service_role;
@@ -5019,6 +5096,8 @@ create policy "Support reads rental properties" on public.client_rental_properti
    FROM clients c
   WHERE ((c.id = client_rental_properties.client_id) AND (c.firm_id IS NOT NULL) AND app_private.platform_staff_can_access_firm(auth.uid(), c.firm_id)))));
 create policy mfa_aal2_required on public.client_rental_properties as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy mfa_aal2_required on public.client_report_pending_videos as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy pending_video_manager_read on public.client_report_pending_videos as permissive for select to authenticated using (app_private.user_can_write_client(auth.uid(), client_id));
 create policy "client viewers read their finalised reports" on public.client_reports as permissive for select to authenticated using ((app_private.has_client_read_access(auth.uid(), client_id) AND (status = ANY (ARRAY['final'::text, 'sent'::text]))));
 create policy mfa_aal2_required on public.client_reports as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "staff read client reports" on public.client_reports as permissive for select to authenticated using (app_private.user_can_manage_client(auth.uid(), client_id));
@@ -5371,6 +5450,7 @@ create policy "entitled users read snapshot runs" on public.xero_snapshot_runs a
 create policy mfa_aal2_required on public.xero_snapshot_runs as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "entitled users read client snapshots" on public.xero_snapshots as permissive for select to authenticated using ((user_can_access_client(auth.uid(), client_id) AND app_private.user_can_access_tenant(auth.uid(), tenant_id)));
 create policy mfa_aal2_required on public.xero_snapshots as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+CREATE TRIGGER attach_pending_report_video BEFORE INSERT OR UPDATE ON public.client_reports FOR EACH ROW EXECUTE FUNCTION attach_pending_report_video();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.client_subscriptions FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER tg_seed_client_cards_from_org_default AFTER INSERT ON public.clients FOR EACH ROW EXECUTE FUNCTION app_private.seed_client_cards_from_org_default();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.firms FOR EACH ROW EXECUTE FUNCTION audit_table_change();
@@ -5383,4 +5463,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: 651e9e43b48785438543195357cf86c35e493ebad7c8e6fa6c65363db8068d03
+-- catalogue-fingerprint: 984c1919e0a034c1c9283e4247f440cd6181d195a340462a8d7a457ed2544e44

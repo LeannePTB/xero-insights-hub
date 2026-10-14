@@ -1671,25 +1671,13 @@ export const MATRIX: MatrixRow[] = [
     layers: ["live"],
     note: "Phase 3a: every server-function write path (branding, report finalise/send/revoke/delete, draft save, Xero audit runs and finding snoozes, organisation reconnect-all, loan-consolidation account setup, note report-flagging, Xero file link/unlink/move) authorises through public.user_can_write_firm / public.user_can_write_client, which never admit a support grant.",
   },
-  // Personal video on a monthly report (client_reports.video_* columns). Both
-  // gates are required and neither substitutes for the other.
-  ...rows(
-    ["org_owner", "org_staff", "support_grant_active", "aal1_member", "client_viewer"],
-    ["server fn: set a report's personal video"],
-    ["execute"],
-    "deny",
-    "PK 2 (requireAal2) + platform super admin only (assert_super_admin)",
-    ["live"],
-  ),
-  {
-    role: "super_admin_no_membership",
-    resource: "server fn: set a report's personal video",
-    operation: "execute",
-    expect: "deny",
-    rule: "PK 3 (super admin alone grants ZERO client data) + PK 5",
-    layers: ["live"],
-    note: "setReportVideo runs assert_super_admin AND canWriteFirm (public.user_can_write_firm) on the report's own firm_id, read server-side from the stored row. A super admin who is not an active member of that organisation is refused. Finalised or sent reports are refused outright; the video never enters the payload, so it cannot reach the rendered PDF.",
-  },
+  // Owner-approved 14 Oct: video uses the existing manager predicate, not platform role.
+  ...rows(["org_owner", "org_staff"], ["client_report_pending_videos"], ["read"], "allow", "AAL2 existing client manager only"),
+  ...rows((Object.keys(ROLE_LABELS) as Role[]).filter(r => !["org_owner","org_staff","security_test_account","active_session_member","fresh_mfa_session_member"].includes(r)), ["client_report_pending_videos"], ["read"], "deny", "No viewer, Business Owner, support or bare admin pending-video reads"),
+  ...rows(Object.keys(ROLE_LABELS) as Role[], ["client_report_pending_videos"], WRITES, "deny", "Audited caller-scoped save only; no direct writes"),
+  ...rows(["org_owner", "org_staff"], ["report_video:read", "report_video:pending", "report_video:draft"], ["execute"], "allow", "Owner 14 Oct: AAL2 me_can_manage_client, per-client/period video"),
+  ...rows(["anonymous","aal1_member","org_a_owner_reading_org_b","other_org_member","client_viewer","business_owner","standing_viewer","support_grant_active","super_admin_no_membership","suspended_member","removed_member"], ["report_video:read", "report_video:pending", "report_video:draft"], ["execute"], "deny", "PK 1–6: client IDs filter only; existing manager rule, no role bypass"),
+  ...rows(["org_owner", "org_staff"], ["report_video:locked", "report_video:wrong_period"], ["execute"], "deny", "Final/sent video immutable; exact period binding"),
 
   {
     role: "support_grant_active",
