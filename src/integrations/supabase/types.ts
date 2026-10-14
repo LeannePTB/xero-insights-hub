@@ -327,6 +327,7 @@ export type Database = {
           label: string
           module_key: string | null
           package: string
+          report_sections: string[]
           sort_order: number
           updated_at: string
           updated_by: string | null
@@ -337,6 +338,7 @@ export type Database = {
           label: string
           module_key?: string | null
           package: string
+          report_sections?: string[]
           sort_order?: number
           updated_at?: string
           updated_by?: string | null
@@ -347,6 +349,7 @@ export type Database = {
           label?: string
           module_key?: string | null
           package?: string
+          report_sections?: string[]
           sort_order?: number
           updated_at?: string
           updated_by?: string | null
@@ -4138,6 +4141,10 @@ export type Database = {
           referencing_clients: string[]
         }[]
       }
+      client_report_sections: {
+        Args: { _client_id: string }
+        Returns: string[]
+      }
       client_setup_account_counts: {
         Args: { _client_ids: string[] }
         Returns: {
@@ -4426,6 +4433,14 @@ export type Database = {
         Returns: boolean
       }
       me_can_manage_firm_viewers: {
+        Args: { _firm_id: string }
+        Returns: boolean
+      }
+      me_can_open_client_loans: {
+        Args: { _client_id: string }
+        Returns: boolean
+      }
+      me_can_open_consolidations: {
         Args: { _firm_id: string }
         Returns: boolean
       }
