@@ -19,7 +19,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { orderedCardIds, smallCardRowSizes } from "./dashboard-card-layout";
+import { groupedCardIds, canReorderCards, smallCardRowSizes } from "./dashboard-card-layout";
 
 export type SortableCard = { id: string; node: ReactNode; fullWidth?: boolean; group?: string; groupLabel?: string };
 
@@ -72,7 +72,7 @@ export function SortableCardGrid({
   const cardIds = useMemo(() => cards.map((c) => c.id), [cards.map((c) => c.id).join("|")]);
 
   const initial = useMemo(() => {
-    return orderedCardIds(cardIds, savedOrder);
+    return groupedCardIds(cards, savedOrder);
   }, [cardIds, savedOrder.join("|")]);
 
   const [localOrder, setLocalOrder] = useState<string[]>(initial);
@@ -93,11 +93,10 @@ export function SortableCardGrid({
     }
   }, [initial, savedOrder, cardIds]);
 
-  const cardById = useMemo(() => new Map(cards.map((c) => [c.id, c.node])), [cards]);
-
   function handleDragEnd(e: DragEndEvent) {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
+    if (!canReorderCards(cards, String(active.id), String(over.id))) return;
     const oldIdx = localOrder.indexOf(String(active.id));
     const newIdx = localOrder.indexOf(String(over.id));
     if (oldIdx < 0 || newIdx < 0) return;
@@ -106,7 +105,7 @@ export function SortableCardGrid({
     onOrderChange(next);
   }
 
-  const ordered = localOrder.flatMap(id => { const c = cards.find(c => c.id === id); return c ? [c] : []; });
+  const ordered = groupedCardIds(cards, localOrder).flatMap(id => { const c = cards.find(c => c.id === id); return c ? [c] : []; });
   const sections: { key: string; label?: string; rows: SortableCard[][] }[] = [];
   for (const card of ordered) {
     let section = sections.at(-1);

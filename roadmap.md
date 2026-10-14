@@ -1,4 +1,7 @@
 # Roadmap
+- [ ] Owner 14 Oct 16:24: module-first saved ordering and within-module dragging; regression and desktop/mobile checks.
+- [ ] Owner 14 Oct 16:26: remove Xero activity reader, catalogue and ticks/defaults; verify counts/registers. Keep session_activity and File audit.
+- [ ] List Business health Coming soon text/locations unchanged.
 - [x] Owner 14 Oct 14:16: reported Demo Practice Advisory flag explicitly enabled at 04:08 UTC after Standard-only creation; no trial, purchase unchanged.
 - [x] Catalogue module dashboard grouping, balanced widths, shared headers, compact empty states and preserved user order.
 - [x] Entitlement/security regressions (270 tests, 2,289 proofs, 18 live checks) and synthetic Standard/Advisory desktop/mobile checks.

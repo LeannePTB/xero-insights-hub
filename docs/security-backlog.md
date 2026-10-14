@@ -1815,3 +1815,9 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - 14 Oct (dashboard review): our own Xero request gate's hold now reports "Waiting for Xero — loading shortly" and cards retry themselves; only a real Xero 429 shows the paused wording. History fill takes a gate slot only when no interactive call holds one. No access change. OPEN: measure Xero calls for one full Advisory dashboard load on a signed-in session (not measured — two-step sign-in blocks tooling); confirm Demo Company Oct 2025–Jun 2026 month-end cash against Xero's Balance Sheet.
 
 - 14 Oct: rent report server functions now require System Administrator (plus existing client checks); widget not rendered. Re-offering it needs owner approval and a catalogue entry.
+
+## 14 Oct 2026 — module-first ordering / retired Xero activity
+- Fixed module order; saved preferences and dragging apply within groups only. Existing saved rows untouched.
+- Owner-approved removal: catalogue and 12 client ticks removed, zero organisation/legacy defaults; metadata-only audit records counts. Transaction asserted all other ticks and saved orders unchanged. Activity component/reader and activity-only Finance snapshot requests removed. Required OAuth scopes already excluded the unsupported scope. File audit and session_activity untouched; no access predicate, policy or grant changed.
+- Business health unchanged: the only literal Coming soon is a disabled CTA tooltip in dashboard/PillarCard.tsx; current Money/Efficiency/Cash Flow/Stability pillars all expand and never use it. Labels: Why is cash so low? / Improve efficiency / How to free up cash / What to do now.
+- Real-client visual readback blocked by server-held session inactivity; no bypass used. Regression/security checks recorded after completion.

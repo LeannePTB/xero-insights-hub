@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { standardFallbackCards, dashboardCardMeta, orderedCardIds, smallCardRowSizes } from '../src/components/dashboard/dashboard-card-layout';
+import { GROUP_ORDER, groupedCardIds, canReorderCards, standardFallbackCards, dashboardCardMeta, orderedCardIds, smallCardRowSizes } from '../src/components/dashboard/dashboard-card-layout';
 import type { CardCatalogue } from '../src/lib/cards/catalogue';
 
 const catalogue: CardCatalogue = {
@@ -11,6 +11,24 @@ const catalogue: CardCatalogue = {
 };
 
 describe('dashboard catalogue ordering', () => {
+  it('groups all saved module permutations once in fixed order without changing saved data', () => {
+    const cards = GROUP_ORDER.flatMap(group => [{ id: `${group}:a`, group }, { id: `${group}:b`, group }]);
+    const permutations = (items: string[]): string[][] => items.length === 0 ? [[]] : items.flatMap((item, index) => permutations(items.filter((_, i) => i !== index)).map(rest => [item, ...rest]));
+    for (const permutation of permutations([...GROUP_ORDER])) {
+      const saved = permutation.flatMap(group => [`${group}:b`, `${group}:a`]);
+      const ordered = groupedCardIds(cards, saved);
+      const headings = ordered.map(id => cards.find(c => c.id === id)?.group).filter((group, i, all) => i === 0 || group !== all[i - 1]);
+      expect(headings).toEqual(['standard', 'cash_flow', 'profit', 'tax_compliance', 'bookkeeping_checks', 'consolidation']);
+      expect(ordered).toEqual(GROUP_ORDER.flatMap(group => [`${group}:b`, `${group}:a`]));
+      expect(saved).toEqual(permutation.flatMap(group => [`${group}:b`, `${group}:a`]));
+    }
+  });
+  it('refuses cross-module dragging but accepts within-module dragging', () => {
+    const cards = [{ id: 'health', group: 'standard' }, { id: 'notes', group: 'standard' }, { id: 'cashflow', group: 'cash_flow' }];
+    expect(canReorderCards(cards, 'health', 'cashflow')).toBe(false);
+    expect(canReorderCards(cards, 'health', 'notes')).toBe(true);
+    expect(canReorderCards(cards, 'missing', 'notes')).toBe(false);
+  });
   it('orders Standard health, P&L, receivables, payables, then Notes', () => {
     const keys = catalogue.cards.filter(c => c.package === 'standard').map(c => c.key);
     expect(keys.sort((a,b) => dashboardCardMeta(a,catalogue).rank - dashboardCardMeta(b,catalogue).rank)).toEqual(['health','pnl','receivables','payables','notes']);

@@ -26,7 +26,6 @@ import { ScenarioWidget } from "@/components/dashboard/ScenarioWidget";
 import { LoanConsolidationWidget } from "@/components/dashboard/LoanConsolidationWidget";
 import { GstReconciliationWidget, type GstCycle } from "@/components/dashboard/GstReconciliationWidget";
 import { TaxObligationsWidget } from "@/components/dashboard/TaxObligationsWidget";
-import { XeroActivityWidget } from "@/components/dashboard/XeroActivityWidget";
 
 
 import { CashflowWidget } from "@/components/dashboard/CashflowWidget";
@@ -305,12 +304,6 @@ function ClientDashboard() {
         
       }
 
-      // Xero file activity is an Advisory card (Bookkeeping checks module,
-      // owner decision 14 Oct 2026): drawn only when the single entitlement
-      // rule lists it, and its server reader refuses otherwise.
-      if (widgets.includes("xero_activity"))
-        advanced.push({ id: `${o.id}:xero_activity`, node: <XeroActivityWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
-
       // PAYG withholding stands alone: the activity statement card reports the
       // period's GST only, and this answers what is still owing month by month.
       // Structural hide: a file that has never run a pay run. Missing payroll
@@ -348,7 +341,7 @@ function ClientDashboard() {
     // DEFAULT_CARD_ORDER in src/lib/tiers.ts. Cards stay grouped by Xero file,
     // and within a file they follow the catalogue order — so GST, PAYG
     // withholding and superannuation always sit together, in that sequence.
-    // A stored per-client order still wins; this is only the fallback.
+    // Saved preferences only reorder cards within their catalogue module.
     const orgIndex = new Map<string, number>(orgs.map((o: any, i: number) => [String(o.id), i]));
     const sortMeta = (id: string) => {
       const sep = id.indexOf(":");
