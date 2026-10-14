@@ -71,7 +71,7 @@ async function backfillFile(db: any, item: Item): Promise<{ cash: number; profit
 
   // Never alongside a snapshot refresh (nightly or re-sync) for the same file.
   const { data: busy } = await db.from("xero_snapshot_runs").select("id")
-    .eq("tenant_id", item.tenant_id).eq("status", "running")
+    .eq("tenant_id", item.tenant_id).is("finished_at", null)
     .gte("started_at", new Date(Date.now() - 30 * 60_000).toISOString()).limit(1);
   if ((busy ?? []).length) throw new Error(XERO_RATE_LIMIT_MESSAGE);
 
