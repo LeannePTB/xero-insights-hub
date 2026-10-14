@@ -1,13 +1,12 @@
 - Client overview reads stored snapshots only and derives status from `evaluateClient`; its client list comes from the caller-scoped `overview_clients()` — never re-implement who-can-see-what in TypeScript.
 - Bank/card extraction is shared in `tax-lines.ts`; the ID-keyed bank-classification overlay applies explicit client/file/account overrides before Xero BankAccountType, never name guesses, so stored and live figures agree without rewriting Xero metadata.
-- Sidebar spacer stays non-shrinking; inset uses flex-1 min-w-0, never w-full, to avoid clipping.
+- Sidebar spacer never shrinks; inset uses flex-1 min-w-0, never w-full (clipping).
 - AppShell owns the sole menu-layout header; AppHeader supplies context-registered actions there and renders standalone only outside, preventing duplicate branding and lost actions.
 - Client income tax instalments use one period-history table and audited caller-scoped save; history and organisation-team-only editing stay explicit.
 - AppShell navigation uses `src/lib/nav/sidebar-nav.ts`, URL-selected (/system, /firms/:id, /clients/:id) and gated only by getMyContext signals; it stays presentation-only and database-movable.
 - Branding/website use narrow anon display readers and separate audited AAL2 canonical-admin saves on the grant-free branding table. Public sales visuals are synthetic; media uses bounded admin-only storage INSERT, never bypassing blocked public buckets.
 
-- System Admin pages reuse FirmPageHeader: one title, right-aligned actions, consistent headers without duplicate markup.
-- System Admin organisation detail uses URL-backed tabs on its existing guarded route, so deep links do not duplicate authorisation boundaries.
+- System Admin pages reuse FirmPageHeader (one title, right-aligned actions); organisation detail uses URL-backed tabs on its guarded route, so deep links add no authorisation boundary.
 
 ### Client workspace and branding
 - Client settings are child routes under `/clients/:clientId/settings/*`; keep the parent capability check and each existing server write guard.
@@ -31,4 +30,4 @@
 - Loans/Consolidations access is only `me_can_open_client_loans`/`me_can_open_consolidations`, called by readers, card and menu, so the rule exists once.
 - Report sections come from `card_catalogue.report_sections` via `client_report_sections`, frozen into new drafts' `includedSections`: one list, final/sent untouched.
 - Subdirectories have their own `AGENTS.md`; read it before changing files there.
-- Early access to Work-in-progress cards is an `org_early_access` row resolved only inside `client_cards_v2` for active members of that organisation, so the single card rule stays the only visibility path.
+- WIP early access (`org_early_access`) resolves only inside `client_cards_v2` for active org members, keeping one visibility path.
