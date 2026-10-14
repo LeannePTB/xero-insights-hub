@@ -27,3 +27,5 @@
 - Viewer is one read-only login type whose scope (All clients via firm_viewer_access, Selected via client_access external_adviser rows) is changed only through `set_viewer_scope`, because the two storage paths must switch atomically without a new predicate.
 - Login labels use `LOGIN_TYPE_LABEL`; database keys stay unchanged to preserve access rules.
 - AuthLayout shares presentation only; auth routes retain security and redirect logic.
+
+- Charts share pure vector geometry between accessible SVG and jsPDF; history is caller-scoped and frozen only into new report drafts, so charts never widen access or refresh final/sent documents.
