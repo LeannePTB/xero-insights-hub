@@ -38,6 +38,26 @@ export const Route = createFileRoute("/api/public/xero/snapshot-refresh")({
         const { GLOBAL_RUN_MAX, GLOBAL_RUN_WINDOW_SECONDS } = await import("@/lib/xero/snapshot-keys");
         const { enforceRateLimit } = await import("@/lib/rate-limit.server");
 
+        // Backfill tick (hourly): only processes items a System
+        // Administrator queued through start_figure_backfill(); no queue, no work.
+        let mode: unknown = null;
+        try { mode = ((await request.clone().json()) as { mode?: unknown })?.mode; } catch { mode = null; }
+        if (mode === "backfill") {
+          try {
+            await enforceRateLimit("xero_figure_backfill:global", 12, 3600);
+          } catch {
+            return new Response(JSON.stringify({ error: "Rate limited" }), { status: 429, headers: { "Content-Type": "application/json" } });
+          }
+          const { processFigureBackfill } = await import("@/lib/overview/figure-backfill.server");
+          try {
+            const r = await processFigureBackfill();
+            return new Response(JSON.stringify(r), { headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
+          } catch (e) {
+            console.error("[figure-backfill] tick failed:", e instanceof Error ? e.message : e);
+            return new Response(JSON.stringify({ error: "Backfill tick failed" }), { status: 500, headers: { "Content-Type": "application/json" } });
+          }
+        }
+
         // Throttled BEFORE any Xero call, so even a caller holding the secret
         // cannot use this route to burn the app-wide daily quota by looping.
         try {

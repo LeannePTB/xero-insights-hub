@@ -502,6 +502,12 @@
     },
     {
         "args": [
+        ],
+        "name": "figure_backfill_status",
+        "required": 0
+    },
+    {
+        "args": [
             "_reservation_id",
             "_status",
             "_gateway_run_id",
@@ -1348,6 +1354,13 @@
         ],
         "name": "set_viewer_scope",
         "required": 4
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "start_figure_backfill",
+        "required": 0
     },
     {
         "args": [

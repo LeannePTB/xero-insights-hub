@@ -239,3 +239,5 @@ Separate from the card-model migration; no file or object shared with it.
 - [x] Packages & Advisory modules (14 Oct): catalogue as data, System Admin screen, client Package, default modules, website/Trixie from catalogue.
 - [x] Gate Xero file activity, Advisory/Consolidation pages and client menu items on visible cards (14 Oct 11:41/11:44).
 - [ ] Packages & modules: signed-in visual check (blocked by two-step sign-in); System Admin per-client module screen for clients they cannot open (not built).
+- [x] Keep daily key figures ≥13 months; one-off 12-month history fill from Xero (System Admin → Xero monitoring)
+- [ ] Owner: publish, press "Fill 12 months of history", then remove the hourly fill job once finished

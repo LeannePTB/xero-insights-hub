@@ -75,6 +75,7 @@ create table public.client_access (id uuid, client_id uuid, user_id uuid, tier t
 create table public.client_bank_account_classifications (client_id uuid, tenant_id text, account_id uuid, classification text, updated_by uuid, updated_at timestamp with time zone);
 create table public.client_cards (client_id uuid, cards text[], created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_cost_classifications (id uuid, client_id uuid, tenant_id text, account_name text, classification text, created_at timestamp with time zone, updated_at timestamp with time zone, is_wages boolean);
+create table public.client_figure_history (id uuid, client_id uuid, firm_id uuid, tenant_id text, month_end date, cash numeric, net_profit numeric, source text, fetched_at timestamp with time zone);
 create table public.client_income_tax_instalments (id uuid, client_id uuid, tenant_id text, period_start date, period_end date, amount numeric(14,2), created_by uuid, updated_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_key_figures (id uuid, client_id uuid, firm_id uuid, tenant_id text, as_at date, cash numeric, debtors_total numeric, debtors_overdue numeric, creditors numeric, protected_money numeric, revenue_mtd numeric, net_profit_mtd numeric, created_at timestamp with time zone, updated_at timestamp with time zone, bank_reconciled_to date, credit_card_debt numeric, last_xero_login_at timestamp with time zone, bank_reconciliation jsonb);
 create table public.client_notes (id uuid, client_id uuid, author_id uuid, body text, created_at timestamp with time zone, updated_at timestamp with time zone, include_in_report boolean);
@@ -92,6 +93,8 @@ create table public.dashboard_configs (id uuid, user_id uuid, tenant_id text, la
 create table public.email_send_log (id uuid, message_id text, template_name text, recipient_email text, status text, error_message text, metadata jsonb, created_at timestamp with time zone);
 create table public.email_send_state (id integer, retry_after_until timestamp with time zone, batch_size integer, send_delay_ms integer, auth_email_ttl_minutes integer, transactional_email_ttl_minutes integer, updated_at timestamp with time zone);
 create table public.email_unsubscribe_tokens (id uuid, email text, created_at timestamp with time zone, used_at timestamp with time zone, token_hash text);
+create table public.figure_backfill_items (id uuid, run_id uuid, client_id uuid, firm_id uuid, tenant_id text, status text, months_cash integer, months_profit integer, attempts integer, reason text, next_attempt_at timestamp with time zone, updated_at timestamp with time zone);
+create table public.figure_backfill_runs (id uuid, requested_by uuid, requested_at timestamp with time zone, firm_id uuid, status text, finished_at timestamp with time zone);
 create table public.firm_members (id uuid, firm_id uuid, user_id uuid, role firm_member_role, created_at timestamp with time zone, updated_at timestamp with time zone, status text);
 create table public.firm_support_access (firm_id uuid, granted boolean, granted_by uuid, granted_at timestamp with time zone, revoked_at timestamp with time zone, note text, created_at timestamp with time zone, updated_at timestamp with time zone, id uuid, grantee_user_id uuid, expires_at timestamp with time zone, requested_by uuid, reason text);
 create table public.firm_viewer_access (id uuid, firm_id uuid, user_id uuid, tier dashboard_tier, granted_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone, inviter_label text);
@@ -3345,6 +3348,63 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.start_figure_backfill(_firm_id uuid DEFAULT NULL::uuid)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _run uuid; _n int; _skipped int;
+begin
+  perform public.assert_super_admin();
+  if exists (select 1 from public.figure_backfill_runs where status in ('queued','running')) then
+    raise exception 'BACKFILL_ALREADY_RUNNING' using errcode = 'check_violation';
+  end if;
+  insert into public.figure_backfill_runs (requested_by, firm_id) values (auth.uid(), _firm_id) returning id into _run;
+  insert into public.figure_backfill_items (run_id, client_id, firm_id, tenant_id, status, reason)
+  select distinct on (c.id, xc.tenant_id) _run, c.id, c.firm_id, xc.tenant_id,
+         case when xc.status = 'connected' then 'pending' else 'skipped' end,
+         case when xc.status = 'connected' then null else 'Xero file is not connected' end
+    from public.clients c
+    join public.client_xero_orgs cx on cx.client_id = c.id
+    join public.xero_connections xc on xc.id = cx.xero_connection_id
+   where _firm_id is null or c.firm_id = _firm_id;
+  insert into public.figure_backfill_items (run_id, client_id, firm_id, status, reason)
+  select _run, c.id, c.firm_id, 'skipped', 'No Xero file linked'
+    from public.clients c
+   where (_firm_id is null or c.firm_id = _firm_id)
+     and not exists (select 1 from public.client_xero_orgs cx where cx.client_id = c.id);
+  select count(*) filter (where status = 'pending'), count(*) filter (where status = 'skipped')
+    into _n, _skipped from public.figure_backfill_items where run_id = _run;
+  if _n = 0 then update public.figure_backfill_runs set status = 'done', finished_at = now() where id = _run; end if;
+  insert into public.audit_log (actor_user_id, action, target_type, target_id, meta)
+  values (auth.uid(), 'figure_backfill_started', 'figure_backfill_run', _run::text,
+          jsonb_build_object('firm_id', _firm_id, 'files', _n, 'skipped', _skipped));
+  return _run;
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.figure_backfill_status()
+ RETURNS TABLE(run_id uuid, run_status text, requested_at timestamp with time zone, finished_at timestamp with time zone, organisation text, client text, file text, status text, months_cash integer, months_profit integer, reason text, updated_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform public.assert_super_admin();
+  return query
+  with r as (select * from public.figure_backfill_runs order by requested_at desc limit 1)
+  select r.id, r.status, r.requested_at, r.finished_at, f.name, c.name,
+         coalesce(xc.tenant_name, i.tenant_id), i.status, i.months_cash, i.months_profit, i.reason, i.updated_at
+    from r
+    left join public.figure_backfill_items i on i.run_id = r.id
+    left join public.clients c on c.id = i.client_id
+    left join public.firms f on f.id = i.firm_id
+    left join lateral (select x.tenant_name from public.xero_connections x where x.tenant_id = i.tenant_id limit 1) xc on true
+   order by f.name, c.name;
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3470,6 +3530,7 @@ alter table public.client_access enable row level security;
 alter table public.client_bank_account_classifications enable row level security;
 alter table public.client_cards enable row level security;
 alter table public.client_cost_classifications enable row level security;
+alter table public.client_figure_history enable row level security;
 alter table public.client_income_tax_instalments enable row level security;
 alter table public.client_key_figures enable row level security;
 alter table public.client_notes enable row level security;
@@ -3487,6 +3548,8 @@ alter table public.dashboard_configs enable row level security;
 alter table public.email_send_log enable row level security;
 alter table public.email_send_state enable row level security;
 alter table public.email_unsubscribe_tokens enable row level security;
+alter table public.figure_backfill_items enable row level security;
+alter table public.figure_backfill_runs enable row level security;
 alter table public.firm_members enable row level security;
 alter table public.firm_support_access enable row level security;
 alter table public.firm_viewer_access enable row level security;
@@ -3640,6 +3703,14 @@ grant SELECT on table public.client_cost_classifications to service_role;
 grant TRIGGER on table public.client_cost_classifications to service_role;
 grant TRUNCATE on table public.client_cost_classifications to service_role;
 grant UPDATE on table public.client_cost_classifications to service_role;
+grant SELECT on table public.client_figure_history to authenticated;
+grant DELETE on table public.client_figure_history to service_role;
+grant INSERT on table public.client_figure_history to service_role;
+grant REFERENCES on table public.client_figure_history to service_role;
+grant SELECT on table public.client_figure_history to service_role;
+grant TRIGGER on table public.client_figure_history to service_role;
+grant TRUNCATE on table public.client_figure_history to service_role;
+grant UPDATE on table public.client_figure_history to service_role;
 grant SELECT on table public.client_income_tax_instalments to authenticated;
 grant DELETE on table public.client_income_tax_instalments to service_role;
 grant INSERT on table public.client_income_tax_instalments to service_role;
@@ -3800,6 +3871,20 @@ grant SELECT on table public.email_unsubscribe_tokens to service_role;
 grant TRIGGER on table public.email_unsubscribe_tokens to service_role;
 grant TRUNCATE on table public.email_unsubscribe_tokens to service_role;
 grant UPDATE on table public.email_unsubscribe_tokens to service_role;
+grant DELETE on table public.figure_backfill_items to service_role;
+grant INSERT on table public.figure_backfill_items to service_role;
+grant REFERENCES on table public.figure_backfill_items to service_role;
+grant SELECT on table public.figure_backfill_items to service_role;
+grant TRIGGER on table public.figure_backfill_items to service_role;
+grant TRUNCATE on table public.figure_backfill_items to service_role;
+grant UPDATE on table public.figure_backfill_items to service_role;
+grant DELETE on table public.figure_backfill_runs to service_role;
+grant INSERT on table public.figure_backfill_runs to service_role;
+grant REFERENCES on table public.figure_backfill_runs to service_role;
+grant SELECT on table public.figure_backfill_runs to service_role;
+grant TRIGGER on table public.figure_backfill_runs to service_role;
+grant TRUNCATE on table public.figure_backfill_runs to service_role;
+grant UPDATE on table public.figure_backfill_runs to service_role;
 grant DELETE on table public.firm_members to authenticated;
 grant INSERT on table public.firm_members to authenticated;
 grant SELECT on table public.firm_members to authenticated;
@@ -4328,6 +4413,8 @@ create policy "Manage cost classifications by firm (update)" on public.client_co
   WHERE ((c.id = client_cost_classifications.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
 create policy "Viewers read cost classifications" on public.client_cost_classifications as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
 create policy mfa_aal2_required on public.client_cost_classifications as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "entitled users read client figure history" on public.client_figure_history as permissive for select to authenticated using ((user_can_access_client(auth.uid(), client_id) AND app_private.user_can_access_tenant(auth.uid(), tenant_id)));
+create policy mfa_aal2_required on public.client_figure_history as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "Client access reads income tax instalments" on public.client_income_tax_instalments as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
 create policy "Members read income tax instalments" on public.client_income_tax_instalments as permissive for select to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
@@ -4467,6 +4554,8 @@ create policy "Service role can insert tokens" on public.email_unsubscribe_token
 create policy "Service role can mark tokens as used" on public.email_unsubscribe_tokens as permissive for update to service_role using ((auth.role() = 'service_role'::text)) with check ((auth.role() = 'service_role'::text));
 create policy "Service role can read tokens" on public.email_unsubscribe_tokens as permissive for select to service_role using ((auth.role() = 'service_role'::text));
 create policy mfa_aal2_required on public.email_unsubscribe_tokens as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy mfa_aal2_required on public.figure_backfill_items as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy mfa_aal2_required on public.figure_backfill_runs as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "firm members read own membership rows" on public.firm_members as permissive for select to authenticated using (((user_id = auth.uid()) OR app_private.has_firm_access(auth.uid(), firm_id)));
 create policy "firm owners manage members (delete)" on public.firm_members as permissive for delete to authenticated using (app_private.is_firm_owner(auth.uid(), firm_id));
 create policy "firm owners manage members (insert)" on public.firm_members as permissive for insert to authenticated with check (app_private.is_firm_owner(auth.uid(), firm_id));
@@ -4714,4 +4803,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: f7ce6bd1bca6ae9a067023393c6e2196eb7b45dd9463d5146cbac62b5b3f632d
+-- catalogue-fingerprint: 2847a654d2e15af50c58a618797afaf25be0c5043ab35e73c28cf2dd8c83d825

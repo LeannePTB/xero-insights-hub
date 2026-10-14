@@ -374,6 +374,10 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Presentation signal: whether the caller may change card/module ticks for one organisation (Organisation Owner or System Administrator, aal2). Grants nothing; every write re-checks through app_private.assert_card_manager. Returns only a boolean.",
   "public.admin_set_card_entry":
     "Moves one catalogue card between packages/Advisory modules and edits its description. aal2 + System Administrator via public.assert_super_admin, validated (Advisory cards need an existing module), audited with old and new package/module. Product catalogue only; no organisation or client data. Changes what every purchase includes; client_cards_v2 still intersects with each client's ticks.",
+  "public.start_figure_backfill":
+    "Queues the one-off month-end history fill (cash and net profit from Xero). public.assert_super_admin (aal2) first; refuses while a fill is running; optional organisation filter is a filter only; records skipped clients with a reason; audited (metadata only). Queues work for the registered scheduled job; returns only the run id.",
+  "public.figure_backfill_status":
+    "Latest history fill's progress for System Admin → Xero: organisation, client and Xero file names, status, months filled and a generic reason. public.assert_super_admin (aal2). Path C metadata — no figures, no tokens.",
   "public.admin_set_card_module":
     "Renames or redescribes one Advisory module. aal2 + System Administrator via public.assert_super_admin, length-validated, audited. Product catalogue copy only.",
   "app_private.assert_card_manager":

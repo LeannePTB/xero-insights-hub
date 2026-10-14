@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **2300**. Known failures: **0**.
+Rows: **2316**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -320,6 +320,8 @@ None.
 | assert_widget_access(xero_activity) with Advisory on, Bookkeeping checks ticked | execute | DENY | pglite | Another organisation, signed-out callers and aal1 sessions never reach the card reader |  |
 | set_client_module(a client) | execute | DENY | pglite | app_private.assert_card_manager: Staff, Viewers, Business Owners, support grants, other organisations and aal1 sessions cannot change a client's modules or cards |  |
 | set_client_card_enabled(a client) | execute | DENY | pglite | app_private.assert_card_manager: Staff, Viewers, Business Owners, support grants, other organisations and aal1 sessions cannot change a client's modules or cards |  |
+| start_figure_backfill(the history fill) | execute | DENY | pglite | History fill: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
+| figure_backfill_status(the history fill) | execute | DENY | pglite | History fill: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
 | admin_set_card_entry(the card catalogue) | execute | DENY | pglite | Catalogue writes: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
 | rename_my_organisation(an organisation) | execute | DENY | pglite | Owner-only: firms.owner_user_id = auth.uid() after aal2; staff, support grants, viewers and other organisations refused |  |
 | set_org_card_defaults(an organisation) | execute | DENY | pglite | PK 2 (aal2 required before anything else) |  |
@@ -579,6 +581,8 @@ None.
 | assert_widget_access(xero_activity) with Advisory on, Bookkeeping checks unticked | execute | DENY | pglite | Bought but unticked: the card stays available to tick, and the reader refuses until it is ticked for that client |  |
 | set_client_module(a client) | execute | ALLOW | pglite | Owner decision 14 Oct 2026: the Organisation Owner ticks modules/cards for own clients within the purchase; a System Administrator at aal2 may also set them; audited |  |
 | set_client_card_enabled(a client) | execute | ALLOW | pglite | Owner decision 14 Oct 2026: the Organisation Owner ticks modules/cards for own clients within the purchase; a System Administrator at aal2 may also set them; audited |  |
+| start_figure_backfill(the history fill) | execute | DENY | pglite | History fill: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
+| figure_backfill_status(the history fill) | execute | DENY | pglite | History fill: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
 | admin_set_card_entry(the card catalogue) | execute | DENY | pglite | Catalogue writes: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
 | set_org_card_defaults(an organisation) | execute | ALLOW | pglite | PK 2 path A — the organisation's own owner sets its template and may overwrite its own clients' ticks, audited |  |
 | apply_org_card_defaults(an organisation) | execute | ALLOW | pglite | PK 2 path A — the organisation's own owner sets its template and may overwrite its own clients' ticks, audited |  |
@@ -798,6 +802,8 @@ None.
 | apply_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_card_manager: Organisation Owner or System Administrator only — Staff refused (owner decision 14 Oct 2026), support grants, viewers and other organisations refused |  |
 | set_client_module(a client) | execute | DENY | pglite | app_private.assert_card_manager: Staff, Viewers, Business Owners, support grants, other organisations and aal1 sessions cannot change a client's modules or cards |  |
 | set_client_card_enabled(a client) | execute | DENY | pglite | app_private.assert_card_manager: Staff, Viewers, Business Owners, support grants, other organisations and aal1 sessions cannot change a client's modules or cards |  |
+| start_figure_backfill(the history fill) | execute | DENY | pglite | History fill: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
+| figure_backfill_status(the history fill) | execute | DENY | pglite | History fill: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
 | admin_set_card_entry(the card catalogue) | execute | DENY | pglite | Catalogue writes: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
 | rename_my_organisation(an organisation) | execute | DENY | pglite | Owner-only: firms.owner_user_id = auth.uid() after aal2; staff, support grants, viewers and other organisations refused |  |
 | set_overview_alert_state(own organisation's client) | execute | ALLOW | pglite | PK 2 path A — members acknowledge or snooze an alert for everyone, through the write predicate user_can_write_client, audited |  |
@@ -984,6 +990,8 @@ None.
 | apply_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_card_manager: Organisation Owner or System Administrator only — Staff refused (owner decision 14 Oct 2026), support grants, viewers and other organisations refused |  |
 | set_client_module(a client) | execute | DENY | pglite | app_private.assert_card_manager: Staff, Viewers, Business Owners, support grants, other organisations and aal1 sessions cannot change a client's modules or cards |  |
 | set_client_card_enabled(a client) | execute | DENY | pglite | app_private.assert_card_manager: Staff, Viewers, Business Owners, support grants, other organisations and aal1 sessions cannot change a client's modules or cards |  |
+| start_figure_backfill(the history fill) | execute | DENY | pglite | History fill: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
+| figure_backfill_status(the history fill) | execute | DENY | pglite | History fill: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
 | admin_set_card_entry(the card catalogue) | execute | DENY | pglite | Catalogue writes: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
 | rename_my_organisation(an organisation) | execute | DENY | pglite | Owner-only: firms.owner_user_id = auth.uid() after aal2; staff, support grants, viewers and other organisations refused |  |
 | set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
@@ -1215,6 +1223,8 @@ None.
 | apply_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_card_manager: Organisation Owner or System Administrator only — Staff refused (owner decision 14 Oct 2026), support grants, viewers and other organisations refused |  |
 | set_client_module(a client) | execute | DENY | pglite | app_private.assert_card_manager: Staff, Viewers, Business Owners, support grants, other organisations and aal1 sessions cannot change a client's modules or cards |  |
 | set_client_card_enabled(a client) | execute | DENY | pglite | app_private.assert_card_manager: Staff, Viewers, Business Owners, support grants, other organisations and aal1 sessions cannot change a client's modules or cards |  |
+| start_figure_backfill(the history fill) | execute | DENY | pglite | History fill: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
+| figure_backfill_status(the history fill) | execute | DENY | pglite | History fill: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
 | admin_set_card_entry(the card catalogue) | execute | DENY | pglite | Catalogue writes: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
 | rename_my_organisation(an organisation) | execute | DENY | pglite | Owner-only: firms.owner_user_id = auth.uid() after aal2; staff, support grants, viewers and other organisations refused |  |
 | set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
@@ -1301,6 +1311,8 @@ None.
 | apply_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_card_manager: Organisation Owner or System Administrator only — Staff refused (owner decision 14 Oct 2026), support grants, viewers and other organisations refused |  |
 | set_client_module(a client) | execute | DENY | pglite | app_private.assert_card_manager: Staff, Viewers, Business Owners, support grants, other organisations and aal1 sessions cannot change a client's modules or cards |  |
 | set_client_card_enabled(a client) | execute | DENY | pglite | app_private.assert_card_manager: Staff, Viewers, Business Owners, support grants, other organisations and aal1 sessions cannot change a client's modules or cards |  |
+| start_figure_backfill(the history fill) | execute | DENY | pglite | History fill: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
+| figure_backfill_status(the history fill) | execute | DENY | pglite | History fill: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
 | admin_set_card_entry(the card catalogue) | execute | DENY | pglite | Catalogue writes: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
 | rename_my_organisation(an organisation) | execute | DENY | pglite | Owner-only: firms.owner_user_id = auth.uid() after aal2; staff, support grants, viewers and other organisations refused |  |
 | set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
@@ -1337,6 +1349,8 @@ None.
 | set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | set_client_module(a client) | execute | DENY | pglite | app_private.assert_card_manager: Staff, Viewers, Business Owners, support grants, other organisations and aal1 sessions cannot change a client's modules or cards |  |
 | set_client_card_enabled(a client) | execute | DENY | pglite | app_private.assert_card_manager: Staff, Viewers, Business Owners, support grants, other organisations and aal1 sessions cannot change a client's modules or cards |  |
+| start_figure_backfill(the history fill) | execute | DENY | pglite | History fill: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
+| figure_backfill_status(the history fill) | execute | DENY | pglite | History fill: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
 | set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
 | overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
 | me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
@@ -2058,6 +2072,8 @@ None.
 | set_client_module(a client) | execute | ALLOW | pglite | Owner decision 14 Oct 2026: the Organisation Owner ticks modules/cards for own clients within the purchase; a System Administrator at aal2 may also set them; audited |  |
 | set_client_card_enabled(a client) | execute | ALLOW | pglite | Owner decision 14 Oct 2026: the Organisation Owner ticks modules/cards for own clients within the purchase; a System Administrator at aal2 may also set them; audited |  |
 | admin_set_card_entry(the card catalogue) | execute | ALLOW | pglite | Catalogue writes: System Administrator at aal2 only, audited |  |
+| start_figure_backfill(the history fill) | execute | ALLOW | pglite | Owner decision 14 Oct 2026: one-off month-end history fill — System Administrator at aal2 queues it and reads progress (metadata only); audited |  |
+| figure_backfill_status(the history fill) | execute | ALLOW | pglite | Owner decision 14 Oct 2026: one-off month-end history fill — System Administrator at aal2 queues it and reads progress (metadata only); audited |  |
 | set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
 | overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
 | me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |

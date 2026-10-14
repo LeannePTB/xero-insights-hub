@@ -1,4 +1,4 @@
-import { readFigureHistory } from '@/lib/charts/history-reader.server';
+import { readMergedHistory } from '@/lib/charts/history-reader.server';
 import { comparison, historyTotals, liabilityTotal, previousMonthDay, weeklyClosing } from '@/lib/charts/history';
 import { addDays, addMonths } from '@/lib/sydney-time';
 import type { OverviewContext } from './overview.server';
@@ -19,10 +19,12 @@ export async function buildOverviewCharts(sb: any, ctx: OverviewContext, rows: O
   const cash = currency && singleFile && knownCash.length ? knownCash.reduce((s, r) => s + (r.cash ?? 0), 0) : null;
   const protectedMoney = currency && singleFile ? tax.value : null;
   const comparisonDate = previousMonthDay(ctx.today);
-  const start = addMonths(ctx.today, -6);
-  let history: Awaited<ReturnType<typeof readFigureHistory>> = [];
+  const start = addMonths(ctx.today, -12);
+  let history: Awaited<ReturnType<typeof readMergedHistory>>['rows'] = [];
   let failed = false;
-  try { history = await readFigureHistory(sb, clients.map(c => c.id), start, ctx.today); } catch { failed = true; }
+  try { history = (await readMergedHistory(sb, clients.map(c => c.id), start, ctx.today)).rows; } catch { failed = true; }
+  const monthEndPoints = history.filter(r => r.source === 'month_end').length;
+  const firstDaily = history.filter(r => r.source === 'daily').reduce<string | null>((a, r) => !a || r.as_at < a ? r.as_at : a, null);
   const before = historyTotals(history, clients, comparisonDate);
   const first = history.reduce<string | null>((a,r) => !a || r.as_at < a ? r.as_at : a, null);
   const trend: OverviewCharts['trend'] = [];
@@ -33,5 +35,5 @@ export async function buildOverviewCharts(sb: any, ctx: OverviewContext, rows: O
   return { currency, cash, tax:protectedMoney, cashCoverage:knownCash.length, taxCoverage:tax.coverage, count:rows.length, comparisonDate,
     cashChange:knownCash.length === rows.length && singleFile ? comparison(cash,before.cash) : null,
     taxChange:tax.coverage === rows.length && singleFile ? comparison(protectedMoney,before.protectedMoney) : null,
-    trend:weeklyClosing(trend), note: !currency ? 'A combined total is unavailable: file currencies are missing or differ.' : !singleFile ? 'Current combined totals are unavailable for multi-file clients; the existing rows are not consolidated.' : failed ? 'Stored history could not be loaded.' : 'Current visible clients only. Historical balances retain the bank settings used when saved; settings changes are not recorded. Missing files or dates appear as gaps.' };
+    trend:weeklyClosing(trend), note: !currency ? 'A combined total is unavailable: file currencies are missing or differ.' : !singleFile ? 'Current combined totals are unavailable for multi-file clients; the existing rows are not consolidated.' : failed ? 'Stored history could not be loaded.' : (monthEndPoints ? `Before ${firstDaily ?? 'daily figures began'}, points are month-end balances filled from Xero using today\'s bank settings; later points are daily. ` : '') + 'Current visible clients only. Historical balances retain the bank settings used when saved; settings changes are not recorded. Missing files or dates appear as gaps.' };
 }
