@@ -25,7 +25,7 @@ export async function readMonthEndHistory(sb: any, ids: string[], from: string, 
   const out: MonthEndRow[] = [];
   for (let i = 0; i < ids.length; i += 25) {
     let query = sb.from('client_figure_history').select('client_id, tenant_id, month_end, cash, net_profit')
-      .in('client_id', ids.slice(i, i + 25)).gte('month_end', from).lte('month_end', to).order('month_end').limit(1000);
+      .in('client_id', ids.slice(i, i + 25)).gte('month_end', from).lte('month_end', to).order('month_end').range(0, 999);
     if (tenantId) query = query.eq('tenant_id', tenantId);
     const { data, error } = await query;
     if (error) throw new Error('Month-end history could not be read.');
