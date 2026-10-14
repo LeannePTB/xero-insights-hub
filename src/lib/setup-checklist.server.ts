@@ -99,6 +99,15 @@ export async function setupChecklists(
       .in("client_id", clientIds),
     supabase.rpc("client_setup_account_counts", { _client_ids: clientIds }),
   ]);
+  // Same rule as the counts (one database function): names of untagged accounts.
+  const untaggedRes = await supabase.rpc("client_setup_cost_accounts", { _client_ids: clientIds });
+  const untaggedByClient = new Map<string, string[]>();
+  if (!untaggedRes.error) for (const r of (untaggedRes.data ?? []) as any[]) {
+    if (r.tagged) continue;
+    const list = untaggedByClient.get(r.client_id) ?? [];
+    list.push(`${r.account_name}${r.account_type === "DIRECTCOSTS" ? " (Cost of sales)" : ""}`);
+    untaggedByClient.set(r.client_id, list);
+  }
   if (clientsRes.error) throw new Error(clientsRes.error.message);
   if (statutoryRes.error) throw new Error(statutoryRes.error.message);
   if (countsRes.error) throw new Error(countsRes.error.message);
@@ -110,11 +119,12 @@ export async function setupChecklists(
     categoriesByClient.set(row.client_id, set);
   }
 
-  const countsByClient = new Map<string, { expense: number; classified: number }>();
+  const countsByClient = new Map<string, { expense: number; classified: number; untaggedNames: string[] }>();
   for (const row of (countsRes.data ?? []) as any[]) {
     countsByClient.set(row.client_id as string, {
       expense: Number(row.expense_accounts ?? 0),
       classified: Number(row.classified_accounts ?? 0),
+      untaggedNames: untaggedByClient.get(row.client_id as string) ?? [],
     });
   }
 
@@ -240,7 +250,7 @@ function buildChecklist(
       status: untagged > 0 ? "needs_attention" : "done",
       detail:
         untagged > 0
-          ? `${untagged} of ${counts.expense} expense accounts are still untagged, so break-even and the cash-flow scenario are working from an incomplete split.`
+          ? `${untaggedSummary(counts.untaggedNames ?? [], untagged)} ${untagged} of ${counts.expense} expense accounts are untagged, so break-even and the cash-flow scenario are working from an incomplete split.`
           : `All ${counts.expense} expense accounts are tagged.`,
       anchor: "cost-classification",
     });
@@ -313,4 +323,12 @@ function buildChecklist(
     outstanding: outstanding.length,
     outstandingTitles: outstanding.map((i) => i.title),
   };
+}
+
+/** "Purchases (Cost of sales) isn't tagged yet." — names up to three accounts. */
+export function untaggedSummary(names: string[], total: number): string {
+  if (!names.length) return "";
+  const shown = names.slice(0, 3).join(", ");
+  const more = total > 3 ? ` and ${total - 3} more` : "";
+  return `${shown}${more} ${total === 1 ? "isn't" : "aren't"} tagged yet.`;
 }
