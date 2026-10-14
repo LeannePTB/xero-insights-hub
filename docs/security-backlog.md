@@ -1778,3 +1778,8 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - New definers: `start_figure_backfill(_firm_id)` and `figure_backfill_status()` — `assert_super_admin()` (aal2) first, audited start (`figure_backfill_started`, metadata only), EXECUTE revoked from PUBLIC/anon.
 - Worker `src/lib/overview/figure-backfill.server.ts` uses `supabaseAdmin` only inside the existing bearer-checked scheduled route (`mode: "backfill"`), own hourly limiter key; Xero calls through `xeroGet` (file ceiling, limiter, one 401/403 refresh). Hourly cron `xero-figure-backfill-tick` (no-op when nothing queued). OPEN: remove that cron once the fill has finished; it could not be self-arming because the agent may not reference stored secrets in a migration.
 - Known limitation: backfilled cash uses the client's current bank settings for every past month.
+
+## 14 Oct 2026 — cost classification readiness matched the screen
+- CLOSED: the readiness count required a stored tag for cost-of-sales (DIRECTCOSTS) and OVERHEADS accounts, while the screen and calculations seed them Variable/Fixed — so Demo Company (AU) "Purchases" could never be completed. New SECURITY INVOKER `client_setup_cost_accounts` holds the one rule; `client_setup_account_counts` now counts from it. Warning names the untagged accounts. No access change (invoker; execute revoked from PUBLIC/anon).
+- OPEN: classifications are keyed by account name; a Xero rename silently untags. Follow-up: key by Xero AccountID with name for display.
+- Note: an archived account with activity still shows on the screen (it comes from the P&L) but is not counted.
