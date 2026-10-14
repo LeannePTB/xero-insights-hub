@@ -1,3 +1,4 @@
+import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -62,36 +63,8 @@ export function ScenarioWidget({
 
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tenantName}</p>
-          <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <SlidersHorizontal className="h-4 w-4 text-emphasis" /> Cashflow Scenario
-          </h3>
-          <p className="text-xs text-muted-foreground">{monthLabelOf(month)}</p>
-
-        </div>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setShouldLoad(true);
-              refetch();
-            }}
-            disabled={isFetching}
-            title="Refresh"
-          >
-            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/clients/$clientId/cashflow-scenario" params={{ clientId }} search={{ tenantId }}>
-              Open <ArrowRight className="ml-1 h-3.5 w-3.5" />
-            </Link>
-          </Button>
-        </div>
-      </div>
+    <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
+      <DashboardCardHeader label={tenantName} title="Cash flow scenario" icon={<SlidersHorizontal className="h-4 w-4"/>} description={`Invoices and expenses for ${monthLabelOf(month)}`} status={<p className="mt-1.5 text-xs text-muted-foreground">Figures for the selected period</p>} isFetching={isFetching} actions={<><Button variant="ghost" size="icon-sm" onClick={() => { setShouldLoad(true); refetch(); }} disabled={isFetching} title="Refresh" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}/></Button><Button variant="outline" size="sm" asChild><Link to="/clients/$clientId/cashflow-scenario" params={{clientId}} search={{tenantId}}>Open <ArrowRight className="h-3.5 w-3.5"/></Link></Button></>}/>
 
       <div className="mt-4">
         <MonthPicker value={month} onChange={setMonth} />

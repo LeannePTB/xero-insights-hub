@@ -27,7 +27,7 @@
 
 - Charts share pure vector geometry between accessible SVG and jsPDF; history is caller-scoped and frozen only into new report drafts, so charts never widen access or refresh final/sent documents.
 - Standard charts use card gates and resolved files; never infer unknown bases/scores. Enquiries use database eligibility and atomic scope/rate/audit checks; promotion grants no client access.
-- Card packages/modules live in `card_catalogue`/`card_modules` (read by `card_group_cards`); modules group `client_cards`; card writes pass `assert_card_manager`: one list, one rule.
+- Catalogue modules group authorised dashboard cards; shared headers and personal saved order govern layout, never access. Card writes use `assert_card_manager`.
 - Loans/Consolidations access is only `me_can_open_client_loans`/`me_can_open_consolidations`, called by readers, card and menu, so the rule exists once.
 - Report sections come from `card_catalogue.report_sections` via `client_report_sections`, frozen into new drafts' `includedSections`: one list, final/sent untouched.
 - Subdirectories have their own `AGENTS.md`; read it before changing files there.

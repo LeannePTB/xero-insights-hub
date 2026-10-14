@@ -1,3 +1,4 @@
+import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -65,17 +66,8 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-xs text-muted-foreground">
-            {[clientName, tenantName, currency, q.data?.fyLabel].filter(Boolean).join(" · ")}
-          </p>
-          <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <Activity className="h-4 w-4 text-emphasis" /> Business Health
-          </h3>
-        </div>
-      </div>
+    <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
+      <DashboardCardHeader label={[clientName, tenantName, currency, q.data?.fyLabel].filter(Boolean).join(" · ")} title="Business health" icon={<Activity className="h-4 w-4"/>} description="Cash, profit and the signals behind the business health score" from={fromDate} to={toDate} source={q.data?.source} isFetching={q.isFetching}/>
 
       <DateRangeControls
         fromDate={fromDate}
@@ -127,13 +119,7 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
               {!q.data.partPeriod.suppressVerdict && (
                 <p className="mt-1 text-sm text-muted-foreground">{q.data.summary}</p>
               )}
-              <CardFreshness
-                className="mt-2"
-                from={fromDate}
-                to={toDate}
-                source={q.data?.source}
-                isFetching={q.isFetching}
-              />
+
 
               {q.data.alert && (
                 <div

@@ -1,3 +1,4 @@
+import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
@@ -58,28 +59,18 @@ export function SuperannuationWidget({
   const ageDays = oldest ? businessDaysSince(oldest) : null;
   const mayBeOverdue = !isPaidUp && ageDays !== null && ageDays > 7;
 
+  if (!isLoading && !error && data && data.status !== 'available') {
+    const explanation = data.status === 'no_super_accounts'
+      ? 'This Xero file has no superannuation account on its balance sheet.'
+      : data.status === 'payroll_not_registered'
+        ? 'This client is not registered for PAYG withholding, so payroll figures are not requested.'
+        : 'Set how often this client lodges PAYG withholding before payroll figures can be shown.';
+    return <CompactCardState label={tenantName} title="Superannuation not yet paid" icon={<PiggyBank className="h-4 w-4"/>} summary={data.status === 'no_super_accounts' ? 'No superannuation account' : 'Payroll figures unavailable'} explanation={explanation} source={data.source} isFetching={isFetching}/>;
+  }
+
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {tenantName}
-          </p>
-          <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <PiggyBank className="h-4 w-4 text-emphasis" />
-            Superannuation not yet paid
-          </h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            The balance on this organisation&apos;s superannuation account
-          </p>
-          {/* The balance is live, the pay runs may be last night's copy: the
-              line reports the older of the two. */}
-          <CardFreshness className="mt-1.5" source={data?.source} isFetching={isFetching} />
-        </div>
-        <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} title="Refresh">
-          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-        </Button>
-      </div>
+    <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
+      <DashboardCardHeader label={tenantName} title="Superannuation not yet paid" icon={<PiggyBank className="h-4 w-4"/>} description="The balance on this Xero file’s superannuation account" source={data?.source} isFetching={isFetching} actions={<Button variant="ghost" size="icon-sm" onClick={() => refetch()} disabled={isFetching} title="Refresh" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}/></Button>}/>
 
       {isLoading ? (
         <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">

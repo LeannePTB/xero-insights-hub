@@ -1,3 +1,4 @@
+import { DashboardCardHeader } from "./DashboardCardHeader";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -150,62 +151,12 @@ export function GstReconciliationWidget({
   const data = q.data;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {tenantName}
-          </p>
-          <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <Percent className="h-4 w-4 text-emphasis" />
-            Activity statement — GST (indicative)
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            {notRegistered
-              ? "Goods and services tax"
-              : data
-                ? `${format(new Date(`${data.periodFrom}T00:00:00`), "d MMM")} – ${format(
-                    new Date(`${data.periodTo}T00:00:00`),
-                    "d MMM yyyy",
-                  )}`
-                : `${format(new Date(`${selected.from}T00:00:00`), "d MMM")} – ${format(
-                    new Date(`${selected.to}T00:00:00`),
-                    "d MMM yyyy",
-                  )}`}{" "}
-            · a review aid, not a lodgement figure
-          </p>
-          {/* This card serves a saved calculation until someone recalculates,
-              so it reports that provenance through the one freshness line. */}
-          {!notRegistered && (
-            <CardFreshness
-              className="mt-1.5"
-              source={reconSource(data, data?.periodTo)}
-              isFetching={q.isFetching || recalculating}
-            />
-          )}
-        </div>
-        {!notRegistered && (
-          <div className="flex items-center gap-2">
-            <Select value={periodValue} onValueChange={setPeriodValue}>
-              <SelectTrigger className="h-8 w-[260px] text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {options.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {data?.canRecalculate && (
-              <Button variant="ghost" size="sm" onClick={recalculate} disabled={recalculating} title="Recalculate">
-                <RefreshCw className={`h-4 w-4 ${recalculating ? "animate-spin" : ""}`} />
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
+    <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
+      <DashboardCardHeader label={tenantName} title="Activity statement — GST (indicative)" icon={<Percent className="h-4 w-4"/>} description="GST review aid, not a lodgement figure" source={!notRegistered ? reconSource(data, data?.periodTo) : undefined} isFetching={q.isFetching || recalculating}/>
+      {!notRegistered && <div className="mb-4 flex min-w-0 items-center gap-2">
+        <Select value={periodValue} onValueChange={setPeriodValue}><SelectTrigger className="h-8 w-full sm:w-[260px] text-xs"><SelectValue/></SelectTrigger><SelectContent>{options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
+        {data?.canRecalculate && <Button variant="ghost" size="icon-sm" onClick={recalculate} disabled={recalculating} title="Recalculate" aria-label="Recalculate"><RefreshCw className={`h-4 w-4 ${recalculating ? "animate-spin" : ""}`}/></Button>}
+      </div>}
 
       {settingRequired && (
         <p className="mt-3 text-xs text-muted-foreground">

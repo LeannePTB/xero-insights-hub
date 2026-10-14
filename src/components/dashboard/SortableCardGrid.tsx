@@ -18,8 +18,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { orderedCardIds, smallCardRowSizes } from "./dashboard-card-layout";
 
-export type SortableCard = { id: string; node: ReactNode; fullWidth?: boolean };
+export type SortableCard = { id: string; node: ReactNode; fullWidth?: boolean; group?: string; groupLabel?: string };
 
 function SortableItem({ id, children, fullWidth }: { id: string; children: ReactNode; fullWidth?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -33,9 +35,10 @@ function SortableItem({ id, children, fullWidth }: { id: string; children: React
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative min-w-0${fullWidth ? " lg:col-span-2" : ""}`}
+      className="relative min-w-0 h-full [&>div:last-child]:h-full [&>section:last-child]:h-full"
     >
-      <button
+      <Button
+        variant="ghost" size="icon-sm"
         type="button"
         {...attributes}
         {...listeners}
@@ -43,7 +46,7 @@ function SortableItem({ id, children, fullWidth }: { id: string; children: React
         className="absolute right-3 top-3 z-10 grid h-7 w-7 cursor-grab touch-none place-items-center rounded-md bg-muted/70 text-muted-foreground opacity-60 transition-opacity hover:bg-muted hover:opacity-100 active:cursor-grabbing focus:opacity-100"
       >
         <GripVertical className="h-4 w-4" />
-      </button>
+      </Button>
       {children}
     </div>
   );
@@ -67,10 +70,7 @@ export function SortableCardGrid({
   const cardIds = useMemo(() => cards.map((c) => c.id), [cards.map((c) => c.id).join("|")]);
 
   const initial = useMemo(() => {
-    const known = new Set(cardIds);
-    const sorted = savedOrder.filter((id) => known.has(id));
-    const extras = cardIds.filter((id) => !sorted.includes(id));
-    return [...sorted, ...extras];
+    return orderedCardIds(cardIds, savedOrder);
   }, [cardIds, savedOrder.join("|")]);
 
   const [localOrder, setLocalOrder] = useState<string[]>(initial);
@@ -104,20 +104,38 @@ export function SortableCardGrid({
     onOrderChange(next);
   }
 
+  const ordered = localOrder.flatMap(id => { const c = cards.find(c => c.id === id); return c ? [c] : []; });
+  const sections: { key: string; label?: string; rows: SortableCard[][] }[] = [];
+  for (const card of ordered) {
+    let section = sections.at(-1);
+    if (!section || section.key !== (card.group ?? 'cards')) {
+      section = { key: card.group ?? 'cards', label: card.groupLabel, rows: [] };
+      sections.push(section);
+    }
+    const last = section.rows.at(-1);
+    if (card.fullWidth || !last || last[0]?.fullWidth) section.rows.push([card]);
+    else last.push(card);
+  }
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={localOrder} strategy={rectSortingStrategy}>
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
-          {localOrder.map((id) => {
-            const card = cards.find((c) => c.id === id);
-            const node = cardById.get(id);
-            if (!node) return null;
-            return (
-              <SortableItem key={id} id={id} fullWidth={card?.fullWidth}>
-                {node}
-              </SortableItem>
-            );
-          })}
+        <div className="space-y-6">
+          {sections.map((section, sectionIndex) => <section key={`${section.key}:${sectionIndex}`}>
+            {section.label && <h2 className="mb-3 border-b border-border pb-2 font-display text-base font-semibold">{section.label}</h2>}
+            <div className="space-y-4">
+              {section.rows.flatMap((run, index) => {
+                const sizes = run[0]?.fullWidth ? [1] : smallCardRowSizes(run.length);
+                let offset = 0;
+                return sizes.map((size, rowIndex) => {
+                  const row = run.slice(offset, offset + size); offset += size;
+                  const columns = size === 3 ? 'lg:grid-cols-3' : size === 2 ? 'lg:grid-cols-2' : '';
+                  return <div key={`${index}:${rowIndex}`} className={`grid grid-cols-1 items-stretch gap-4 ${columns}`}>
+                    {row.map(card => <SortableItem key={card.id} id={card.id}>{card.node}</SortableItem>)}
+                  </div>;
+                });
+              })}
+            </div>
+          </section>)}
         </div>
       </SortableContext>
     </DndContext>

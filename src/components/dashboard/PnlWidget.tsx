@@ -1,3 +1,4 @@
+import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
@@ -75,33 +76,8 @@ export function PnlWidget({
   const priorData = data?.prior;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {tenantName}
-          </p>
-          <div className="flex items-center gap-2">
-            <h3 className="font-display text-lg font-semibold flex items-center gap-2"><LineChart className="h-4 w-4 text-emphasis" />Profit & Loss</h3>
-            <BasisBadge basis={basis ?? "accrual"} />
-          </div>
-          <CardFreshness from={fromDate} to={toDate} source={data?.current.source} isFetching={isFetching} />
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setShouldLoad(true);
-              refetch();
-            }}
-            disabled={isFetching}
-            title="Refresh"
-          >
-            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-          </Button>
-        </div>
-      </div>
+    <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
+      <DashboardCardHeader label={tenantName} title="Profit & loss" icon={<LineChart className="h-4 w-4"/>} description="Income, expenses and net profit for the selected period" badge={<BasisBadge basis={basis ?? "accrual"}/>} from={fromDate} to={toDate} source={data?.current.source} isFetching={isFetching} actions={<Button variant="ghost" size="icon-sm" onClick={() => { setShouldLoad(true); refetch(); }} disabled={isFetching} title="Refresh" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}/></Button>}/>
 
       <PeriodSelect value={period} onChange={setPeriod} monthsBack={6} />
       <StandardHistoryChart tenantId={tenantId} card="pnl" currency={currency} basis={basis}/>

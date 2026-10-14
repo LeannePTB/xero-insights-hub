@@ -1,3 +1,4 @@
+import { DashboardCardHeader } from "./DashboardCardHeader";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
@@ -48,23 +49,13 @@ export function AuditSummaryCard({ tenantId, tenantName, clientId }: Props) {
 
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <ShieldCheck className="h-4 w-4 text-emphasis" /> File audit — {tenantName}
-          </CardTitle>
-          <Button size="sm" variant="outline" onClick={() => runMut.mutate()} disabled={runMut.isPending}>
-            {runMut.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : run ? <RefreshCw className="mr-1 h-3 w-3" /> : <Play className="mr-1 h-3 w-3" />}
-            {run ? "Re-run" : "Run audit"}
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <Card className="rounded-lg p-4 sm:p-5">
+      <DashboardCardHeader label={tenantName} title="File audit" icon={<ShieldCheck className="h-4 w-4"/>} description="Chart of accounts, bank, receivables, payables and tax checks" status={<p className="mt-1.5 text-xs text-muted-foreground">{run ? `Audit figures pulled ${new Date(run.run_at).toLocaleString('en-AU')}` : 'No audit figures yet'}</p>} actions={<Button size="sm" variant="outline" onClick={() => runMut.mutate()} disabled={runMut.isPending}>{runMut.isPending ? <Loader2 className="h-3 w-3 animate-spin"/> : <RefreshCw className="h-3 w-3"/>}{run ? 'Re-run' : 'Run audit'}</Button>}/>
+      <CardContent className="space-y-3 p-0">
         {q.isLoading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : !run ? (
-          <p className="text-sm text-muted-foreground">No audit has been run yet. Click <strong>Run audit</strong> to scan this Xero file.</p>
+          <details className="text-xs text-muted-foreground"><summary className="cursor-pointer text-link">Why?</summary><p className="mt-2">No audit has been run for this Xero file yet.</p></details>
         ) : (
           <>
             <div className="flex flex-wrap items-center gap-2">
