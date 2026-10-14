@@ -236,3 +236,5 @@ Separate from the card-model migration; no file or object shared with it.
 - [x] Re-sync button + last synced on both Overviews, per-row re-sync, queued progress, estimate above 5 clients, 2-minute cooldown, auto refresh.
 - [x] Manage-only (support, advisers, business owners refused); dashboard Refresh figures tightened to match.
 - [ ] Real signed-in check of a re-sync (blocked by MFA for tooling).
+- [x] Packages & Advisory modules (14 Oct): catalogue as data, System Admin screen, client Package, default modules, website/Trixie from catalogue.
+- [ ] Packages & modules: signed-in visual check (blocked by two-step sign-in); System Admin per-client module screen for clients they cannot open (not built).
