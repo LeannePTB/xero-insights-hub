@@ -151,7 +151,7 @@ export async function setupChecklist(supabase: any, clientId: string): Promise<S
 function buildChecklist(
   client: ClientRow,
   storedCategories: Set<string>,
-  counts: { expense: number; classified: number },
+  counts: { expense: number; classified: number; untaggedNames?: string[] },
 ): SetupChecklist {
   const ack = client.setup_ack ?? {};
   const linkedFiles = (client.client_xero_orgs ?? []).length;
