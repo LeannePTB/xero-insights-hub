@@ -112,6 +112,14 @@
     },
     {
         "args": [
+            "_card_key",
+            "_status"
+        ],
+        "name": "admin_set_card_status",
+        "required": 2
+    },
+    {
+        "args": [
             "_firm_id",
             "_join"
         ],
