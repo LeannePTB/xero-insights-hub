@@ -5,6 +5,9 @@ import { ArrowRight, Wallet, Loader2 } from "lucide-react";
 import { BasisBadge } from "@/components/dashboard/BasisBadge";
 import { AwaitingSnapshot, DataSourceLine } from "@/components/dashboard/DataSourceLine";
 import { getPayablesList } from "@/lib/xero/payables.functions";
+import { VectorChart } from '@/components/charts/VectorChart';
+import { ageingPoints } from '@/lib/charts/standard';
+import { useTenantCurrency } from './useTenantCurrency';
 
 function fmt(n: number, ccy = "AUD") {
   return new Intl.NumberFormat(undefined, {
@@ -28,6 +31,7 @@ export function PayablesWidget({
   basis?: "accrual" | "cash";
 }) {
   const fetchList = useServerFn(getPayablesList);
+  const currency = useTenantCurrency(tenantId);
   const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ["xero-ap-list", tenantId],
     queryFn: () => fetchList({ data: { tenantId } }),
@@ -61,6 +65,7 @@ export function PayablesWidget({
         </div>
       </div>
 
+      {data && data.source?.mode !== 'pending' && <VectorChart title="Payables ageing" points={ageingPoints(data.invoices)} series={[{label:'Outstanding',kind:'bar'}]} currency={currency}/>}
       <div className="mt-6 rounded-lg border border-border bg-background p-4">
         {isLoading ? (
           <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">

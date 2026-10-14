@@ -604,6 +604,8 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
       return;
     }
     const bold = new Set<number>([detail.rows.length]);
+    need(130);
+    y += drawPdfChart(doc, detail.bucketLabels.map((label,i)=>({label,values:[detail.totals[i] ?? null]})), [{label:'Outstanding',kind:'bar'}], M.left,y,PAGE.w-M.left-M.right);
     table({
       head: [label, ...detail.bucketLabels, "Total", "% of total"],
       body: [

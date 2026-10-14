@@ -1,4 +1,5 @@
 import { useWorkspaceBranding } from "@/hooks/useWorkspaceBranding";
+import { VectorChart } from '@/components/charts/VectorChart';
 import { sectionIncluded } from "@/lib/reports/monthly-report";
 import { AlertTriangle } from "lucide-react";
 import { ReportVerdictPage } from "@/components/reports/ReportVerdictPage";
@@ -102,6 +103,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function AgeingTable({ detail, label }: { detail: AgeingDetail; label: string }) {
   return (
     <div>
+      <VectorChart title={`${label} ageing`} points={detail.bucketLabels.map((label,i)=>({label,values:[detail.totals[i] ?? null]}))} series={[{label:'Outstanding',kind:'bar'}]}/>
       {/* Table from 900px up. No scroll container — the page scrolls, not the table. */}
       <table className="hidden w-full table-fixed text-sm min-[900px]:table">
         <thead>

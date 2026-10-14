@@ -5,7 +5,7 @@ export function VectorChart({ title, points, series, currency = 'AUD', table = t
   const id = useId();
   const [selected, setSelected] = useState<string | null>(null);
   const g = chartGeometry(points, series);
-  const fmt = (v: number | null) => v === null ? '—' : new Intl.NumberFormat('en-AU', { style: 'currency', currency, maximumFractionDigits: 0 }).format(v);
+  const fmt = (v: number | null) => v === null ? '—' : new Intl.NumberFormat('en-AU', { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
   const available = points.flatMap(p => p.values).filter(v => v !== null).length;
   return <figure className="min-w-0 space-y-2 py-3" aria-labelledby={id}>
     <figcaption id={id} className="text-sm font-semibold">{title} <span className="font-normal text-muted-foreground">· {currency}</span></figcaption>
