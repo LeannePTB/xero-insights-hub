@@ -1562,6 +1562,37 @@
     },
     {
         "args": [
+            "_tenant_id",
+            "_cap",
+            "_per_minute",
+            "_lease_seconds"
+        ],
+        "name": "xero_gate_acquire",
+        "required": 4
+    },
+    {
+        "args": [
+            "_tenant_id",
+            "_seconds"
+        ],
+        "name": "xero_gate_backoff",
+        "required": 2
+    },
+    {
+        "args": [
+            "_holder"
+        ],
+        "name": "xero_gate_release",
+        "required": 1
+    },
+    {
+        "args": [
+        ],
+        "name": "xero_gate_status",
+        "required": 0
+    },
+    {
+        "args": [
             "_connection_id"
         ],
         "name": "xero_missing_scopes",
