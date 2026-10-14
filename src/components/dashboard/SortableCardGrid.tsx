@@ -23,7 +23,7 @@ import { orderedCardIds, smallCardRowSizes } from "./dashboard-card-layout";
 
 export type SortableCard = { id: string; node: ReactNode; fullWidth?: boolean; group?: string; groupLabel?: string };
 
-function SortableItem({ id, children, fullWidth }: { id: string; children: ReactNode; fullWidth?: boolean }) {
+function SortableItem({ id, children, stretch }: { id: string; children: ReactNode; stretch?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -35,7 +35,9 @@ function SortableItem({ id, children, fullWidth }: { id: string; children: React
     <div
       ref={setNodeRef}
       style={style}
-      className="relative min-w-0 h-full [&>div:last-child]:h-full [&>section:last-child]:h-full"
+      // Only cards sharing a row stretch to equal height; a card alone in its row
+      // always grows to fit its content so nothing below can overlap it.
+      className={`relative min-w-0 ${stretch ? "flex flex-col [&>div:last-child]:flex-1 [&>section:last-child]:flex-1" : ""}`}
     >
       <Button
         variant="ghost" size="icon-sm"
@@ -130,7 +132,7 @@ export function SortableCardGrid({
                   const row = run.slice(offset, offset + size); offset += size;
                   const columns = size === 3 ? 'lg:grid-cols-3' : size === 2 ? 'lg:grid-cols-2' : '';
                   return <div key={`${index}:${rowIndex}`} className={`grid grid-cols-1 items-stretch gap-4 ${columns}`}>
-                    {row.map(card => <SortableItem key={card.id} id={card.id}>{card.node}</SortableItem>)}
+                    {row.map(card => <SortableItem key={card.id} id={card.id} stretch={row.length > 1}>{card.node}</SortableItem>)}
                   </div>;
                 });
               })}

@@ -96,12 +96,15 @@ async function fetchWithTimeout(url: string, init: RequestInit = {}) {
  * ~XERO_GATE_PER_MINUTE per minute, and a 429 pauses the whole file for
  * Retry-After (or an exponential backoff with jitter). Queued, not dropped.
  */
-async function gatedFetch(conn: { tenant_id: string }, url: string, init: RequestInit = {}) {
+async function gatedFetch(conn: { tenant_id: string; background?: boolean }, url: string, init: RequestInit = {}) {
   const gate = await import("./request-gate");
+  // Background work (the history fill) only takes a slot when NOTHING else is
+  // in flight for the file, so interactive page loads always go first.
+  const cap = conn.background ? 1 : gate.XERO_GATE_CONCURRENCY;
   const store = {
     acquire: async (tenantId: string) => {
       const { data, error } = await (supabaseAdmin as any).rpc("xero_gate_acquire", {
-        _tenant_id: tenantId, _cap: gate.XERO_GATE_CONCURRENCY, _per_minute: gate.XERO_GATE_PER_MINUTE, _lease_seconds: gate.XERO_GATE_LEASE_SECONDS,
+        _tenant_id: tenantId, _cap: cap, _per_minute: gate.XERO_GATE_PER_MINUTE, _lease_seconds: gate.XERO_GATE_LEASE_SECONDS,
       });
       if (error) throw new Error("gate unavailable");
       return (data as string | null) ?? null;
@@ -119,7 +122,9 @@ async function gatedFetch(conn: { tenant_id: string }, url: string, init: Reques
     }
     return res;
   } catch (e) {
-    if (e instanceof gate.XeroGateTimeoutError) throw new Error(XERO_RATE_LIMIT_MESSAGE);
+    // Our own gate held the call — Xero did NOT refuse it. Never report this as
+    // a Xero pause; the browser recognises this wording and retries by itself.
+    if (e instanceof gate.XeroGateTimeoutError) throw new Error(XERO_GATE_WAIT_MESSAGE);
     throw e;
   }
 }
@@ -377,6 +382,12 @@ export async function missingScopesForConnection(connectionId: string): Promise<
   }
 }
 
+/**
+ * Our own request gate (2 in flight, ~50/minute per file) held a call past its
+ * bounded wait. Not a Xero refusal: the UI shows a spinner and retries itself.
+ */
+export const XERO_GATE_WAIT_MESSAGE = "Waiting for Xero — loading shortly.";
+
 /** Shared wording so callers (and the UI) can recognise a rate-limit failure. */
 export const XERO_RATE_LIMIT_MESSAGE =
   "Xero has paused requests for this organisation because too many were sent. Wait about a minute, then try again.";
@@ -393,6 +404,7 @@ export function isXeroRateLimitMessage(message: string | null | undefined): bool
   return (
     !!message &&
     (message.includes("Xero has paused requests for this organisation") ||
+      message.includes(XERO_GATE_WAIT_MESSAGE) ||
       message.includes("Xero has used up today's request allowance"))
   );
 }

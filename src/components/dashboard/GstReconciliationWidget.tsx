@@ -1,4 +1,5 @@
 import { DashboardCardHeader } from "./DashboardCardHeader";
+import { staggered, xeroQueryRetry } from "@/lib/xero/live-load";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -130,8 +131,8 @@ export function GstReconciliationWidget({
   const settingRequired = gstCycle == null;
   const q = useQuery({
     queryKey: ["gst-reconciliation", clientId, tenantId, window, asAt],
-    queryFn: () => fetchGst({ data: { clientId, tenantId, asAt, window } }),
-    retry: false,
+    queryFn: () => staggered(() => fetchGst({ data: { clientId, tenantId, asAt, window } })),
+    ...xeroQueryRetry,
     staleTime: 5 * 60 * 1000,
     // A client who is not registered for GST has no period to fetch.
     enabled: !notRegistered && !settingRequired,

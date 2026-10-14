@@ -1,4 +1,5 @@
 import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
+import { staggered, xeroQueryRetry } from "@/lib/xero/live-load";
 import { paygQueryKey, paygQueryLimits } from "./payg-query";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -42,8 +43,9 @@ export function PaygWithholdingWidget({
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: paygQueryKey(tenantId, clientId),
-    queryFn: () => fetchPayg({ data: { tenantId, clientId, months: 6 } }),
+    queryFn: () => staggered(() => fetchPayg({ data: { tenantId, clientId, months: 6 } })),
     ...paygQueryLimits,
+    ...xeroQueryRetry,
   });
 
   const available = data?.status === "available" ? data : null;

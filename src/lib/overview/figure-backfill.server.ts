@@ -75,7 +75,9 @@ async function backfillFile(db: any, item: Item): Promise<{ cash: number; profit
     .gte("started_at", new Date(Date.now() - 30 * 60_000).toISOString()).limit(1);
   if ((busy ?? []).length) throw new Error(XERO_RATE_LIMIT_MESSAGE);
 
-  const conn0 = await getConnectionByTenant(item.tenant_id);
+  // Marked background: the shared gate lets it run only when no interactive
+  // call holds a slot for this file, so it yields to dashboard page loads.
+  const conn0 = Object.assign(await getConnectionByTenant(item.tenant_id), { background: true });
   // Strictly one request at a time for this file, with a gap between requests,
   // pausing (rescheduled, not dropped) when Xero's remaining allowance is low.
   let first = true;

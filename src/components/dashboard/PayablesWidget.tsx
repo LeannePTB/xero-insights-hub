@@ -1,4 +1,5 @@
 import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
+import { staggered, xeroQueryRetry } from "@/lib/xero/live-load";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -35,8 +36,8 @@ export function PayablesWidget({
   const currency = useTenantCurrency(tenantId);
   const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ["xero-ap-list", tenantId],
-    queryFn: () => fetchList({ data: { tenantId } }),
-    retry: false,
+    queryFn: () => staggered(() => fetchList({ data: { tenantId } })),
+    ...xeroQueryRetry,
     // Keep the card genuinely live while the page stays open: re-pull every
     // few minutes and on refocus, so the freshness line and dot reflect a
     // recent call rather than the one made when the page first loaded.

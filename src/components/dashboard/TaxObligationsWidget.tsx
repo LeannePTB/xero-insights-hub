@@ -1,4 +1,5 @@
 import { RentReportWidget } from "./RentReportWidget";
+import { staggered, xeroQueryRetry } from "@/lib/xero/live-load";
 import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
 import { paygQueryKey, paygQueryLimits } from "./payg-query";
 import { useMemo, useState } from "react";
@@ -59,8 +60,8 @@ export function TaxObligationsWidget({
 
   const gstQuery = useQuery({
     queryKey: ["gst-reconciliation", clientId, tenantId, gstPeriod.kind, gstPeriod.asAt],
-    queryFn: () => fetchGst({ data: { clientId, tenantId, asAt: gstPeriod.asAt, window: gstPeriod.kind } }),
-    retry: false,
+    queryFn: () => staggered(() => fetchGst({ data: { clientId, tenantId, asAt: gstPeriod.asAt, window: gstPeriod.kind } })),
+    ...xeroQueryRetry,
     staleTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -68,8 +69,9 @@ export function TaxObligationsWidget({
   });
   const paygQuery = useQuery({
     queryKey: paygQueryKey(tenantId, clientId),
-    queryFn: () => fetchPayg({ data: { tenantId, clientId, months: 6 } }),
+    queryFn: () => staggered(() => fetchPayg({ data: { tenantId, clientId, months: 6 } })),
     ...paygQueryLimits,
+    ...xeroQueryRetry,
     enabled: paygRegistered,
   });
   const instalmentsQuery = useQuery({

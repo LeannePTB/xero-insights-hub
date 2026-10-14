@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { staggered, xeroQueryRetry } from "@/lib/xero/live-load";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Loader2, Settings2 } from "lucide-react";
@@ -36,7 +37,8 @@ export function TrueBreakevenSection({
   const fetchInputs = useServerFn(getTrueBreakevenInputs);
   const q = useQuery({
     queryKey: ["true-breakeven-inputs", clientId, tenantId],
-    queryFn: () => fetchInputs({ data: { clientId, tenantId } }),
+    queryFn: () => staggered(() => fetchInputs({ data: { clientId, tenantId } })),
+    ...xeroQueryRetry,
   });
 
   const settingsLink = (label: string) => (

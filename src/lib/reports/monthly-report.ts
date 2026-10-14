@@ -203,7 +203,7 @@ export function renderableFailedSections(payload: { failedSections: FailedSectio
  */
 export function wasRateLimited(payload: { failedSections: FailedSection[] } | null | undefined) {
   return (payload?.failedSections ?? []).some((f) =>
-    /Xero has paused requests for this organisation/i.test(f.message ?? ""),
+    /Xero has paused requests for this organisation|Waiting for Xero/i.test(f.message ?? ""),
   );
 }
 

@@ -1,18 +1,28 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+/** Axis text is a fixed on-screen size (12px) whatever width the card gives the chart. */
+const AXIS_PX = 12;
 import { chartGeometry, type ChartPoint, type ChartSeries } from '@/lib/charts/geometry';
 const tones = ['text-chart-1', 'text-chart-3', 'text-chart-4', 'text-chart-2', 'text-chart-5'];
 export function VectorChart({ title, points, series, currency = 'AUD', table = true }: { title: string; points: ChartPoint[]; series: ChartSeries[]; currency?: string; table?: boolean }) {
   const id = useId();
   const [selected, setSelected] = useState<string | null>(null);
   const g = chartGeometry(points, series);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    const el = svgRef.current; if (!el || typeof ResizeObserver === 'undefined') return;
+    const measure = () => { const r = el.getBoundingClientRect(); const s = Math.min(r.width / 600, r.height / 210); if (s > 0) setScale(s); };
+    measure(); const ro = new ResizeObserver(measure); ro.observe(el); return () => ro.disconnect();
+  }, []);
+  const axisFont = AXIS_PX / scale;
   const fmt = (v: number | null) => v === null ? '—' : new Intl.NumberFormat('en-AU', { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
   const available = points.flatMap(p => p.values).filter(v => v !== null).length;
   return <figure className="min-w-0 space-y-2 py-3" aria-labelledby={id}>
     <figcaption id={id} className="text-sm font-semibold">{title} <span className="font-normal text-muted-foreground">· {currency}</span></figcaption>
     {!available ? <p className="text-xs text-muted-foreground">No reliable figures available for this period.</p> : <>
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">{series.map((s, i) => <span key={s.label} className="inline-flex items-center gap-1.5"><span className={tones[i % tones.length]} aria-hidden="true">{s.kind === 'bar' ? '▥' : '●—'}</span>{s.label}</span>)}</div>
-      <svg viewBox="0 0 600 210" className="block h-auto max-h-64 w-full overflow-visible" role="group" aria-label={title}>
-        {g.ticks.map((t, i) => <g key={i}><line x1="62" x2="580" y1={t.y} y2={t.y} className="stroke-border" strokeDasharray="3 3"/><text x="57" y={t.y + 4} textAnchor="end" className="fill-muted-foreground" fontSize="11">{new Intl.NumberFormat('en-AU', {notation:'compact',maximumFractionDigits:1}).format(t.value)}</text></g>)}
+      <svg ref={svgRef} viewBox="0 0 600 210" className="block h-auto max-h-64 w-full" role="group" aria-label={title}>
+        {g.ticks.map((t, i) => <g key={i}><line x1="62" x2="580" y1={t.y} y2={t.y} className="stroke-border" strokeDasharray="3 3"/><text x="57" y={t.y + 4} textAnchor="end" className="fill-muted-foreground" fontSize={axisFont}>{new Intl.NumberFormat('en-AU', {notation:'compact',maximumFractionDigits:1}).format(t.value)}</text></g>)}
         <line x1="62" x2="580" y1={g.zero} y2={g.zero} className="stroke-muted-foreground"/>
         {g.series.map((s, si) => <g key={s.label} className={tones[si % tones.length]}>
           {s.points.map((p, i) => {
@@ -29,7 +39,7 @@ export function VectorChart({ title, points, series, currency = 'AUD', table = t
             </g>;
           })}
         </g>)}
-        {g.labels.map((l, i) => (i === 0 || i === g.labels.length - 1 || i % Math.max(1, Math.ceil(g.labels.length / 4)) === 0) && <text key={i} x={l.x} y="197" fontSize="11" textAnchor="middle" className="fill-muted-foreground">{l.label}</text>)}
+        {g.labels.map((l, i) => (i === 0 || i === g.labels.length - 1 || i % Math.max(1, Math.ceil(g.labels.length / 4)) === 0) && <text key={i} x={l.x} y="200" fontSize={axisFont} textAnchor="middle" className="fill-muted-foreground">{l.label}</text>)}
       </svg>
       <p className="min-h-4 text-xs text-muted-foreground" aria-live="polite">{selected ?? `${points.length} observations; gaps indicate unavailable figures.`}</p>
     </>}

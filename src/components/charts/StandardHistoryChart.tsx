@@ -3,6 +3,8 @@ import { useServerFn } from '@tanstack/react-start';
 import { getStandardChartHistory } from '@/lib/charts/standard.functions';
 import { pnlPoints } from '@/lib/charts/standard';
 import { VectorChart } from './VectorChart';
+/** A trend line needs at least this many stored points before it is drawn. */
+export const MIN_TREND_POINTS = 3;
 export function StandardHistoryChart({tenantId,card,currency='AUD',basis='accrual'}:{tenantId:string;card:'pnl'|'health'|'receivables'|'payables';currency?:string;basis?:'cash'|'accrual'}) {
   const fetchHistory=useServerFn(getStandardChartHistory);
   const q=useQuery({queryKey:['standard-chart',tenantId,card,basis],queryFn:()=>fetchHistory({data:{tenantId,card,basis}}),staleTime:300000,retry:false});
@@ -19,7 +21,8 @@ export function StandardHistoryChart({tenantId,card,currency='AUD',basis='accrua
       })}</dl>
     </>}
     {card==='health' && <><VectorChart title="Cash at bank · last 12 months" points={d.cash.map(p=>({label:p.date,values:[p.value]}))} series={[{label:'Cash at bank',kind:'line'}]} currency={currency}/><p className="text-xs text-muted-foreground">Health score trend unavailable — historical scores are not stored.</p></>}
-    {card==='receivables' && <VectorChart title="Total overdue · stored history" points={d.overdue.map(p=>({label:p.date,values:[p.value]}))} series={[{label:'Overdue',kind:'line'}]} currency={currency}/>}
-    <p className="py-2 text-xs text-muted-foreground">{d.note}</p>
+    {card==='receivables' && d.overdue.filter(p=>p.value!==null).length<MIN_TREND_POINTS && <p className="py-2 text-xs text-muted-foreground">Trend appears once 3 months are stored.</p>}
+    {card==='receivables' && d.overdue.filter(p=>p.value!==null).length>=MIN_TREND_POINTS && <VectorChart title="Total overdue · stored history" points={d.overdue.map(p=>({label:p.date,values:[p.value]}))} series={[{label:'Overdue',kind:'line'}]} currency={currency}/>}
+    {(card!=='receivables'||d.overdue.filter(p=>p.value!==null).length>=MIN_TREND_POINTS) && <p className="py-2 text-xs text-muted-foreground">{d.note}</p>}
   </div>;
 }

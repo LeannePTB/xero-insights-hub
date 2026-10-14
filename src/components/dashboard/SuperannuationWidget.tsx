@@ -1,4 +1,5 @@
 import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
+import { staggered, xeroQueryRetry } from "@/lib/xero/live-load";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
@@ -48,8 +49,8 @@ export function SuperannuationWidget({
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-super-position", tenantId, clientId ?? null],
-    queryFn: () => fetchSuper({ data: { tenantId, clientId } }),
-    retry: false,
+    queryFn: () => staggered(() => fetchSuper({ data: { tenantId, clientId } })),
+    ...xeroQueryRetry,
   });
 
   const available = data?.status === "available" ? data : null;

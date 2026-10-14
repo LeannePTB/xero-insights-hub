@@ -1,4 +1,5 @@
 import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
+import { staggered, xeroQueryRetry } from "@/lib/xero/live-load";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -49,7 +50,8 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
     queryKey: ["business-health", tenantId, clientId, toISO(fromDate), toISO(toDate)],
     enabled: !!tenantId,
     staleTime: 5 * 60 * 1000,
-    queryFn: () =>
+    ...xeroQueryRetry,
+    queryFn: () => staggered(() =>
       fetchHealth({
         data: {
           tenantId: tenantId ?? '',
@@ -57,7 +59,7 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
           fromDate: toISO(fromDate),
           toDate: toISO(toDate),
         },
-      }),
+      })),
   });
 
 
