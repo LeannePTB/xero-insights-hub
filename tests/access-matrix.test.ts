@@ -991,6 +991,71 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     }
     return "allow";
   }
+  if (r.startsWith("loans:")) {
+    // Owner decision 14 Oct 2026: Loans / Consolidations open only for the
+    // Organisation Owner or an active Traction Advisory team member of that
+    // organisation, Consolidation bought; a client's Loans also need group
+    // membership and the ticked Consolidation card.
+    const grouped = !r.includes("not in a consolidation group");
+    const ticked = !r.includes("Consolidation unticked");
+    const consOn = !r.includes("Consolidation not bought");
+    const staffIsTeam = r.includes("Traction Advisory team member who is Staff");
+    await seedThenActAs(row.role, `
+      create or replace function app_private.setting_bool(_key text) returns boolean
+        language sql stable as $f$ select _key = 'card_model_v2' $f$;
+      create unique index if not exists org_subscription_options_firm_key
+        on public.org_subscription_options (firm_id);
+      delete from public.org_subscription_options where firm_id = '${ORG_A}'::uuid;
+      insert into public.org_subscription_options
+        (firm_id, client_limit, advisory_enabled, consolidation_enabled, billing_mode)
+      values ('${ORG_A}'::uuid, 10, true, ${consOn}, 'bookkeeping');
+      delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
+      insert into public.client_cards (client_id, cards)
+      select '${CLIENT_A}'::uuid, array_agg(card_key) from public.card_catalogue
+       where not (${!ticked} and card_key = 'loan_consolidation');
+      delete from public.consolidation_group_members where client_id = '${CLIENT_A}'::uuid;
+      ${grouped ? `insert into public.consolidation_groups (id, firm_id, name) values ('cccc0001-1111-4111-8111-111111111111', '${ORG_A}', 'Group A') on conflict do nothing;
+      insert into public.consolidation_group_members (id, group_id, client_id) values (gen_random_uuid(), 'cccc0001-1111-4111-8111-111111111111', '${CLIENT_A}');` : ""}
+      ${staffIsTeam ? `insert into public.practice_team (user_id) values ('${U.staffA}') on conflict do nothing;` : `delete from public.practice_team where user_id = '${U.staffA}';`}
+    `);
+    const sql = r.includes("me_can_open_consolidations")
+      ? `select public.me_can_open_consolidations('${ORG_A}'::uuid) as ok`
+      : `select public.me_can_open_client_loans('${CLIENT_A}'::uuid) as ok`;
+    try {
+      const res = await db.query<{ ok: boolean }>(sql);
+      return res.rows[0]?.ok === true ? "allow" : "deny";
+    } catch {
+      return "deny";
+    }
+  }
+  if (r.startsWith("client_report_sections(")) {
+    // Report sections follow the client's visible cards via card_catalogue.report_sections.
+    const notesOff = r.includes("Notes unticked");
+    await seedThenActAs(row.role, `
+      create or replace function app_private.setting_bool(_key text) returns boolean
+        language sql stable as $f$ select _key = 'card_model_v2' $f$;
+      update public.card_catalogue set report_sections = case card_key
+        when 'pnl' then array['key_figures','profit_and_loss','charts']
+        when 'receivables' then array['receivables'] when 'payables' then array['payables']
+        when 'health' then array['verdict'] when 'notes' then array['notes'] else '{}'::text[] end;
+      delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
+      insert into public.client_cards (client_id, cards)
+      select '${CLIENT_A}'::uuid, array_agg(card_key) from public.card_catalogue
+       where not (${notesOff} and card_key = 'notes');
+    `);
+    try {
+      const res = await db.query<{ s: string[] }>(`select public.client_report_sections('${CLIENT_A}'::uuid) as s`);
+      const got = res.rows[0]?.s ?? [];
+      const want = ["charts","key_figures","payables","profit_and_loss","receivables","verdict", ...(notesOff ? [] : ["notes"])].sort();
+      if (JSON.stringify([...got].sort()) !== JSON.stringify(want)) {
+        throw new Error(`report sections [${got}] expected [${want}]`);
+      }
+      return "allow";
+    } catch (e) {
+      if ((e as Error).message.startsWith("report sections")) throw e;
+      return "deny";
+    }
+  }
   if (r.startsWith("assert_widget_access(")) {
     // Owner decision 14 Oct 2026: Xero file activity, Advisory pages and Loans
     // are refused by the server reader unless the single rule lists the card.
