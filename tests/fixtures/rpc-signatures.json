@@ -73,6 +73,13 @@
     },
     {
         "args": [
+            "_firm_id"
+        ],
+        "name": "admin_org_early_access",
+        "required": 1
+    },
+    {
+        "args": [
         ],
         "name": "admin_practice_team",
         "required": 0
@@ -117,6 +124,16 @@
         ],
         "name": "admin_set_card_status",
         "required": 2
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_card_key",
+            "_enabled",
+            "_ends_at"
+        ],
+        "name": "admin_set_org_early_access",
+        "required": 4
     },
     {
         "args": [
@@ -355,6 +372,13 @@
         ],
         "name": "client_can_use_widget",
         "required": 2
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "client_early_access_cards",
+        "required": 1
     },
     {
         "args": [

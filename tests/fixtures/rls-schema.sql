@@ -104,6 +104,7 @@ create table public.loan_consolidation_accounts (id uuid, client_id uuid, tenant
 create table public.loan_consolidation_snapshots (id uuid, group_id uuid, as_at date, label text, payload jsonb, generated_by uuid, generated_at timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.login_events (id uuid, user_id uuid, email text, ip text, user_agent text, occurred_at timestamp with time zone);
 create table public.org_card_defaults (firm_id uuid, cards text[], created_at timestamp with time zone, updated_at timestamp with time zone);
+create table public.org_early_access (firm_id uuid, card_key text, granted_by uuid, granted_at timestamp with time zone, ends_at timestamp with time zone, revoked_at timestamp with time zone, revoked_by uuid);
 create table public.org_subscription_options (firm_id uuid, client_limit integer, advisory_enabled boolean, consolidation_enabled boolean, billing_mode text, created_at timestamp with time zone, updated_at timestamp with time zone, trial_advisory_enabled boolean, trial_consolidation_enabled boolean, trial_ends_at timestamp with time zone, branding_enabled boolean, trial_branding_enabled boolean, white_label_enabled boolean, trial_white_label_enabled boolean);
 create table public.overview_alert_states (id uuid, client_id uuid, event_key text, severity_at_ack smallint, acknowledged_by uuid, acknowledged_at timestamp with time zone, snoozed_by uuid, snoozed_at timestamp with time zone, snoozed_until timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.plan_levels (id uuid, scope text, key text, label text, description text, client_limit integer, xero_org_limit integer, allows_multi_org boolean, widgets text[], sort_order integer, enabled boolean, created_at timestamp with time zone, updated_at timestamp with time zone, allowed_tiers text[], is_free boolean);
@@ -2173,30 +2174,27 @@ CREATE OR REPLACE FUNCTION app_private.client_cards_v2(_client_id uuid)
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-declare
-  available text[];
-  ticked text[];
-  result text[];
+declare available text[]; ticked text[]; result text[]; early text[];
 begin
   available := app_private.client_available_cards(_client_id);
   select cc.cards into ticked from public.client_cards cc where cc.client_id = _client_id;
-
-  if ticked is null then
-    result := available;
+  if ticked is null then result := available;
   else
-    result := coalesce(array(
-      select distinct x from unnest(available) as x where x = any(ticked) order by x
-    ), '{}'::text[]);
+    result := coalesce(array(select distinct x from unnest(available) as x where x = any(ticked) order by x), '{}'::text[]);
+  end if;
+
+  -- Early access: a WIP card the organisation may try behaves as Available for
+  -- that organisation's practice members only, and only when ticked for the client.
+  if ticked is not null then
+    early := app_private.client_early_access_for_caller(_client_id);
+    result := coalesce(array(select distinct x from unnest(result || array(select e from unnest(early) e where e = any(ticked))) x order by x), '{}'::text[]);
   end if;
 
   -- Testing exception: a System Administrator sees purchased Work-in-progress
   -- cards only on a client they can already read. Never anyone else.
-  if auth.uid() is not null
-     and app_private.me_is_super_admin()
+  if auth.uid() is not null and app_private.me_is_super_admin()
      and app_private.user_can_read_client(auth.uid(), _client_id) then
-    result := coalesce(array(
-      select distinct x from unnest(result || app_private.client_purchasable_cards(_client_id, true)) x order by x
-    ), '{}'::text[]);
+    result := coalesce(array(select distinct x from unnest(result || app_private.client_purchasable_cards(_client_id, true)) x order by x), '{}'::text[]);
   end if;
   return result;
 end;
@@ -2208,27 +2206,22 @@ CREATE OR REPLACE FUNCTION public.set_client_card_enabled(_client_id uuid, _card
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-declare _base text[]; _firm uuid;
+declare _base text[]; _firm uuid; _avail text[];
 begin
   perform app_private.assert_aal2();
   select c.firm_id into _firm from public.clients c where c.id = _client_id;
   if not found then raise exception 'NO_ACCESS' using errcode = 'insufficient_privilege'; end if;
   perform app_private.assert_card_manager(_firm);
-
-  if _card is null or _card = '' then
-    raise exception 'INVALID_CARD' using errcode = 'check_violation';
-  end if;
+  if _card is null or _card = '' then raise exception 'INVALID_CARD' using errcode = 'check_violation'; end if;
+  _avail := app_private.client_available_cards(_client_id);
   if coalesce(_enabled,false)
-     and not (_card = any(app_private.client_available_cards(_client_id))) then
+     and not (_card = any(_avail || app_private.client_early_access_for_caller(_client_id))) then
     raise exception 'CARD_NOT_AVAILABLE' using errcode = 'check_violation';
   end if;
-
   select cc.cards into _base from public.client_cards cc where cc.client_id = _client_id;
-  if _base is null then _base := app_private.client_available_cards(_client_id); end if;
-  if coalesce(_enabled,false) then _base := _base || array[_card];
-  else _base := array_remove(_base, _card); end if;
+  if _base is null then _base := _avail; end if;
+  if coalesce(_enabled,false) then _base := _base || array[_card]; else _base := array_remove(_base, _card); end if;
   perform app_private.set_client_cards(_client_id, _base);
-
   insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
   values (auth.uid(), _firm, 'client_card_toggled', 'client', _client_id::text,
           jsonb_build_object('card', _card, 'enabled', coalesce(_enabled,false)));
@@ -2653,19 +2646,22 @@ CREATE OR REPLACE FUNCTION public.apply_org_card_defaults(_firm_id uuid)
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-declare _cards text[]; _client uuid; _n int := 0;
+declare _cards text[]; _client uuid; _n int := 0; _keep text[];
 begin
   perform app_private.assert_aal2();
   perform app_private.assert_card_manager(_firm_id);
   select d.cards into _cards from public.org_card_defaults d where d.firm_id = _firm_id;
   if _cards is null then raise exception 'NO_DEFAULT_SET' using errcode = 'no_data_found'; end if;
   for _client in select c.id from public.clients c where c.firm_id = _firm_id loop
-    perform app_private.set_client_cards(_client, _cards);
+    select coalesce(array(select x from unnest(cc.cards) x
+             where x in (select card_key from public.card_catalogue where status = 'wip')), '{}'::text[])
+      into _keep from public.client_cards cc where cc.client_id = _client;
+    perform app_private.set_client_cards(_client, _cards || coalesce(_keep, '{}'::text[]));
     _n := _n + 1;
   end loop;
   insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
   values (auth.uid(), _firm_id, 'org_card_defaults_applied', 'firm', _firm_id::text,
-          jsonb_build_object('clients_changed', _n, 'cards', to_jsonb(_cards)));
+          jsonb_build_object('clients_changed', _n, 'cards', to_jsonb(_cards), 'wip_ticks_kept', true));
   return _n;
 end;
 $function$
@@ -3402,31 +3398,27 @@ CREATE OR REPLACE FUNCTION public.set_client_module(_client_id uuid, _module_key
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-declare _firm uuid; _cards text[]; _avail text[]; _base text[];
+declare _firm uuid; _cards text[]; _avail text[]; _allow text[]; _base text[];
 begin
   perform app_private.assert_aal2();
   select c.firm_id into _firm from public.clients c where c.id = _client_id;
   if not found then raise exception 'NO_ACCESS' using errcode = 'insufficient_privilege'; end if;
   perform app_private.assert_card_manager(_firm);
-
   select coalesce(array(select cc.card_key from public.card_catalogue cc where cc.module_key = _module_key), '{}'::text[]) into _cards;
   if cardinality(_cards) = 0 then raise exception 'NO_SUCH_MODULE' using errcode = 'check_violation'; end if;
-
   _avail := app_private.client_available_cards(_client_id);
-  if coalesce(_enabled, false) and not (_cards && _avail) then
+  _allow := _avail || app_private.client_early_access_for_caller(_client_id);
+  if coalesce(_enabled, false) and not (_cards && _allow) then
     raise exception 'CARD_NOT_AVAILABLE' using errcode = 'check_violation';
   end if;
-
   select x.cards into _base from public.client_cards x where x.client_id = _client_id;
   if _base is null then _base := _avail; end if;
-
   if coalesce(_enabled, false) then
-    _base := _base || array(select u from unnest(_cards) u where u = any(_avail));
+    _base := _base || array(select u from unnest(_cards) u where u = any(_allow));
   else
     _base := array(select u from unnest(_base) u where not (u = any(_cards)));
   end if;
   perform app_private.set_client_cards(_client_id, _base);
-
   insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
   values (auth.uid(), _firm, 'client_module_toggled', 'client', _client_id::text,
           jsonb_build_object('module', _module_key, 'enabled', coalesce(_enabled, false)));
@@ -3678,6 +3670,37 @@ AS $function$
   ), '{}'::text[])
 $function$
 ;
+CREATE OR REPLACE FUNCTION app_private.firm_early_access_cards(_firm_id uuid)
+ RETURNS text[]
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select coalesce(array(
+    select e.card_key from public.org_early_access e
+      join public.card_catalogue c on c.card_key = e.card_key
+     where e.firm_id = _firm_id and c.status = 'wip'
+       and e.revoked_at is null and (e.ends_at is null or e.ends_at > now())
+     order by e.card_key), '{}'::text[])
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.client_early_access_for_caller(_client_id uuid)
+ RETURNS text[]
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select case when auth.uid() is not null
+     and app_private.user_can_read_client(auth.uid(), _client_id)
+     and (app_private.me_is_super_admin() or exists (
+       select 1 from public.firm_members m join public.clients cl on cl.firm_id = m.firm_id
+        where cl.id = _client_id and m.user_id = auth.uid() and m.status = 'active'))
+  then coalesce(array(
+    select x from unnest(app_private.firm_early_access_cards((select firm_id from public.clients where id = _client_id))) x
+     where x = any(app_private.client_purchasable_cards(_client_id, true)) order by x), '{}'::text[])
+  else '{}'::text[] end
+$function$
+;
 CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3831,6 +3854,7 @@ alter table public.loan_consolidation_accounts enable row level security;
 alter table public.loan_consolidation_snapshots enable row level security;
 alter table public.login_events enable row level security;
 alter table public.org_card_defaults enable row level security;
+alter table public.org_early_access enable row level security;
 alter table public.org_subscription_options enable row level security;
 alter table public.overview_alert_states enable row level security;
 alter table public.plan_levels enable row level security;
@@ -4240,6 +4264,14 @@ grant SELECT on table public.org_card_defaults to service_role;
 grant TRIGGER on table public.org_card_defaults to service_role;
 grant TRUNCATE on table public.org_card_defaults to service_role;
 grant UPDATE on table public.org_card_defaults to service_role;
+grant SELECT on table public.org_early_access to authenticated;
+grant DELETE on table public.org_early_access to service_role;
+grant INSERT on table public.org_early_access to service_role;
+grant REFERENCES on table public.org_early_access to service_role;
+grant SELECT on table public.org_early_access to service_role;
+grant TRIGGER on table public.org_early_access to service_role;
+grant TRUNCATE on table public.org_early_access to service_role;
+grant UPDATE on table public.org_early_access to service_role;
 grant SELECT on table public.org_subscription_options to authenticated;
 grant DELETE on table public.org_subscription_options to service_role;
 grant INSERT on table public.org_subscription_options to service_role;
@@ -4916,6 +4948,8 @@ create policy "Users read own login events" on public.login_events as permissive
 create policy mfa_aal2_required on public.login_events as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy mfa_aal2_required on public.org_card_defaults as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "org card defaults readable by organisation access" on public.org_card_defaults as permissive for select to authenticated using ((app_private.is_aal2() AND app_private.has_firm_access(auth.uid(), firm_id)));
+create policy mfa_aal2_required on public.org_early_access as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy org_early_access_super_admin_select on public.org_early_access as permissive for select to authenticated using (app_private.me_is_super_admin());
 create policy mfa_aal2_required on public.org_subscription_options as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "org options readable by organisation access" on public.org_subscription_options as permissive for select to authenticated using ((app_private.is_aal2() AND (app_private.has_firm_access(auth.uid(), firm_id) OR app_private.platform_staff_can_access_firm(auth.uid(), firm_id))));
 create policy mfa_aal2_required on public.overview_alert_states as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
@@ -5108,4 +5142,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: 863b181fd18598ab07e942b67dfbc6bdd99a36e68db070fd6ed85711ae4a3be2
+-- catalogue-fingerprint: ae035210e86cec6dfdd345968d016962db3b78e7804c507e746c151a01de29ff
