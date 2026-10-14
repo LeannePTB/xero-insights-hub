@@ -27,7 +27,7 @@ export const ReportVideoEditor = forwardRef<ReportVideoEditorHandle, {
   const [message, setMessage] = useState("");
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
-  const initial = report ?? q.data?.video as Fields | undefined;
+  const initial = (q.data?.video ?? report) as Fields | undefined;
   useEffect(() => {
     if (dirty) return;
     setUrl(initial?.video_url ?? ""); setHeading(initial?.video_heading ?? ""); setMessage(initial?.video_message ?? "");
@@ -50,9 +50,9 @@ export const ReportVideoEditor = forwardRef<ReportVideoEditorHandle, {
   return <section className="min-w-0">
     <h3 className="mb-3 text-sm font-medium">③ Personal video <span className="ml-2 text-xs font-normal text-muted-foreground">{report ? `Draft v${report.version}` : "Next draft"}</span></h3>
     <div className="space-y-2">
-      <div><Label htmlFor="video-url">Loom link</Label><Input id="video-url" value={url} disabled={disabled} onChange={(e) => edit(setUrl, e.target.value)} placeholder="https://www.loom.com/share/…" aria-invalid={invalid} />
+      <div><Label htmlFor="video-url">Loom link</Label><Input className="h-8" id="video-url" value={url} disabled={disabled} onChange={(e) => edit(setUrl, e.target.value)} placeholder="https://www.loom.com/share/…" aria-invalid={invalid} />
         {invalid && <p className="mt-1 text-xs text-destructive">Paste a valid Loom share link.</p>}</div>
-      <div><Label htmlFor="video-heading">Heading</Label><Input id="video-heading" value={heading} disabled={disabled} maxLength={VIDEO_HEADING_MAX} onChange={(e) => edit(setHeading, e.target.value)} placeholder={DEFAULT_VIDEO_HEADING} /></div>
+      <div><Label htmlFor="video-heading">Heading</Label><Input className="h-8" id="video-heading" value={heading} disabled={disabled} maxLength={VIDEO_HEADING_MAX} onChange={(e) => edit(setHeading, e.target.value)} placeholder={DEFAULT_VIDEO_HEADING} /></div>
       <div><Label htmlFor="video-message">Short message</Label><Textarea id="video-message" value={message} disabled={disabled} rows={2} maxLength={VIDEO_MESSAGE_MAX} onChange={(e) => edit(setMessage, e.target.value)} /></div>
       {q.error && <p className="text-xs text-destructive">Video could not be loaded.</p>}
       <div className="flex flex-wrap items-center gap-2">
