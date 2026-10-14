@@ -1838,7 +1838,7 @@ beforeAll(async () => {
 
   const users = Object.values(U);
   await db.exec(`
-    insert into auth.users(id, email) values
+    insert into auth.users(id, email, email_confirmed_at) values
       ${users.map((u, i) => `('${u}', 'u${i}@example.invalid')`).join(", ")};
     insert into auth.sessions(id, user_id, created_at) values
       ${users.map((u) => `('${u}', '${u}', now())`).join(", ")},
