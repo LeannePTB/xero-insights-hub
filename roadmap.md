@@ -1,4 +1,8 @@
 # Roadmap
+- [ ] Monday Standard launch: stored-data charts on Standard dashboard cards, preserving card access and honest coverage.
+- [ ] Standard report charts and a synthetic/stored Demo Company sample with page renders; final/sent reports untouched.
+- [ ] Practice-only catalogue Advisory dialog, audited owner-scoped enquiries and System Admin status list; approve notification/rate-limit safeguards first.
+- [ ] Standard launch tests, full security gate and authorised desktop/mobile/end-to-end verification.
 - [x] Approved chart implementation: shared vectors, Overview, existing authorised cards, frozen new-draft PDFs and optional newest sent report. 248 security tests / 18 live checks pass; synthetic desktop/mobile/PDF verified.
 - [ ] Real chart/data/new-draft PDF readback — blocked by interactive two-step sign-in; security_posture read also tool-permission blocked. See docs/design/chart-delivery.md.
 - [x] Refresh auth branding only; build OK, 226 regression/security tests and 18 live checks pass; public desktop/mobile auth presentation verified. Interactive MFA/valid-invite completion and approved Xero button artwork remain unverified.
