@@ -121,48 +121,28 @@ async function firmMemberActive(
 
 
 /**
- * Loan consolidation is an organisation-level feature that can also surface as
- * a client dashboard card, so it is permitted when either the client's own
- * entitlement or the organisation's plan includes it. The database resolves
- * plan ∩ tier config; we never reimplement it. Fails closed.
+ * Owner decision 14 Oct 2026: a client's Loans pages open only for the
+ * Organisation Owner or an active Traction Advisory team member of that
+ * organisation, only when the organisation bought Consolidation, the client is
+ * in a consolidation group and has the Consolidation card ticked. Staff,
+ * Viewers, Business Owners and support passes are refused. One rule, in the
+ * database: public.me_can_open_client_loans. Fails closed.
  */
-async function loanFeatureAllowed(supabase: any, userId: string, clientId: string): Promise<boolean> {
-  const { clientCanUseWidget, firmCanUseWidget } = await import("@/lib/widget-access.server");
-  if (await clientCanUseWidget(supabase, clientId, "loan_consolidation")) return true;
-  // Organisation-level fallback (Organisation → Consolidations uses these same
-  // readers) is for active members of an organisation that bought
-  // Consolidation only. Viewers, Business Owners and support grants need the
-  // client's own loan_consolidation card (14 Oct 2026).
-  const firmId = await clientFirmId(supabase, clientId);
-  if (!firmId) return false;
-  if (!userId || !(await firmMemberActive(supabase, userId, firmId))) return false;
-  return firmCanUseWidget(supabase, firmId, "loan_consolidation");
+async function canOpenClientLoans(supabase: any, clientId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("me_can_open_client_loans", { _client_id: clientId });
+  return !error && data === true;
 }
 
-/**
- * WRITE gate. Security rule 5: a support grant is read-only, so setting up or
- * changing loan accounts needs an active membership (or client ownership).
- * The rule lives in public.user_can_write_client.
- */
+/** WRITE gate: the Loans rule plus write access to the client. */
 async function canManageClient(supabase: any, userId: string, clientId: string): Promise<boolean> {
-  if (!(await loanFeatureAllowed(supabase, userId, clientId))) return false;
+  if (!(await canOpenClientLoans(supabase, clientId))) return false;
   const { canWriteClient } = await import("@/lib/support-access.server");
   return canWriteClient(userId, clientId);
 }
 
-
-/** READ gate: membership, client viewer, or an approved read-only support grant. */
-async function canReadClient(supabase: any, userId: string, clientId: string): Promise<boolean> {
-  if (await canManageClient(supabase, userId, clientId)) return true;
-  if (!(await loanFeatureAllowed(supabase, userId, clientId))) return false;
-  // Client viewer, member or owner — all decided by public.user_can_read_client.
-  const { data: canRead } = await supabase.rpc("user_can_read_client", { _client_id: clientId });
-  if (canRead === true) return true;
-
-  const firmId = await clientFirmId(supabase, clientId);
-  if (!firmId) return false;
-  const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
-  return platformStaffCanAccessFirm(userId, firmId);
+/** READ gate: the same Loans rule (no Viewer, Business Owner or support path). */
+async function canReadClient(supabase: any, _userId: string, clientId: string): Promise<boolean> {
+  return canOpenClientLoans(supabase, clientId);
 }
 
 
