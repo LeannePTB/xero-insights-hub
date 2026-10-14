@@ -1618,6 +1618,19 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     // A boolean-returning authorisation helper answering `false` is a denial.
     return "allow";
   }
+  if (r === 'get_public_website_settings()') {
+    const p = await probe('select public.get_public_website_settings()');
+    return p.ok ? 'allow' : 'deny';
+  }
+  if (r === 'save_public_website_settings()') {
+    const p = await probe(`select public.save_public_website_settings('{"standardPrice":"Demo only"}'::jsonb)`);
+    return p.ok ? 'allow' : 'deny';
+  }
+  if (r === 'platform_branding website direct writes') {
+    const sql = row.operation === 'insert' ? `insert into public.platform_branding(id,website_settings) values(false,'{}')` : row.operation === 'update' ? `update public.platform_branding set website_settings='{}' where id=true` : `delete from public.platform_branding where id=true`;
+    const p = await probe(sql);
+    return p.ok && p.rows > 0 ? 'allow' : 'deny';
+  }
   if (r.endsWith("()")) return "unsupported"; // definer function not modelled in the fixture
   return "unsupported";
 }
@@ -1648,6 +1661,7 @@ beforeAll(async () => {
   // copy needs it to be faithful for that path. Test-copy fidelity only — no
   // application object changes.
   await db.exec(`alter table public.practice_team add primary key (user_id);`);
+  await db.exec(`alter table public.platform_branding add primary key (id);`);
   // overview_alert_states is unique on (client_id, event_key) live (7 Oct 2026); the
   // acknowledge upsert depends on it.
   await db.exec(`alter table public.overview_alert_states add unique (client_id, event_key);`);
