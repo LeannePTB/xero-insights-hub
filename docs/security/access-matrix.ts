@@ -1307,6 +1307,22 @@ export const MATRIX: MatrixRow[] = [
     ["pglite"],
   ),
   ...rows(
+    ["super_admin_no_membership"],
+    ["start_figure_backfill(the history fill)", "figure_backfill_status(the history fill)"],
+    ["execute"],
+    "allow",
+    "Owner decision 14 Oct 2026: one-off month-end history fill — System Administrator at aal2 queues it and reads progress (metadata only); audited",
+    ["pglite"],
+  ),
+  ...rows(
+    ["org_owner", "org_staff", "client_viewer", "standing_viewer", "business_owner", "other_org_member", "aal1_member"],
+    ["start_figure_backfill(the history fill)", "figure_backfill_status(the history fill)"],
+    ["execute"],
+    "deny",
+    "History fill: everyone except a System Administrator at aal2 is refused (anon has no execute)",
+    ["pglite"],
+  ),
+  ...rows(
     ["org_owner", "org_staff", "client_viewer", "business_owner", "other_org_member", "aal1_member"],
     ["admin_set_card_entry(the card catalogue)"],
     ["execute"],

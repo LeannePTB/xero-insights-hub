@@ -883,6 +883,14 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     if (process.env.MATRIX_DEBUG && !p.ok) console.log('PROBE', row.role, r, p.error);
     return p.ok ? "allow" : "deny";
   }
+  if (r.startsWith("start_figure_backfill(") || r.startsWith("figure_backfill_status(")) {
+    const ctx = CONTEXT[row.role];
+    await db.query(`select set_config('request.jwt.claims', $1, true)`, [claims(ctx)]);
+    await db.exec(`set local role ${ctx.dbRole}`);
+    const p = await probe(r.startsWith("start_") ? `select public.start_figure_backfill(null)` : `select * from public.figure_backfill_status()`);
+    if (process.env.MATRIX_DEBUG && !p.ok) console.log('PROBE', row.role, r, p.error);
+    return p.ok ? "allow" : "deny";
+  }
   if (r.startsWith("set_org_card_defaults(")) {
     const p = await probe(
       `select public.set_org_card_defaults('${ORG_A}'::uuid, array['cashflow','profit_loss'])`,
