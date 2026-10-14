@@ -27,7 +27,6 @@ import { LoanConsolidationWidget } from "@/components/dashboard/LoanConsolidatio
 import { GstReconciliationWidget, type GstCycle } from "@/components/dashboard/GstReconciliationWidget";
 import { TaxObligationsWidget } from "@/components/dashboard/TaxObligationsWidget";
 import { XeroActivityWidget } from "@/components/dashboard/XeroActivityWidget";
-import { RentReportWidget } from "@/components/dashboard/RentReportWidget";
 
 
 import { CashflowWidget } from "@/components/dashboard/CashflowWidget";

@@ -137,7 +137,8 @@ describe("client menu follows the client's visible cards (client_visible_cards)"
 
   it("Advisory and Consolidation items appear only when their card is visible", () => {
     const ids = flat(clientNav(files, [...STANDARD, "cashflow_scenario", "xero_audit", "loan_consolidation"])).map((i) => i.id);
-    expect(ids).toEqual(expect.arrayContaining(["cashflow", "loans", "loan-matrix", "loan-accounts", "audit"]));
+    expect(ids).not.toContain("cashflow"); // removed 14 Oct: the card's Open button is the entry point
+    expect(ids).toEqual(expect.arrayContaining(["loans", "loan-matrix", "loan-accounts", "audit"]));
   });
 
   it("an unknown or failed card list hides every card item (fail closed)", () => {
