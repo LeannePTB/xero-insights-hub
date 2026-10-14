@@ -366,13 +366,13 @@ export const Route = createFileRoute("/api/public/xero/callback")({
             (stateRow.client_id ? await getClientFirmId(stateRow.client_id) : null);
           const requestedTenantIds = [...new Set(stateRow.pending_tenant_ids ?? [])];
           // Single-file reconnects return exactly where they always did; the
-          // bulk path returns to the organisation's settings page, where the
+          // bulk path returns to the organisation's Xero files page, where the
           // "Reconnect all Xero files" action lives.
           const backPath = stateRow.client_id
             ? `/clients/${stateRow.client_id}/settings`
             : firmId
               ? requestedTenantIds.length > 1
-                ? `/firms/${firmId}/settings`
+                ? `/firms/${firmId}/xero-files`
                 : `/firms/${firmId}`
               : "/dashboard";
           const fail = async (message: string) => {

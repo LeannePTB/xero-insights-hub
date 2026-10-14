@@ -3,7 +3,7 @@ import { applyBankClassifications, type BankClassificationRow } from './bank-cla
 /** Caller client, or the already-registered nightly system client. Errors never become empty overrides. */
 export async function classifiedAccounts(supabase: any, tenantId: string, payload: any, clientId?: string) {
   if (!clientId) {
-    const { data: links, error: linkError } = await supabase.from('client_xero_orgs').select('client_id').eq('tenant_id', tenantId);
+    const { data: links, error: linkError } = await supabase.from('client_xero_orgs').select('client_id, xero_connections!inner(tenant_id)').eq('xero_connections.tenant_id', tenantId);
     const ids = [...new Set((links ?? []).map((link: any) => link.client_id))];
     if (linkError || ids.length !== 1) throw new Error('The client for these bank accounts could not be resolved.');
     clientId = ids[0] as string;
