@@ -1229,7 +1229,7 @@ export const MATRIX: MatrixRow[] = [
     note: "Added 17 Sep 2026 with the creation flow. Proves the unticked Advisory cards stay in client_available_cards (so they can be turned back on) while being absent from the resolved dashboard.",
   },
   ...rows(
-    ["org_staff", "support_grant_active", "other_org_member", "client_viewer", "business_owner"],
+    ["org_staff", "other_org_member", "client_viewer", "business_owner"],
     ["set_org_card_defaults(an organisation)", "apply_org_card_defaults(an organisation)"],
     ["execute"],
     "deny",
@@ -1237,15 +1237,15 @@ export const MATRIX: MatrixRow[] = [
     ["pglite"],
   ),
   ...rows(
-    ["super_admin_no_membership"],
+    ["super_admin_no_membership", "support_grant_active"],
     ["set_org_card_defaults(an organisation)", "apply_org_card_defaults(an organisation)"],
     ["execute"],
     "allow",
-    "Owner decision 14 Oct 2026: a System Administrator at aal2 may set default modules (plan configuration, Path C); returns no client data, audited",
+    "Owner decision 14 Oct 2026: a System Administrator at aal2 may set default modules (plan configuration, Path C); returns no client data, audited. The support-grant fixture holder is a System Administrator — the role allows it, the read-only grant itself never does",
     ["pglite"],
   ),
   ...rows(
-    ["org_owner", "super_admin_no_membership"],
+    ["org_owner", "super_admin_no_membership", "support_grant_active"],
     ["set_client_module(a client)", "set_client_card_enabled(a client)"],
     ["execute"],
     "allow",
@@ -1253,7 +1253,7 @@ export const MATRIX: MatrixRow[] = [
     ["pglite"],
   ),
   ...rows(
-    ["org_staff", "client_viewer", "standing_viewer", "business_owner", "support_grant_active", "other_org_member", "aal1_member"],
+    ["org_staff", "client_viewer", "standing_viewer", "business_owner", "other_org_member", "aal1_member"],
     ["set_client_module(a client)", "set_client_card_enabled(a client)"],
     ["execute"],
     "deny",
@@ -1261,7 +1261,7 @@ export const MATRIX: MatrixRow[] = [
     ["pglite"],
   ),
   ...rows(
-    ["super_admin_no_membership"],
+    ["super_admin_no_membership", "support_grant_active"],
     ["admin_set_card_entry(the card catalogue)"],
     ["execute"],
     "allow",
@@ -1269,7 +1269,7 @@ export const MATRIX: MatrixRow[] = [
     ["pglite"],
   ),
   ...rows(
-    ["org_owner", "org_staff", "client_viewer", "business_owner", "support_grant_active", "aal1_member"],
+    ["org_owner", "org_staff", "client_viewer", "business_owner", "other_org_member", "aal1_member"],
     ["admin_set_card_entry(the card catalogue)"],
     ["execute"],
     "deny",

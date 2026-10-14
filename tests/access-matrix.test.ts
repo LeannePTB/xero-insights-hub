@@ -2095,7 +2095,9 @@ describe('public website security boundary',()=>{
    await db.query(`insert into public.platform_branding(id,website_settings,updated_by) values(true,$1::jsonb,$2::uuid)`,[JSON.stringify({standardPrice:'Demo',calendlyUrl:'https://calendly.com/demo',privateToken:'must-not-leak',clientId:CLIENT_A}),U.superAdmin]);
    await db.exec('set local role anon');
    const result=await db.query<{settings:Record<string,unknown>}>(`select public.get_public_website_settings() settings`);
-   expect(Object.keys(result.rows[0]!.settings).sort()).toEqual(['calendlyUrl','heroVideoPath','heroPosterPath','walkthroughUrl','standardPrice','advisoryPrice','consolidationPrice','whiteLabelPrice'].sort());
+   expect(Object.keys(result.rows[0]!.settings).sort()).toEqual(['calendlyUrl','heroVideoPath','heroPosterPath','walkthroughUrl','standardPrice','advisoryPrice','consolidationPrice','whiteLabelPrice','packages'].sort());
+   // Catalogue copy only: module and card labels/descriptions, no keys tied to any organisation.
+   const pk=(result.rows[0]!.settings as any).packages;expect(Object.keys(pk).sort()).toEqual(['cards','modules']);for(const c of pk.cards)expect(Object.keys(c).sort()).toEqual(['description','label','module','package']);
    expect(JSON.stringify(result.rows)).not.toContain('must-not-leak');expect(JSON.stringify(result.rows)).not.toContain(CLIENT_A);
   });
  });
