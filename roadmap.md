@@ -1,4 +1,6 @@
 # Roadmap
+- [x] Approved chart implementation: shared vectors, Overview, existing authorised cards, frozen new-draft PDFs and optional newest sent report. 248 security tests / 18 live checks pass; synthetic desktop/mobile/PDF verified.
+- [ ] Real chart/data/new-draft PDF readback — blocked by interactive two-step sign-in; security_posture read also tool-permission blocked. See docs/design/chart-delivery.md.
 - [x] Refresh auth branding only; build OK, 226 regression/security tests and 18 live checks pass; public desktop/mobile auth presentation verified. Interactive MFA/valid-invite completion and approved Xero button artwork remain unverified.
 - [x] Build public practices-first sales homepage, preserve signed-in landing, add public sitemap/robots.
 - [x] Add audited AAL2 System Administrator website settings and prove read/write boundaries.

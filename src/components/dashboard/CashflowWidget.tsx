@@ -1,3 +1,4 @@
+import { VectorChart } from "@/components/charts/VectorChart";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -142,8 +143,10 @@ export function CashflowWidget({
             )}
           </div>
 
+          <VectorChart title="Monthly money in and out" currency={currency} points={data.months.map(m => ({label:m.label, values:m.complete === false ? [null,null,null] : [m.moneyIn,m.moneyOut,m.net]}))} series={[{label:'Money in',kind:'bar'},{label:'Money out',kind:'bar'},{label:'Net movement',kind:'line'}]} />
+          {data.actualsComplete === false && <p className="text-xs text-info">Some months could not be read; period totals are unavailable.</p>}
           {/* Period actuals */}
-          <div className="mt-4 grid grid-cols-3 gap-3">
+          {data.actualsComplete !== false && <div className="mt-4 grid grid-cols-3 gap-3">
             <Tile label="Money In" value={data.totalIn} tone="text-emerald-600" currency={currency} />
             <Tile label="Money Out" value={data.totalOut} tone="text-rose-600" currency={currency} />
             <Tile
@@ -155,6 +158,7 @@ export function CashflowWidget({
             />
           </div>
 
+          }
           {data.months.length > 0 && (
             <details className="mt-3">
               <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
@@ -175,17 +179,17 @@ export function CashflowWidget({
                       <tr key={m.label} className="border-t border-border/40">
                         <td className="py-1 pr-3">{m.label}</td>
                         <td className="py-1 pr-3 text-right tabular-nums text-emerald-600">
-                          {fmt(m.moneyIn)}
+                          {m.complete === false ? '—' : fmt(m.moneyIn)}
                         </td>
                         <td className="py-1 pr-3 text-right tabular-nums text-rose-600">
-                          {fmt(m.moneyOut)}
+                          {m.complete === false ? '—' : fmt(m.moneyOut)}
                         </td>
                         <td
                           className={`py-1 text-right tabular-nums font-medium ${
                             m.net >= 0 ? "text-emerald-600" : "text-rose-600"
                           }`}
                         >
-                          {fmt(m.net)}
+                          {m.complete === false ? '—' : fmt(m.net)}
                         </td>
                       </tr>
                     ))}
@@ -200,6 +204,9 @@ export function CashflowWidget({
             <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               90-day projection
             </p>
+            <VectorChart title="Projected closing cash" currency={currency} points={[{label:'Now',values:[data.totalCash]}, ...data.projection.map((b,i) => ({label:`Day ${(i+1)*30}`,values:[data.projectionComplete === false ? null : b.closingCash]}))]} series={[{label:'Closing cash',kind:'line'}]} />
+            {data.projectionComplete === false && <p className="text-xs text-info">Projection unavailable: the full invoice list could not be read.</p>}
+            <details><summary className="mb-2 cursor-pointer text-xs text-link">Projection breakdown</summary>
             <div className="overflow-x-auto rounded-lg border border-border/60 bg-background">
               <table className="w-full text-xs">
                 <thead>
@@ -225,31 +232,32 @@ export function CashflowWidget({
                     <tr key={b.label} className="border-t border-border/40">
                       <td className="px-3 py-2">{b.label}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-emerald-600">
-                        {fmt(b.inflow)}
+                        {data.projectionComplete === false ? '—' : fmt(b.inflow) }
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums text-rose-600">
-                        {fmt(b.outflow)}
+                        {data.projectionComplete === false ? '—' : fmt(b.outflow) }
                       </td>
                       <td
                         className={`px-3 py-2 text-right tabular-nums ${
                           b.net >= 0 ? "text-emerald-600" : "text-rose-600"
                         }`}
                       >
-                        {fmt(b.net)}
+                        {data.projectionComplete === false ? '—' : fmt(b.net) }
                       </td>
                       <td
                         className={`px-3 py-2 text-right font-semibold tabular-nums ${
                           b.closingCash < 0 ? "text-rose-600" : "text-foreground"
                         }`}
                       >
-                        {fmt(b.closingCash)}
+                        {data.projectionComplete === false ? '—' : fmt(b.closingCash) }
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            {(data.overdueReceivables > 0 || data.overduePayables > 0) && (
+            </details>
+            {(data.projectionComplete !== false && (data.overdueReceivables > 0 || data.overduePayables > 0)) && (
               <p className="mt-2 text-xs text-muted-foreground">
                 Includes {fmt(data.overdueReceivables)} overdue receivables and{" "}
                 {fmt(data.overduePayables)} overdue payables grouped into the next 30 days.

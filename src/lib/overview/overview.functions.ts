@@ -30,6 +30,7 @@ export type OverviewRow = {
   cashChange7d: number | null;
   cashBigMove: boolean;
   /** Protected money as a share of cash at bank (shared rule); null when no cash at bank. */
+  protectedMoney?: number | null;
   protectedPctOfCash: number | null;
   protectedLevel: "critical" | "warning" | "watch" | null;
   /** Tooltip from the shared rule; null when protected money or cash is unavailable. */
@@ -58,7 +59,7 @@ export const getClientOverview = createServerFn({ method: "POST" })
     async ({
       data,
       context,
-    }): Promise<{ rows: OverviewRow[]; feed: FeedEvent[]; cleared: FeedEvent[]; feedNotes: string[] }> => {
+    }): Promise<{ rows: OverviewRow[]; feed: FeedEvent[]; cleared: FeedEvent[]; feedNotes: string[]; charts?: import("./charts.server").OverviewCharts; latestReport?: { clientId: string; clientName: string; periodEnd: string; sentAt: string } | null }> => {
     try {
       const { buildOverview } = await import("./overview.server");
       // firmId is a FILTER inside overview_clients(); access stays caller-scoped.

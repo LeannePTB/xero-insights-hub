@@ -57,7 +57,14 @@ export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
     ...(typeof search.viewAs === "string" ? { viewAs: search.viewAs } : {}),
     ...(typeof search.firmId === "string" ? { firmId: search.firmId } : {}),
   }),
-  head: () => ({ meta: [{ title: "Client dashboard — Traction Advisory" }] }),
+  head: () => ({ meta: [
+    { title: "Client dashboard — Traction Advisory" },
+    { name: "description", content: "Your authorised client cash flow, break-even and financial figures." },
+    { property: "og:title", content: "Client dashboard — Traction Advisory" },
+    { property: "og:description", content: "Your authorised client cash flow, break-even and financial figures." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: ClientDashboard,
 });
 

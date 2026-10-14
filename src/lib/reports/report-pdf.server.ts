@@ -1,3 +1,4 @@
+import { drawPdfChart } from "@/lib/charts/pdf.server";
 // Server-only: render the Monthly Management Report to PDF, store it in the
 // private `client-reports` bucket and mint a short-lived signed URL.
 //
@@ -404,6 +405,25 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
       paragraph(v.nextStep, { size: 9 });
     }
     y += 6;
+  }
+
+  // v12: only frozen payload points. Old final/sent reports never acquire charts.
+  if (payload.charts) {
+    for (const [title, points, kind] of [
+      ['Cash at bank trend', payload.charts.cash, 'line'],
+      ['Net profit by month', payload.charts.profit, 'bar'],
+    ] as const) {
+      const known = points.filter(p => p.value !== null);
+      need(240);
+      heading(`${title} (${m.currency})`);
+      if (known.length > 1) {
+        y += drawPdfChart(doc, points.map(p => ({label:p.label,values:[p.value]})), [{label:title,kind}], M.left, y, PAGE.w-M.left-M.right);
+      } else if (known.length === 1) {
+        paragraph(`${known[0]?.label}: ${money(known[0]?.value ?? 0)} — one available month; no trend inferred.`);
+      } else paragraph('No reliable completed-month history available.');
+      if (known.length) table({head:['Month',title],body:points.map(p => [p.label,p.value === null ? 'Unavailable' : money(p.value)])});
+    }
+    paragraph(payload.charts.note);
   }
 
   // 2. Notes -----------------------------------------------------------------
