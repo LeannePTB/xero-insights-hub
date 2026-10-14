@@ -1052,6 +1052,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
       insert into public.client_cards (client_id, cards)
       select '${CLIENT_A}'::uuid, array_agg(card_key) from public.card_catalogue;
+      create unique index if not exists org_early_access_firm_card on public.org_early_access (firm_id, card_key);
       delete from public.org_early_access;
       ${granted ? `insert into public.org_early_access (firm_id, card_key, granted_by, ends_at, revoked_at)
         values ('${ORG_A}'::uuid, 'cashflow', gen_random_uuid(), ${ended ? "now() - interval '1 day'" : "now() + interval '30 days'"}, ${revoked ? "now()" : "null"});` : ""}
