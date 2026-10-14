@@ -186,6 +186,12 @@
     },
     {
         "args": [
+        ],
+        "name": "admin_upgrade_enquiry_alerts",
+        "required": 0
+    },
+    {
+        "args": [
             "_firm_id"
         ],
         "name": "apply_org_card_defaults",
@@ -244,6 +250,12 @@
         "args": [
         ],
         "name": "audit_user_roles_change",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "begin_enquiry_alert_test",
         "required": 0
     },
     {
@@ -631,6 +643,12 @@
         ],
         "name": "firm_white_label_enabled_service",
         "required": 1
+    },
+    {
+        "args": [
+        ],
+        "name": "get_enquiry_alert_email",
+        "required": 0
     },
     {
         "args": [
@@ -1052,6 +1070,13 @@
         ],
         "name": "save_client_rental_property",
         "required": 9
+    },
+    {
+        "args": [
+            "_email"
+        ],
+        "name": "save_enquiry_alert_email",
+        "required": 1
     },
     {
         "args": [

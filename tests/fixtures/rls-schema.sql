@@ -107,7 +107,7 @@ create table public.org_card_defaults (firm_id uuid, cards text[], created_at ti
 create table public.org_subscription_options (firm_id uuid, client_limit integer, advisory_enabled boolean, consolidation_enabled boolean, billing_mode text, created_at timestamp with time zone, updated_at timestamp with time zone, trial_advisory_enabled boolean, trial_consolidation_enabled boolean, trial_ends_at timestamp with time zone, branding_enabled boolean, trial_branding_enabled boolean, white_label_enabled boolean, trial_white_label_enabled boolean);
 create table public.overview_alert_states (id uuid, client_id uuid, event_key text, severity_at_ack smallint, acknowledged_by uuid, acknowledged_at timestamp with time zone, snoozed_by uuid, snoozed_at timestamp with time zone, snoozed_until timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.plan_levels (id uuid, scope text, key text, label text, description text, client_limit integer, xero_org_limit integer, allows_multi_org boolean, widgets text[], sort_order integer, enabled boolean, created_at timestamp with time zone, updated_at timestamp with time zone, allowed_tiers text[], is_free boolean);
-create table public.platform_branding (id boolean, product_name text, logo_light text, logo_dark text, favicon text, email_sender_name text, updated_at timestamp with time zone, updated_by uuid, website_settings jsonb);
+create table public.platform_branding (id boolean, product_name text, logo_light text, logo_dark text, favicon text, email_sender_name text, updated_at timestamp with time zone, updated_by uuid, website_settings jsonb, enquiry_alert_email text);
 create table public.practice_team (user_id uuid, added_by uuid, created_at timestamp with time zone);
 create table public.profiles (id uuid, email text, display_name text, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.rate_limit_buckets (key text, window_start timestamp with time zone, count integer);
@@ -136,7 +136,7 @@ create table public.trixie_threads (id uuid, user_id uuid, firm_id uuid, client_
 create table public.trixie_usage (id uuid, user_id uuid, firm_id uuid, client_id uuid, requested_at timestamp with time zone, completed_at timestamp with time zone, model text, gateway_run_id text, status text, input_tokens integer, output_tokens integer, reasoning_tokens integer, estimated_cost_usd numeric(12,6), error_code text);
 create table public.unreconciled_lines (id uuid, upload_id uuid, client_id uuid, account_name text, account_number text, row_index integer, txn_date date, payee text, reference text, spent numeric(14,2), received numeric(14,2), tax text, source_comment text, client_comment text, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.unreconciled_uploads (id uuid, client_id uuid, uploaded_by uuid, filename text, line_count integer, created_at timestamp with time zone);
-create table public.upgrade_enquiries (id uuid, submitter_id uuid, firm_id uuid, name text, email text, organisation_name text, module_keys text[], client_ids uuid[], message text, status text, submission_key uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
+create table public.upgrade_enquiries (id uuid, submitter_id uuid, firm_id uuid, name text, email text, organisation_name text, module_keys text[], client_ids uuid[], message text, status text, submission_key uuid, created_at timestamp with time zone, updated_at timestamp with time zone, alert_message_id text, alert_error text);
 create table public.user_presence (user_id uuid, last_seen_at timestamp with time zone);
 create table public.user_roles (id uuid, user_id uuid, role app_role, created_at timestamp with time zone);
 create table public.xero_api_errors (id uuid, firm_id uuid, xero_connection_id uuid, tenant_id text, tenant_name text, path text, http_status integer, last_message text, occurrences integer, first_seen timestamp with time zone, last_seen timestamp with time zone, day date);
@@ -3880,6 +3880,7 @@ grant SELECT on table public.billing_events to service_role;
 grant TRIGGER on table public.billing_events to service_role;
 grant TRUNCATE on table public.billing_events to service_role;
 grant UPDATE on table public.billing_events to service_role;
+grant SELECT on table public.card_catalogue to authenticated;
 grant DELETE on table public.card_catalogue to service_role;
 grant INSERT on table public.card_catalogue to service_role;
 grant REFERENCES on table public.card_catalogue to service_role;
@@ -5056,4 +5057,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: e2aaeb343b9dd07566d432f5bfa3625713470281ce0486bd47957b3e8d8f6ebd
+-- catalogue-fingerprint: d9c9ba0f09c68f1d22d5e3724720bf6749d7da0b516f4e098d6dc7e0dc68d04d
