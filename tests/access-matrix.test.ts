@@ -871,16 +871,6 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     return p.ok ? "allow" : "deny";
   }
   if (r.startsWith("set_client_module(") || r.startsWith("set_client_card_enabled(") || r.startsWith("admin_set_card_entry(")) {
-    // Seed the product catalogue as postgres (the fixture is schema only).
-    await db.exec("set local role postgres");
-    await db.exec(`
-      insert into public.card_modules (module_key, label, description, sort_order)
-      values ('cash_flow', 'Cash flow', '', 10) on conflict do nothing;
-      insert into public.card_catalogue (card_key, package, module_key, label, description, sort_order)
-      values ('health','standard',null,'Business health','',10),
-             ('cashflow','advisory','cash_flow','Cash flow','',110)
-      on conflict do nothing;
-    `);
     const ctx = CONTEXT[row.role];
     await db.query(`select set_config('request.jwt.claims', $1, true)`, [claims(ctx)]);
     await db.exec(`set local role ${ctx.dbRole}`);
@@ -1684,6 +1674,21 @@ beforeAll(async () => {
   // application object changes.
   await db.exec(`alter table public.practice_team add primary key (user_id);`);
   await db.exec(`alter table public.platform_branding add primary key (id);`);
+  // The product catalogue is data since 14 Oct 2026; the structural fixture
+  // holds no rows, so seed it from the same snapshot the catalogue test reads.
+  await db.exec(`alter table public.card_modules add primary key (module_key);
+                 alter table public.card_catalogue add primary key (card_key);`);
+  {
+    const snap = fs.readFileSync(path.join(process.cwd(), "tests/fixtures/card-catalogue.sql"), "utf8");
+    await db.exec(`insert into public.card_modules (module_key, label) values ('matrix_module', 'Matrix module'), ('cash_flow', 'Cash flow');`);
+    let i = 0;
+    for (const m of snap.matchAll(/when\s+'([a-z_]+)'\s+then\s+array\[([^\]]*)\]/gi)) {
+      for (const c of m[2]!.matchAll(/'([a-z_]+)'/g)) {
+        const mod = m[1] === "advisory" ? (c[1] === "cashflow" ? "'cash_flow'" : "'matrix_module'") : "null";
+        await db.exec(`insert into public.card_catalogue (card_key, package, module_key, label, sort_order) values ('${c[1]}', '${m[1]}', ${mod}, '${c[1]}', ${i++});`);
+      }
+    }
+  }
   // This structural fixture omits RPC ACLs. Mirror the two new live ACLs
   // explicitly so anonymous-save denial proves both grant and guard layers.
   await db.exec(`revoke all on function public.get_public_website_settings() from public;
