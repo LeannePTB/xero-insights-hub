@@ -570,7 +570,7 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
         if (hit?.payload) usedSources.push(hit.source);
         return (hit?.payload as T) ?? null;
       } catch (e) {
-        console.warn(`[health-detail] snapshot ${reportKey} unusable:`, (e as Error).message);
+        console.warn(`[health-detail] snapshot ${requestedKey} unusable:`, (e as Error).message);
         return null;
       }
     };
