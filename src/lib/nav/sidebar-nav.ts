@@ -95,7 +95,7 @@ export const ORGANISATION_NAV: NavGroup[] = [
         to: "/firms/$firmId/settings",
         children: [
           { id: "s-general", label: "General", icon: "settings", to: "/firms/$firmId/settings/general" },
-          { id: "s-cards", label: "Card defaults", icon: "grid", to: "/firms/$firmId/settings/cards" },
+          { id: "s-cards", label: "Default modules", icon: "grid", to: "/firms/$firmId/settings/cards" },
           { id: "s-subscription", label: "Subscription", icon: "file", to: "/firms/$firmId/settings/subscription" },
           { id: "s-ownership", label: "Ownership", icon: "users", to: "/firms/$firmId/settings/ownership" },
           { id: "s-support", label: "Support access", icon: "shield", to: "/firms/$firmId/settings/support" },
