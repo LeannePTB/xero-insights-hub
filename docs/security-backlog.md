@@ -1749,3 +1749,9 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - OPEN: unticked organisation created with no owner email has only its creator as a member until an owner is invited. The manual path's creator still becomes a member (unchanged behaviour).
 - OPEN: `public.security_posture()` must be read by a System Administrator at aal2; not run this turn. Linter: no new finding.
 - OPEN: saved Trixie help articles (trixie_knowledge) may still use old role names; only a System Administrator can save them through the audited editor.
+
+## 2026-10-14 — Auth presentation refresh
+- Classification: SECURITY-RELEVANT surface, presentation only. Shared AuthLayout replaces duplicated auth branding on sign-in/request access, MFA verify/enrol, password reset and invitation screens. Existing handlers, MFA guards, OAuth and redirect decisions remain unchanged; no database object, grant, policy or admin-client use changed.
+- Evidence: automatic compilation/build OK; security:check passed (2,072 proved rows, zero failures/known failures, 226 tests, 18 live checks). Playwright public desktop/mobile sign-in, request-access/back, forgot-password empty-email validation, invalid reset and invalid invite checked: one logo/footer, no overflow or page errors on sign-in.
+- OPEN: interactive MFA and valid-invitation completion not exercised; no secrets or MFA QR codes captured. Existing shared Xero control reused unchanged; its primitive X mark is not approved official artwork, so artwork certification remains unverified and must not be described as complete.
+- Posture requires an AAL2 System Administrator read; not verified by this presentation change.
