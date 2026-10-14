@@ -323,6 +323,13 @@
       "when": 1791958343406,
       "tag": "0045_enquiry_verified_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1791961471660,
+      "tag": "0046_enquiry_alert_email",
+      "breakpoints": true
     }
   ]
 }

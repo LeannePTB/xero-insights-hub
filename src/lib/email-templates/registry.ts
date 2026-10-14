@@ -18,12 +18,14 @@ export interface TemplateEntry {
  *   // then add to TEMPLATES: 'welcome': welcomeTemplate
  */
 import { template as firmInviteTemplate } from './firm-invite'
+import { template as enquiryAlertTemplate } from './enquiry-alert'
 import { template as reportReadyTemplate } from './report-ready'
 import { template as trixieAlertTemplate } from './trixie-alert'
 import { template as trixieUsageSummaryTemplate } from './trixie-usage-summary'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'firm-invite': firmInviteTemplate,
+  'enquiry-alert': enquiryAlertTemplate,
   'report-ready': reportReadyTemplate,
   'trixie-alert': trixieAlertTemplate,
   'trixie-usage-summary': trixieUsageSummaryTemplate,

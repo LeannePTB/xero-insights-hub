@@ -27,6 +27,7 @@ function hashToken(token: string): string {
 export interface EnqueueResult {
   status: "queued" | "suppressed" | "skipped" | "failed";
   reason?: string;
+  messageId?: string;
 }
 
 export async function enqueueAppEmail(opts: {
@@ -36,6 +37,8 @@ export async function enqueueAppEmail(opts: {
   firmId?: string;
   templateData?: Record<string, any>;
   idempotencyKey?: string;
+  /** Reply-To header; must be a verified address resolved server-side. */
+  replyTo?: string;
 }): Promise<EnqueueResult> {
   const { getPlatformBrandingServer } = await import("@/lib/platform-branding.server");
   const branding = await getPlatformBrandingServer();
@@ -73,7 +76,7 @@ export async function enqueueAppEmail(opts: {
       message_id: messageId, template_name: opts.templateName,
       recipient_email: recipient, status: "suppressed",
     });
-    return { status: "suppressed" };
+    return { status: "suppressed", messageId };
   }
 
   // Mint a fresh unsubscribe token for this send. Only its hash is stored, so an
@@ -113,6 +116,7 @@ export async function enqueueAppEmail(opts: {
       idempotency_key: idempotencyKey,
       unsubscribe_token: unsubscribeToken,
       queued_at: new Date().toISOString(),
+      ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
     },
   });
   if (enqErr) {
@@ -122,8 +126,8 @@ export async function enqueueAppEmail(opts: {
       recipient_email: recipient, status: "failed",
       error_message: enqErr.message,
     });
-    return { status: "failed", reason: enqErr.message };
+    return { status: "failed", reason: enqErr.message, messageId };
   }
 
-  return { status: "queued" };
+  return { status: "queued", messageId };
 }
