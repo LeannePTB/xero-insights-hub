@@ -48,6 +48,7 @@ import { OrgPurchaseCard } from "@/components/admin/OrgPurchaseCard";
 import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
 import { BillingLifecycleCard } from "@/components/admin/BillingLifecycleCard";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { OrgEarlyAccessCard } from "@/components/admin/OrgEarlyAccessCard";
 import { SystemOrganisationTabs, SYSTEM_ORGANISATION_TABS, type SystemOrganisationTab } from "@/components/admin/SystemOrganisationTabs";
 import { recordViewAs } from "@/lib/view-as.functions";
 import { getOrgPurchase } from "@/lib/card-model.functions";
@@ -192,7 +193,7 @@ function FirmDetailPage() {
             <BusinessNameSection firmId={firmId} currentName={firm.name} onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })} />
             <OverviewFacts firm={firm} members={members} usage={usageQ.data?.usage?.[0]} purchase={purchaseQ.data?.purchase} subscription={detailQ.data?.subscription ?? null} />
           </TabsContent>
-          <TabsContent value="plan"><OrgPurchaseCard firmId={firmId} /></TabsContent>
+          <TabsContent value="plan" className="space-y-6"><OrgPurchaseCard firmId={firmId} /><OrgEarlyAccessCard firmId={firmId} /></TabsContent>
           <TabsContent value="billing"><BillingLifecycleCard firmId={firmId} subscription={detailQ.data?.subscription ?? null} isAlwaysFree={firm.is_always_free} onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })} /></TabsContent>
           <TabsContent value="members"><MembersSection firmId={firmId} members={members} onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })} /></TabsContent>
           <TabsContent value="xero"><FirmXeroFilesCard firmId={firmId} variant="plain" metadataOnly /></TabsContent>

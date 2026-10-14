@@ -179,6 +179,9 @@ export function ClientCardSetupPanel({
                     <span className="block text-sm font-medium">
                       {m.label}
                       {state === "partial" && <span className="ml-2 text-xs font-normal text-muted-foreground">Some cards on</span>}
+                      {m.cards.some((c) => catalogue.cards.find((x) => x.key === c)?.earlyAccess) && (
+                        <span className="ml-2 rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">Early access — work in progress</span>
+                      )}
                     </span>
                     <span className="block text-xs text-muted-foreground">{m.description}</span>
                     <span className="block text-xs text-muted-foreground">
