@@ -12,6 +12,7 @@ import { savePlatformBranding } from "@/lib/platform-branding.functions";
 import { PLATFORM_BRANDING_KEY, usePlatformBranding, DEFAULT_BRANDING } from "@/hooks/usePlatformBranding";
 import { PageContainer } from "@/components/PageContainer";
 import { WebsiteSettingsEditor } from "@/components/website/WebsiteSettingsEditor";
+import { EnquiryAlertSettings } from "@/components/admin/EnquiryAlertSettings";
 
 export const Route = createFileRoute("/_authenticated/system/branding")({
   staticData: { sitemap: false },
@@ -131,6 +132,7 @@ function BrandingPage() {
           </Button>
         </CardContent>
       </Card>
+      <EnquiryAlertSettings />
       <WebsiteSettingsEditor />
     </PageContainer>
   );
