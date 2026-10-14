@@ -456,7 +456,7 @@ export const applyOrgCardDefaults = createServerFn({ method: "POST" })
 async function readCatalogue(db: any): Promise<CardCatalogue> {
   const [m, c] = await Promise.all([
     db.from("card_modules").select("module_key, label, description, sort_order").order("sort_order"),
-    db.from("card_catalogue").select("card_key, package, module_key, label, description, sort_order").order("sort_order"),
+    db.from("card_catalogue").select("card_key, package, module_key, label, description, sort_order, report_sections").order("sort_order"),
   ]);
   if (m.error || c.error) throw rpcError("The card catalogue is unavailable.");
   return mapCatalogue(m.data, c.data);

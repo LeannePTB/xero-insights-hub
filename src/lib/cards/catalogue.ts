@@ -11,6 +11,8 @@ export type CatalogueCard = {
   module: string | null;
   label: string;
   description: string;
+  /** Monthly report sections this card adds (card_catalogue.report_sections). */
+  reportSections?: string[];
 };
 export type CardCatalogue = { modules: CatalogueModule[]; cards: CatalogueCard[] };
 
@@ -86,6 +88,25 @@ export function mapCatalogue(modules: any[] | null, cards: any[] | null): CardCa
       module: (c.module_key as string | null) ?? null,
       label: c.label,
       description: c.description ?? "",
+      reportSections: Array.isArray(c.report_sections) ? (c.report_sections as string[]) : [],
     })),
   };
+}
+
+/** Plain labels for report sections (presentation only). */
+export const REPORT_SECTION_LABEL: Record<string, string> = {
+  verdict: "This month (health summary)",
+  charts: "Charts",
+  notes: "Notes",
+  key_figures: "Key figures",
+  profit_and_loss: "Profit and Loss",
+  receivables: "Receivables detail",
+  payables: "Payables detail",
+};
+
+/** Report sections a set of cards adds, from the catalogue (one list). */
+export function reportSectionsForCards(catalogue: CardCatalogue, cards: readonly string[]): string[] {
+  const out = new Set<string>();
+  for (const c of catalogue.cards) if (cards.includes(c.key)) for (const s of c.reportSections ?? []) out.add(s);
+  return [...out];
 }
