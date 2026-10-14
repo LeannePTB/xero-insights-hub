@@ -895,6 +895,7 @@ function CostClassificationSection({
     },
   );
 
+  if (useContext(ActiveSettingsSection) !== "cost-classification") return null;
   if (widgetsQ.isLoading) return null;
   if (!usesCostSplit && !usesWages) return null;
 
