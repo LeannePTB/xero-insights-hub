@@ -2090,6 +2090,7 @@ export type Database = {
       platform_branding: {
         Row: {
           email_sender_name: string | null
+          enquiry_alert_email: string | null
           favicon: string | null
           id: boolean
           logo_dark: string | null
@@ -2101,6 +2102,7 @@ export type Database = {
         }
         Insert: {
           email_sender_name?: string | null
+          enquiry_alert_email?: string | null
           favicon?: string | null
           id?: boolean
           logo_dark?: string | null
@@ -2112,6 +2114,7 @@ export type Database = {
         }
         Update: {
           email_sender_name?: string | null
+          enquiry_alert_email?: string | null
           favicon?: string | null
           id?: boolean
           logo_dark?: string | null
@@ -3239,6 +3242,8 @@ export type Database = {
       }
       upgrade_enquiries: {
         Row: {
+          alert_error: string | null
+          alert_message_id: string | null
           client_ids: string[]
           created_at: string
           email: string
@@ -3254,6 +3259,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          alert_error?: string | null
+          alert_message_id?: string | null
           client_ids?: string[]
           created_at?: string
           email: string
@@ -3269,6 +3276,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          alert_error?: string | null
+          alert_message_id?: string | null
           client_ids?: string[]
           created_at?: string
           email?: string
@@ -4164,6 +4173,8 @@ export type Database = {
       admin_upgrade_enquiries: {
         Args: never
         Returns: {
+          alert_error: string | null
+          alert_message_id: string | null
           client_ids: string[]
           created_at: string
           email: string
@@ -4185,6 +4196,14 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      admin_upgrade_enquiry_alerts: {
+        Args: never
+        Returns: {
+          enquiry_id: string
+          error: string
+          status: string
+        }[]
+      }
       apply_org_card_defaults: { Args: { _firm_id: string }; Returns: number }
       apply_viewer_invite: {
         Args: { _invite_id: string; _user_id: string }
@@ -4204,6 +4223,7 @@ export type Database = {
         Args: { _tenant_id: string; _widget: string }
         Returns: boolean
       }
+      begin_enquiry_alert_test: { Args: never; Returns: string }
       can_manage_client_income_tax_instalments: {
         Args: { _client_id: string }
         Returns: boolean
@@ -4499,6 +4519,7 @@ export type Database = {
         Args: { _firm_id: string }
         Returns: boolean
       }
+      get_enquiry_alert_email: { Args: never; Returns: string }
       get_mfa_posture_counts: {
         Args: never
         Returns: {
@@ -4856,6 +4877,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      save_enquiry_alert_email: { Args: { _email: string }; Returns: undefined }
       save_platform_branding: {
         Args: {
           _email_sender_name: string
