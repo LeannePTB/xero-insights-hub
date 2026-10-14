@@ -1,4 +1,3 @@
-import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,16 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { BrandMark } from "@/components/BrandMark";
+import { AuthLayout } from "@/components/auth/AuthLayout";
 
 export const Route = createFileRoute("/set-password")({
   staticData: { sitemap: false },
-  head: () => ({ meta: [{ title: "Set your password — Traction Advisory" }] }),
+  head: () => ({ meta: [{ title: "Set your password — Traction Advisory" }, { name: "description", content: "Set your Traction Advisory account password." }, { property: "og:title", content: "Set your password — Traction Advisory" }, { property: "og:description", content: "Set your Traction Advisory account password." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: SetPasswordPage,
 });
 
 function SetPasswordPage() {
-  const platformBrand = usePlatformBranding();
   const navigate = useNavigate();
   const [hasSession, setHasSession] = useState<boolean | null>(null);
   const [password, setPassword] = useState("");
@@ -65,24 +63,7 @@ function SetPasswordPage() {
   }
 
   return (
-    <div className="grid min-h-screen md:grid-cols-2">
-      <div className="hidden flex-col justify-between p-12 text-primary-foreground md:flex" style={{ background: "var(--gradient-hero)" }}>
-        <BrandMark onDark logoHeightClass="h-9" />
-        <div>
-          <h2 className="text-lg font-bold leading-tight">
-            Welcome aboard.
-            <br />
-            <span className="font-serif italic text-accent">Set your password.</span>
-          </h2>
-          <p className="mt-4 max-w-md text-sm text-primary-foreground/85">
-            Choose a password so you can sign back in any time.
-          </p>
-        </div>
-        <p className="text-xs text-primary-foreground/85">© {new Date().getFullYear()} {platformBrand.productName}</p>
-      </div>
-
-      <div className="flex items-center justify-center p-6">
-        <div className="w-full max-w-sm">
+    <AuthLayout>
           <h1 className="font-display text-lg font-semibold">Set your password</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Pick a password to finish setting up your account.
@@ -130,8 +111,6 @@ function SetPasswordPage() {
               </Button>
             </div>
           )}
-        </div>
-      </div>
-    </div>
+    </AuthLayout>
   );
 }

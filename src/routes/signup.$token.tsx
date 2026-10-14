@@ -1,4 +1,3 @@
-import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -10,26 +9,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
-import { BrandMark } from "@/components/BrandMark";
+import { AuthLayout } from "@/components/auth/AuthLayout";
 
 export const Route = createFileRoute("/signup/$token")({
   staticData: { sitemap: false },
-  head: () => ({ meta: [{ title: "Accept invite — Traction Advisory" }] }),
+  head: () => ({ meta: [{ title: "Accept your invitation — Traction Advisory" }, { name: "description", content: "Set up your invited Traction Advisory account." }, { property: "og:title", content: "Accept your invitation — Traction Advisory" }, { property: "og:description", content: "Set up your invited Traction Advisory account." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: SignupPage,
   errorComponent: ({ error }) => (
-    <div className="min-h-screen grid place-items-center p-6">
+    <AuthLayout>
       <p className="text-sm text-destructive">{error instanceof Error ? error.message : "Something went wrong."}</p>
-    </div>
+    </AuthLayout>
   ),
   notFoundComponent: () => (
-    <div className="min-h-screen grid place-items-center p-6">
+    <AuthLayout>
       <p className="text-sm text-muted-foreground">Invite not found.</p>
-    </div>
+    </AuthLayout>
   ),
 });
 
 function SignupPage() {
-  const platformBrand = usePlatformBranding();
   const { token } = Route.useParams();
   const navigate = useNavigate();
   const fetchInvite = useServerFn(getInvitePublic);
@@ -64,15 +62,15 @@ function SignupPage() {
 
   if (inviteQ.isLoading) {
     return (
-      <div className="min-h-screen grid place-items-center">
+      <AuthLayout>
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      </AuthLayout>
     );
   }
 
   if (inviteQ.error) {
     return (
-      <div className="min-h-screen grid place-items-center p-6">
+      <AuthLayout>
         <div className="max-w-sm w-full rounded-md border border-destructive/40 bg-destructive/10 p-4 flex items-start gap-3">
           <ShieldAlert className="h-5 w-5 text-destructive mt-0.5" />
           <div>
@@ -80,11 +78,12 @@ function SignupPage() {
             <p className="text-sm text-muted-foreground">{(inviteQ.error as Error).message}</p>
           </div>
         </div>
-      </div>
+      </AuthLayout>
     );
   }
 
-  const invite = inviteQ.data!;
+  const invite = inviteQ.data;
+  if (!invite) return <AuthLayout><p>Invite not found.</p></AuthLayout>;
   const isOwner = invite.role === "owner";
   const invitationRole =
     invite.kind === "viewer"
@@ -94,29 +93,7 @@ function SignupPage() {
       : invite.role;
 
   return (
-    <div className="grid min-h-screen md:grid-cols-2">
-      <div
-        className="hidden flex-col justify-between p-12 text-primary-foreground md:flex"
-        style={{ background: "var(--gradient-hero)" }}
-      >
-        <BrandMark onDark logoHeightClass="h-9" />
-        <div>
-          <h2 className="text-lg font-bold leading-tight">
-            Welcome to
-            <br />
-            <span className="font-serif italic text-accent">{platformBrand.productName}</span>
-          </h2>
-          <p className="mt-4 max-w-md text-sm text-primary-foreground/85">
-            Clean Xero dashboards built around the metrics that matter.
-          </p>
-        </div>
-        <p className="text-xs text-primary-foreground/85">
-          © {new Date().getFullYear()} {platformBrand.productName}
-        </p>
-      </div>
-
-      <div className="flex items-center justify-center p-6">
-        <div className="w-full max-w-sm space-y-5">
+    <AuthLayout>
           <div>
             <h1 className="font-display text-lg font-semibold">Set up your account</h1>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -184,8 +161,6 @@ function SignupPage() {
               Create account
             </Button>
           </div>
-        </div>
-      </div>
-    </div>
+    </AuthLayout>
   );
 }

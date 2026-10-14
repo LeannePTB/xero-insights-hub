@@ -1,3 +1,4 @@
+import { AuthLayout } from "@/components/auth/AuthLayout";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +13,7 @@ import { postAuthDestination } from "@/lib/session-cutoff";
 export const Route = createFileRoute("/auth_/mfa-verify")({
   staticData: { sitemap: false },
   ssr: false,
-  head: () => ({ meta: [{ title: "Verify — Traction Advisory" }] }),
+  head: () => ({ meta: [{ title: "Verify your sign-in — Traction Advisory" }, { name: "description", content: "Complete two-step sign-in to Traction Advisory." }, { property: "og:title", content: "Verify your sign-in — Traction Advisory" }, { property: "og:description", content: "Complete two-step sign-in to Traction Advisory." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: MfaVerifyPage,
 });
 
@@ -95,9 +96,8 @@ function MfaVerifyPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-6">
-      <div className="w-full max-w-sm">
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
+    <AuthLayout>
+        <div>
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-emphasis" />
             <h1 className="font-display text-lg font-semibold">Two-factor required</h1>
@@ -116,7 +116,7 @@ function MfaVerifyPage() {
               placeholder="000000"
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-              className="text-center tracking-[0.4em]"
+              className="text-center tracking-normal"
               autoFocus
             />
             <Button type="submit" className="w-full" disabled={!factorId || verifying || code.length !== 6}>
@@ -142,7 +142,6 @@ function MfaVerifyPage() {
         <p className="mt-3 text-center text-xs text-muted-foreground">
           <Link to="/auth" className="underline">Back to sign in</Link>
         </p>
-      </div>
-    </div>
+    </AuthLayout>
   );
 }
