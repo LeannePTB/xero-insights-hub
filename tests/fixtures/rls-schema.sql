@@ -4803,4 +4803,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: 2847a654d2e15af50c58a618797afaf25be0c5043ab35e73c28cf2dd8c83d825
+-- catalogue-fingerprint: 73b0fa890b010ec4f79957134c6fcf9c82df5cd663c6294becca160ed2ca102c

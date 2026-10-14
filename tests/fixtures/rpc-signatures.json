@@ -374,6 +374,13 @@
     },
     {
         "args": [
+            "_client_ids"
+        ],
+        "name": "client_setup_cost_accounts",
+        "required": 1
+    },
+    {
+        "args": [
             "_client_id"
         ],
         "name": "client_viewers",

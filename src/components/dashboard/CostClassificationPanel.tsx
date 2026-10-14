@@ -97,6 +97,8 @@ export function CostClassificationPanel({
     [classQ.data, accountsQ.data],
   );
 
+  const cogsNames = useMemo(() => new Set((pnlQ.data?.cogsLines ?? []).map((l: { name: string }) => l.name)), [pnlQ.data]);
+
   const accounts = useMemo(() => {
     const expense = pnlQ.data?.expenseLines ?? [];
     const cogs = pnlQ.data?.cogsLines ?? [];
@@ -265,8 +267,16 @@ export function CostClassificationPanel({
             </p>
           )}
 
+          {([
+            ["Operating expenses", sortedAccounts.filter((a) => !cogsNames.has(a.name))],
+            ["Cost of sales", sortedAccounts.filter((a) => cogsNames.has(a.name))],
+          ] as const).filter(([, list]) => list.length > 0).map(([heading, list]) => (
+          <section key={heading} id={heading === "Cost of sales" ? "cost-of-sales" : undefined} className="mb-4">
+          <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {heading}{heading === "Cost of sales" && !wagesOnly ? " — Variable by default; confirm or change" : ""}
+          </h4>
           <ul className="divide-y divide-border">
-            {sortedAccounts.map((a) => {
+            {list.map((a) => {
               const c = current(a.name);
               const isWages = currentIsWages(a.name);
               return (
@@ -362,6 +372,8 @@ export function CostClassificationPanel({
               );
             })}
           </ul>
+          </section>
+          ))}
 
           {orphans.length > 0 && (
             <div className="mt-4 rounded-md border border-border bg-muted/30 p-3">

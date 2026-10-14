@@ -281,6 +281,13 @@
       "when": 1791951939286,
       "tag": "0039_figure_history_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791952884208,
+      "tag": "0040_cost_classification_count_seeded_types",
+      "breakpoints": true
     }
   ]
 }
