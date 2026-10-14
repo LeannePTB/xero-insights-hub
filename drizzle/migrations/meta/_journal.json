@@ -274,6 +274,13 @@
       "when": 1791949536964,
       "tag": "0038_card_catalogue_and_modules",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1791951939286,
+      "tag": "0039_figure_history_backfill",
+      "breakpoints": true
     }
   ]
 }

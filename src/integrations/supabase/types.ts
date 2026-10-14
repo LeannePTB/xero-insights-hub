@@ -540,6 +540,64 @@ export type Database = {
           },
         ]
       }
+      client_figure_history: {
+        Row: {
+          cash: number | null
+          client_id: string
+          fetched_at: string
+          firm_id: string
+          id: string
+          month_end: string
+          net_profit: number | null
+          source: string
+          tenant_id: string
+        }
+        Insert: {
+          cash?: number | null
+          client_id: string
+          fetched_at?: string
+          firm_id: string
+          id?: string
+          month_end: string
+          net_profit?: number | null
+          source?: string
+          tenant_id: string
+        }
+        Update: {
+          cash?: number | null
+          client_id?: string
+          fetched_at?: string
+          firm_id?: string
+          id?: string
+          month_end?: string
+          net_profit?: number | null
+          source?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_figure_history_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_figure_history_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "client_figure_history_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_income_tax_instalments: {
         Row: {
           amount: number
@@ -1374,6 +1432,122 @@ export type Database = {
           used_at?: string | null
         }
         Relationships: []
+      }
+      figure_backfill_items: {
+        Row: {
+          attempts: number
+          client_id: string
+          firm_id: string
+          id: string
+          months_cash: number
+          months_profit: number
+          next_attempt_at: string
+          reason: string | null
+          run_id: string
+          status: string
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          client_id: string
+          firm_id: string
+          id?: string
+          months_cash?: number
+          months_profit?: number
+          next_attempt_at?: string
+          reason?: string | null
+          run_id: string
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          client_id?: string
+          firm_id?: string
+          id?: string
+          months_cash?: number
+          months_profit?: number
+          next_attempt_at?: string
+          reason?: string | null
+          run_id?: string
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "figure_backfill_items_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "figure_backfill_items_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "figure_backfill_items_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "figure_backfill_items_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "figure_backfill_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      figure_backfill_runs: {
+        Row: {
+          finished_at: string | null
+          firm_id: string | null
+          id: string
+          requested_at: string
+          requested_by: string
+          status: string
+        }
+        Insert: {
+          finished_at?: string | null
+          firm_id?: string | null
+          id?: string
+          requested_at?: string
+          requested_by: string
+          status?: string
+        }
+        Update: {
+          finished_at?: string | null
+          firm_id?: string | null
+          id?: string
+          requested_at?: string
+          requested_by?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "figure_backfill_runs_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "figure_backfill_runs_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       firm_members: {
         Row: {
@@ -4033,6 +4207,23 @@ export type Database = {
         }[]
       }
       expire_trixie_reservations: { Args: never; Returns: number }
+      figure_backfill_status: {
+        Args: never
+        Returns: {
+          client: string
+          file: string
+          finished_at: string
+          months_cash: number
+          months_profit: number
+          organisation: string
+          reason: string
+          requested_at: string
+          run_id: string
+          run_status: string
+          status: string
+          updated_at: string
+        }[]
+      }
       finalise_trixie_usage: {
         Args: {
           _error_code?: string
@@ -4752,6 +4943,7 @@ export type Database = {
         }
         Returns: number
       }
+      start_figure_backfill: { Args: { _firm_id?: string }; Returns: string }
       test_accounts_posture: { Args: never; Returns: Json }
       touch_session_activity: { Args: never; Returns: undefined }
       transfer_organisation_ownership: {
