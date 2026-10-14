@@ -69,6 +69,7 @@ const PATH_C_METADATA = new Set([
   "firm_support_access", // support grant approvals
   "xero_api_errors", // Xero telemetry
   "xero_rate_limits", // Xero quota telemetry
+  "org_early_access", // plan/options metadata: which WIP cards an organisation may try
 ]);
 
 let db: PGlite;
