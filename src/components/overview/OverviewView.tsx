@@ -1,3 +1,5 @@
+import { OverviewCharts } from "./OverviewCharts";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -100,6 +102,7 @@ export function OverviewView({ firmId }: { firmId?: string }) {
         <ResyncHeader clientIds={resyncIds} lastSynced={lastSynced} queue={queue} />
       </div>
 
+      {q.data?.charts && <OverviewCharts data={q.data.charts} latest={q.data.latestReport} />}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {BUCKETS.map((b) => (
           <button
@@ -146,7 +149,8 @@ export function OverviewView({ firmId }: { firmId?: string }) {
                 <th className="p-3 text-right">Cash at bank</th>
                 <th className="p-3 text-right">Net cash</th>
                 <th className="p-3 text-right">7-day change</th>
-                <th className="p-3 text-right">Protected money</th>
+                <th className="p-3 text-right">Tax &amp; super owed</th>
+                <th className="p-3 text-right">Protected money %</th>
                 <th className="p-3 text-right">Net profit MTD</th>
                 <th className="p-3 text-right">Debtors overdue</th>
                 <th className="p-3">Last report sent</th>
@@ -201,7 +205,7 @@ function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide, que
     <>
       {name && (
         <tr className="border-y bg-muted/60">
-          <td colSpan={11} className="px-3 py-2.5">
+          <td colSpan={12} className="px-3 py-2.5">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold uppercase tracking-wide">{name}</span>
               <span className="text-xs text-muted-foreground">
@@ -264,6 +268,9 @@ function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide, que
               {staleMark}
               {r.cashChange7d === null ? "—" : `${r.cashChange7d >= 0 ? "+" : ""}${money(r.cashChange7d)}`}
             </span>
+          </td>
+          <td className="p-3 text-right tabular-nums" onClick={e => e.stopPropagation()}>
+            <Popover><PopoverTrigger asChild><Button variant="ghost" size="sm" aria-label={`Tax and super owed for ${r.clientName}`}>{r.protectedMoney == null || r.protectedMoney < 0 ? '—' : money(r.protectedMoney)}</Button></PopoverTrigger><PopoverContent className="max-w-sm whitespace-pre-line text-xs">{r.protectedTooltip ?? (r.protectedMoney != null && r.protectedMoney < 0 ? 'ATO refund due — nothing to protect' : 'Protected money details unavailable.')}</PopoverContent></Popover>
           </td>
           <td className={`p-3 text-right tabular-nums ${r.protectedLevel === "critical" && r.protectedPctOfCash !== null ? "font-semibold text-destructive" : r.protectedLevel && r.protectedPctOfCash !== null ? "font-medium text-info" : r.protectedPctOfCash !== null ? "font-medium text-success" : ""}`} title={staleTitle ? staleTitle : (r.protectedTooltip ?? undefined)}>
             <span className="inline-flex items-center justify-end gap-1">
