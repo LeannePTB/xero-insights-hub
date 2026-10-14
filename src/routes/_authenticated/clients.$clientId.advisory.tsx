@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { PageContainer } from "@/components/PageContainer";
 import { AdvisoryEnquiry } from "@/components/billing/AdvisoryEnquiry";
+import { ComingSoonRow } from "@/components/billing/ComingSoonRow";
 import { getClient } from "@/lib/clients.functions";
 import { getMyLockedModules } from "@/lib/card-model.functions";
 
@@ -33,6 +34,7 @@ function Page() {
           : !allowed || !firmId ? <p className="text-sm text-muted-foreground">Nothing to show here. <Link to="/clients/$clientId" params={{ clientId }} className="text-link underline">Back to the dashboard</Link></p>
           : <AdvisoryEnquiry firmId={firmId} inline initialModules={module && module !== "consolidation" && locked.includes(module) ? [module] : []}/>}
       </div>
+      <div className="mt-8 max-w-4xl"><ComingSoonRow clientId={clientId} alwaysOpen /></div>
     </PageContainer>
   );
 }

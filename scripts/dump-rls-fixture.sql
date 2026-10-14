@@ -52,7 +52,8 @@ fns as (
          'set_viewer_scope','grant_client_access','grant_firm_viewer_access','revoke_client_access','revoke_firm_viewer_access',
          'trixie_access_context','reserve_trixie_usage','assert_widget_access','client_for_tenant','effective_tier_for_tenant','client_visible_cards','me_is_super_admin',
          'get_public_website_settings','save_public_website_settings',
-         'client_early_access_cards','admin_org_early_access','admin_set_org_early_access'))
+         'client_early_access_cards','admin_org_early_access','admin_set_org_early_access',
+         'coming_soon_for_client','coming_soon_for_firm','public_coming_soon','admin_coming_soon_list','admin_save_coming_soon','admin_delete_coming_soon','register_coming_soon_interest'))
     )
 ),
 stmts as (

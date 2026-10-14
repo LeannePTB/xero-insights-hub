@@ -92,7 +92,8 @@ export function catalogueGuideText(catalogue: CardCatalogue): string {
 export function mapCatalogue(modules: any[] | null, cards: any[] | null): CardCatalogue {
   return {
     modules: (modules ?? []).map((m) => ({ key: m.module_key, label: m.label, description: m.description ?? "" })),
-    cards: (cards ?? []).map((c) => ({
+    // Retired cards are kept in the database for the record and never shown.
+    cards: (cards ?? []).filter((c) => c.status !== "retired").map((c) => ({
       key: c.card_key,
       package: c.package as CardPackage,
       module: (c.module_key as string | null) ?? null,

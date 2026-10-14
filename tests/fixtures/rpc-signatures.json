@@ -28,6 +28,19 @@
     },
     {
         "args": [
+        ],
+        "name": "admin_coming_soon_list",
+        "required": 0
+    },
+    {
+        "args": [
+            "_entry_key"
+        ],
+        "name": "admin_delete_coming_soon",
+        "required": 1
+    },
+    {
+        "args": [
             "_firm_id"
         ],
         "name": "admin_firm_members",
@@ -97,6 +110,21 @@
         ],
         "name": "admin_remove_practice_member",
         "required": 1
+    },
+    {
+        "args": [
+            "_entry_key",
+            "_name",
+            "_description",
+            "_timing",
+            "_sort_order",
+            "_is_shown",
+            "_show_on_website",
+            "_module_key",
+            "_card_key"
+        ],
+        "name": "admin_save_coming_soon",
+        "required": 9
     },
     {
         "args": [
@@ -462,6 +490,20 @@
             "_client_id"
         ],
         "name": "client_xero_files_used",
+        "required": 1
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "coming_soon_for_client",
+        "required": 1
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "coming_soon_for_firm",
         "required": 1
     },
     {
@@ -939,6 +981,12 @@
     {
         "args": [
         ],
+        "name": "public_coming_soon",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
         "name": "purge_expired_security_logs",
         "required": 0
     },
@@ -1005,6 +1053,15 @@
         ],
         "name": "record_view_as",
         "required": 1
+    },
+    {
+        "args": [
+            "_client_id",
+            "_entry_key",
+            "_submission_key"
+        ],
+        "name": "register_coming_soon_interest",
+        "required": 3
     },
     {
         "args": [

@@ -1218,6 +1218,63 @@ export type Database = {
           },
         ]
       }
+      coming_soon_entries: {
+        Row: {
+          card_key: string | null
+          description: string
+          entry_key: string
+          is_shown: boolean
+          module_key: string | null
+          name: string
+          show_on_website: boolean
+          sort_order: number
+          timing: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          card_key?: string | null
+          description?: string
+          entry_key: string
+          is_shown?: boolean
+          module_key?: string | null
+          name: string
+          show_on_website?: boolean
+          sort_order?: number
+          timing?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          card_key?: string | null
+          description?: string
+          entry_key?: string
+          is_shown?: boolean
+          module_key?: string | null
+          name?: string
+          show_on_website?: boolean
+          sort_order?: number
+          timing?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coming_soon_entries_card_key_fkey"
+            columns: ["card_key"]
+            isOneToOne: false
+            referencedRelation: "card_catalogue"
+            referencedColumns: ["card_key"]
+          },
+          {
+            foreignKeyName: "coming_soon_entries_module_key_fkey"
+            columns: ["module_key"]
+            isOneToOne: false
+            referencedRelation: "card_modules"
+            referencedColumns: ["module_key"]
+          },
+        ]
+      }
       consolidation_group_members: {
         Row: {
           client_id: string
@@ -3302,8 +3359,10 @@ export type Database = {
           client_ids: string[]
           created_at: string
           email: string
+          entry_key: string | null
           firm_id: string
           id: string
+          kind: string
           message: string
           module_keys: string[]
           name: string
@@ -3319,8 +3378,10 @@ export type Database = {
           client_ids?: string[]
           created_at?: string
           email: string
+          entry_key?: string | null
           firm_id: string
           id?: string
+          kind?: string
           message: string
           module_keys?: string[]
           name: string
@@ -3336,8 +3397,10 @@ export type Database = {
           client_ids?: string[]
           created_at?: string
           email?: string
+          entry_key?: string | null
           firm_id?: string
           id?: string
+          kind?: string
           message?: string
           module_keys?: string[]
           name?: string
@@ -4052,6 +4115,26 @@ export type Database = {
         Args: { _user_id: string }
         Returns: undefined
       }
+      admin_coming_soon_list: {
+        Args: never
+        Returns: {
+          card_key: string
+          description: string
+          entry_key: string
+          is_shown: boolean
+          module_key: string
+          name: string
+          now_available: boolean
+          show_on_website: boolean
+          sort_order: number
+          timing: string
+          updated_at: string
+        }[]
+      }
+      admin_delete_coming_soon: {
+        Args: { _entry_key: string }
+        Returns: undefined
+      }
       admin_firm_members: {
         Args: { _firm_id: string }
         Returns: {
@@ -4130,6 +4213,20 @@ export type Database = {
       admin_remove_advisor: { Args: { _user_id: string }; Returns: undefined }
       admin_remove_practice_member: {
         Args: { _user_id: string }
+        Returns: undefined
+      }
+      admin_save_coming_soon: {
+        Args: {
+          _card_key: string
+          _description: string
+          _entry_key: string
+          _is_shown: boolean
+          _module_key: string
+          _name: string
+          _show_on_website: boolean
+          _sort_order: number
+          _timing: string
+        }
         Returns: undefined
       }
       admin_set_card_entry: {
@@ -4258,8 +4355,10 @@ export type Database = {
           client_ids: string[]
           created_at: string
           email: string
+          entry_key: string | null
           firm_id: string
           id: string
+          kind: string
           message: string
           module_keys: string[]
           name: string
@@ -4432,6 +4531,26 @@ export type Database = {
       }
       client_visible_cards: { Args: { _client_id: string }; Returns: string[] }
       client_xero_files_used: { Args: { _client_id: string }; Returns: number }
+      coming_soon_for_client: {
+        Args: { _client_id: string }
+        Returns: {
+          description: string
+          early_access: boolean
+          entry_key: string
+          name: string
+          timing: string
+        }[]
+      }
+      coming_soon_for_firm: {
+        Args: { _firm_id: string }
+        Returns: {
+          description: string
+          early_access: boolean
+          entry_key: string
+          name: string
+          timing: string
+        }[]
+      }
       copy_client_cards: {
         Args: { _from_client_id: string; _to_client_ids: string[] }
         Returns: number
@@ -4827,6 +4946,14 @@ export type Database = {
         Args: { _abandoned_hours?: number; _retention_days?: number }
         Returns: number
       }
+      public_coming_soon: {
+        Args: never
+        Returns: {
+          description: string
+          name: string
+          timing: string
+        }[]
+      }
       purge_expired_security_logs: { Args: never; Returns: Json }
       purge_trixie_usage: { Args: never; Returns: number }
       read_audit_posture: { Args: never; Returns: Json }
@@ -4861,6 +4988,14 @@ export type Database = {
       record_view_as: {
         Args: { _client_id?: string; _firm_id: string; _mode?: string }
         Returns: undefined
+      }
+      register_coming_soon_interest: {
+        Args: {
+          _client_id: string
+          _entry_key: string
+          _submission_key: string
+        }
+        Returns: Json
       }
       remove_client: {
         Args: { _client_id: string }

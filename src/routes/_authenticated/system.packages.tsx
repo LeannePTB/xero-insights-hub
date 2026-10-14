@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { ComingSoonAdmin } from "@/components/admin/ComingSoonAdmin";
 import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
 import { PageContainer } from "@/components/PageContainer";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,7 @@ function PackagesPage() {
               Work in progress: not offered anywhere — hidden from dashboards, menus, reports, Trixie, upgrade offers and the website, and not tickable. Existing client ticks are kept and come back when it is switched to Available. System Administrators see it, labelled, on clients they can already open.
             </p>
           </section>
+          <ComingSoonAdmin catalogue={catalogue} />
         </>
       )}
     </PageContainer>
