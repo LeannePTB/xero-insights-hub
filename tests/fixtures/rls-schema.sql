@@ -2059,6 +2059,74 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.set_client_card_enabled(_client_id uuid, _card text, _enabled boolean)
+ RETURNS text[]
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _base text[]; _firm uuid;
+begin
+  perform app_private.assert_aal2();
+  select c.firm_id into _firm from public.clients c where c.id = _client_id;
+  if not found then raise exception 'NO_ACCESS' using errcode = 'insufficient_privilege'; end if;
+  perform app_private.assert_card_manager(_firm);
+
+  if _card is null or _card = '' then
+    raise exception 'INVALID_CARD' using errcode = 'check_violation';
+  end if;
+  if coalesce(_enabled,false)
+     and not (_card = any(app_private.client_available_cards(_client_id))) then
+    raise exception 'CARD_NOT_AVAILABLE' using errcode = 'check_violation';
+  end if;
+
+  select cc.cards into _base from public.client_cards cc where cc.client_id = _client_id;
+  if _base is null then _base := app_private.client_available_cards(_client_id); end if;
+  if coalesce(_enabled,false) then _base := _base || array[_card];
+  else _base := array_remove(_base, _card); end if;
+  perform app_private.set_client_cards(_client_id, _base);
+
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (auth.uid(), _firm, 'client_card_toggled', 'client', _client_id::text,
+          jsonb_build_object('card', _card, 'enabled', coalesce(_enabled,false)));
+  return app_private.client_cards_v2(_client_id);
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.copy_client_cards(_from_client_id uuid, _to_client_ids uuid[])
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _firm uuid; _cards text[]; _target uuid; _target_firm uuid; _n int := 0;
+begin
+  perform app_private.assert_aal2();
+  select c.firm_id into _firm from public.clients c where c.id = _from_client_id;
+  if _firm is null then
+    raise exception 'SOURCE_HAS_NO_ORGANISATION' using errcode = 'check_violation';
+  end if;
+  perform app_private.assert_card_manager(_firm);
+
+  select cc.cards into _cards from public.client_cards cc where cc.client_id = _from_client_id;
+  if _cards is null then _cards := app_private.client_available_cards(_from_client_id); end if;
+
+  foreach _target in array coalesce(_to_client_ids, '{}'::uuid[]) loop
+    if _target = _from_client_id then continue; end if;
+    select c.firm_id into _target_firm from public.clients c where c.id = _target;
+    if _target_firm is distinct from _firm then
+      raise exception 'DIFFERENT_ORGANISATION' using errcode = 'insufficient_privilege';
+    end if;
+    perform app_private.set_client_cards(_target, _cards);
+    insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+    values (auth.uid(), _firm, 'client_cards_copied', 'client', _target::text,
+            jsonb_build_object('from_client_id', _from_client_id, 'cards', to_jsonb(_cards)));
+    _n := _n + 1;
+  end loop;
+  return _n;
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.record_view_as(_firm_id uuid, _client_id uuid DEFAULT NULL::uuid, _mode text DEFAULT 'owner'::text)
  RETURNS void
  LANGUAGE plpgsql
@@ -3110,6 +3178,114 @@ begin
   if app_private.me_is_super_admin() then return; end if;
   if _firm_id is not null and app_private.is_org_owner(auth.uid(), _firm_id) then return; end if;
   raise exception 'NO_ACCESS' using errcode = 'insufficient_privilege';
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.me_can_manage_cards(_firm_id uuid)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  if auth.uid() is null then return false; end if;
+  return app_private.me_is_super_admin()
+      or (_firm_id is not null and app_private.is_org_owner(auth.uid(), _firm_id));
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.admin_set_card_entry(_card_key text, _package text, _module_key text, _description text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _old record; _desc text := btrim(coalesce(_description, ''));
+begin
+  perform public.assert_super_admin();
+  select * into _old from public.card_catalogue where card_key = _card_key;
+  if not found then raise exception 'NO_SUCH_CARD' using errcode = 'no_data_found'; end if;
+  if _package not in ('standard','advisory','consolidation') then
+    raise exception 'INVALID_PACKAGE' using errcode = 'check_violation';
+  end if;
+  if _package = 'advisory' then
+    if _module_key is null or not exists (select 1 from public.card_modules m where m.module_key = _module_key) then
+      raise exception 'MODULE_REQUIRED' using errcode = 'check_violation';
+    end if;
+  else
+    _module_key := null;
+  end if;
+  if char_length(_desc) > 300 then raise exception 'DESCRIPTION_TOO_LONG' using errcode = 'check_violation'; end if;
+
+  update public.card_catalogue
+     set package = _package, module_key = _module_key, description = _desc,
+         updated_at = now(), updated_by = auth.uid()
+   where card_key = _card_key;
+
+  insert into public.audit_log (actor_user_id, action, target_type, target_id, meta)
+  values (auth.uid(), 'card_catalogue_changed', 'card', _card_key,
+          jsonb_build_object('from_package', _old.package, 'to_package', _package,
+                             'from_module', _old.module_key, 'to_module', _module_key,
+                             'description_changed', _old.description is distinct from _desc));
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.admin_set_card_module(_module_key text, _label text, _description text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _l text := btrim(coalesce(_label, '')); _d text := btrim(coalesce(_description, ''));
+begin
+  perform public.assert_super_admin();
+  if char_length(_l) not between 1 and 60 or char_length(_d) > 300 then
+    raise exception 'INVALID_MODULE_TEXT' using errcode = 'check_violation';
+  end if;
+  update public.card_modules set label = _l, description = _d, updated_at = now(), updated_by = auth.uid()
+   where module_key = _module_key;
+  if not found then raise exception 'NO_SUCH_MODULE' using errcode = 'no_data_found'; end if;
+  insert into public.audit_log (actor_user_id, action, target_type, target_id, meta)
+  values (auth.uid(), 'card_module_changed', 'card_module', _module_key, jsonb_build_object('label', _l));
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.set_client_module(_client_id uuid, _module_key text, _enabled boolean)
+ RETURNS text[]
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _firm uuid; _cards text[]; _avail text[]; _base text[];
+begin
+  perform app_private.assert_aal2();
+  select c.firm_id into _firm from public.clients c where c.id = _client_id;
+  if not found then raise exception 'NO_ACCESS' using errcode = 'insufficient_privilege'; end if;
+  perform app_private.assert_card_manager(_firm);
+
+  select coalesce(array(select cc.card_key from public.card_catalogue cc where cc.module_key = _module_key), '{}'::text[]) into _cards;
+  if cardinality(_cards) = 0 then raise exception 'NO_SUCH_MODULE' using errcode = 'check_violation'; end if;
+
+  _avail := app_private.client_available_cards(_client_id);
+  if coalesce(_enabled, false) and not (_cards && _avail) then
+    raise exception 'CARD_NOT_AVAILABLE' using errcode = 'check_violation';
+  end if;
+
+  select x.cards into _base from public.client_cards x where x.client_id = _client_id;
+  if _base is null then _base := _avail; end if;
+
+  if coalesce(_enabled, false) then
+    _base := _base || array(select u from unnest(_cards) u where u = any(_avail));
+  else
+    _base := array(select u from unnest(_base) u where not (u = any(_cards)));
+  end if;
+  perform app_private.set_client_cards(_client_id, _base);
+
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (auth.uid(), _firm, 'client_module_toggled', 'client', _client_id::text,
+          jsonb_build_object('module', _module_key, 'enabled', coalesce(_enabled, false)));
+  return app_private.client_cards_v2(_client_id);
 end;
 $function$
 ;
