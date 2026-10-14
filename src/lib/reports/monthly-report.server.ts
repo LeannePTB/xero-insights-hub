@@ -845,7 +845,7 @@ export async function computeMonthlyReport(opts: {
 
   // De-duplicate failures per section (the P&L feeds two sections).
   const seen = new Set<string>();
-  const failedSections = failed.filter((f) => inc(f.section) || f.section === "key_figures" && inc("key_figures")).filter((f) => {
+  const failedSections = failed.filter((f) => inc(f.section)).filter((f) => {
     const k = `${f.section}`;
     if (seen.has(k)) return false;
     seen.add(k);
