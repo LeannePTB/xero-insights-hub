@@ -159,13 +159,6 @@ async function fetchReport(
     return { payload, truncated: payload.status === "available" && payload.truncated };
   }
 
-  if (report.api === "finance") {
-    const { xeroGetFinance } = await import("./api.server");
-    budget.spend();
-    const payload = await withSlot(() => xeroGetFinance<unknown>(conn, report.path, report.params));
-    return { payload, truncated: false };
-  }
-
   if (!report.paginated) {
     budget.spend();
     const payload = await withSlot(() => xeroGet<unknown>(conn, report.path, report.params));
@@ -292,10 +285,6 @@ export async function refreshTenant(
         report.api === "payroll" &&
         (payrollSetting !== "registered" || !grantedScopes.includes("payroll.payruns.read"))
       ) continue;
-      // Finance (user activity) is skipped the same way until the file is
-      // re-authorised with finance.accountingactivity.read.
-      if (report.api === "finance" && !grantedScopes.includes("finance.accountingactivity.read"))
-        continue;
       try {
         const { payload, truncated } = await fetchReport(conn, report, budget);
         await writeSnapshot({

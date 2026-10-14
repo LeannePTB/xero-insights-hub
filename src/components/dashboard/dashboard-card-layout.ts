@@ -2,6 +2,7 @@ import type { CardCatalogue } from '@/lib/cards/catalogue';
 
 // Presentation only: callers pass the cards already granted by the database.
 export const MODULE_ORDER = ['cash_flow', 'profit', 'tax_compliance', 'bookkeeping_checks'];
+export const GROUP_ORDER = ['standard', ...MODULE_ORDER, 'consolidation'];
 export const STANDARD_ORDER = ['health', 'pnl', 'receivables', 'payables', 'notes'];
 const WIDE_CARDS = new Set(['health', 'pnl', 'cashflow', 'cashflow_scenario', 'accounting_breakeven', 'transaction_search', 'gst_reconciliation', 'notes', 'loan_consolidation']);
 
@@ -35,6 +36,22 @@ export function orderedCardIds(ids: readonly string[], saved: readonly string[])
   const known = new Set(ids);
   const custom = [...new Set(saved)].filter(id => known.has(id));
   return [...custom, ...ids.filter(id => !custom.includes(id))];
+}
+
+/** Saved preferences reorder within modules, never between them. */
+export function groupedCardIds(cards: readonly { id: string; group?: string }[], saved: readonly string[]) {
+  const groups = new Map(cards.map(c => [c.id, c.group ?? 'cards']));
+  const rank = (id: string) => {
+    const index = GROUP_ORDER.indexOf(groups.get(id) ?? 'cards');
+    return index < 0 ? GROUP_ORDER.length : index;
+  };
+  return orderedCardIds(cards.map(c => c.id), saved).sort((a, b) => rank(a) - rank(b));
+}
+
+export function canReorderCards(cards: readonly { id: string; group?: string }[], active: string, over: string) {
+  const source = cards.find(c => c.id === active);
+  const target = cards.find(c => c.id === over);
+  return !!source && !!target && source.group === target.group;
 }
 
 // Split runs into balanced twos/threes without moving cards past a wide card.

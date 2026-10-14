@@ -1,4 +1,7 @@
 # Roadmap
+- [x] Owner 14 Oct 16:24: module-first ordering and within-module dragging; 720 saved-order permutations and rendered test pass; synthetic desktop/mobile checked. Real Positive Traction readback blocked by session-ended sign-in.
+- [x] Owner 14 Oct 16:26: Xero activity reader/component/catalogue removed; 12 client ticks removed, zero default ticks; audit and unchanged-other-tick/order assertions verified. session_activity and File audit untouched.
+- [x] Business health Coming soon review: only disabled-button tooltip; all four current pillars expand. Text listed in security backlog; presentation unchanged.
 - [x] Owner 14 Oct 14:16: reported Demo Practice Advisory flag explicitly enabled at 04:08 UTC after Standard-only creation; no trial, purchase unchanged.
 - [x] Catalogue module dashboard grouping, balanced widths, shared headers, compact empty states and preserved user order.
 - [x] Entitlement/security regressions (270 tests, 2,289 proofs, 18 live checks) and synthetic Standard/Advisory desktop/mobile checks.

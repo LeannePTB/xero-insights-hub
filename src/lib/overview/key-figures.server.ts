@@ -9,7 +9,7 @@ import { debtorBook } from "@/lib/health/rules.server";
 import { analyseBalanceSheet, buildProtectedMoney, statutoryOverrideMap } from "@/lib/xero/tax-lines";
 import { parsePnl, totalsForPeriod } from "@/lib/reports/monthly-report.server";
 
-const KEYS = ["balance_sheet", "accounts", "invoices_accrec_open", "invoices_accpay_open", "profit_and_loss_mtd", "bank_unreconciled_recent", "payments_unreconciled_recent", "user_activities"];
+const KEYS = ["balance_sheet", "accounts", "invoices_accrec_open", "invoices_accpay_open", "profit_and_loss_mtd", "bank_unreconciled_recent", "payments_unreconciled_recent"];
 
 export async function writeKeyFigures(target: { clientId: string; firmId: string; tenantId: string }): Promise<void> {
   const db = supabaseAdmin as any;
@@ -82,26 +82,9 @@ export async function writeKeyFigures(target: { clientId: string; firmId: string
   });
   const bankReconciledTo = oldestReconciledTo(bankReconciliation);
 
-  // Last Xero login: the most recent sign-in by anyone in the file, from the
-  // Finance API User Activities snapshot. Null = the report has not run or the
-  // file has not granted the scope (unavailable, never invented).
-  const ua = latest.get("user_activities");
-  const users = ua?.complete ? (ua.payload?.Users ?? []) : null;
-  let lastXeroLoginAt: string | null = null;
-  if (users) {
-    for (const u of users as any[]) {
-      const raw = u?.LastLoginDateUtc;
-      if (typeof raw !== "string") continue;
-      const d = new Date(raw);
-      if (isNaN(d.getTime())) continue;
-      const iso = d.toISOString();
-      if (!lastXeroLoginAt || iso > lastXeroLoginAt) lastXeroLoginAt = iso;
-    }
-  }
-
-  if (Object.values(fig).every((v) => v === null) && bankReconciledTo === null && lastXeroLoginAt === null) return;
+  if (Object.values(fig).every((v) => v === null) && bankReconciledTo === null) return;
   const { error: wErr } = await db.from("client_key_figures").upsert(
-    { client_id: target.clientId, firm_id: target.firmId, tenant_id: target.tenantId, as_at: asAt, ...fig, bank_reconciled_to: bankReconciledTo, bank_reconciliation: bankReconciliation, last_xero_login_at: lastXeroLoginAt },
+    { client_id: target.clientId, firm_id: target.firmId, tenant_id: target.tenantId, as_at: asAt, ...fig, bank_reconciled_to: bankReconciledTo, bank_reconciliation: bankReconciliation },
     { onConflict: "client_id,tenant_id,as_at" },
   );
   if (wErr) throw new Error(wErr.message);

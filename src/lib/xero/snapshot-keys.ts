@@ -86,7 +86,6 @@ export const STALENESS_SECONDS: Record<string, number> = {
   bank_unreconciled_oldest: 30 * 3600,
   bank_unreconciled_recent: 30 * 3600,
   payments_unreconciled_recent: 30 * 3600,
-  user_activities: 30 * 3600,
   rent_bank_receipts: 30 * 3600,
   rent_invoices_paid: 30 * 3600,
 };
@@ -107,11 +106,11 @@ export type SnapshotReport = {
   /** True when the report is assembled from paginated `Invoices` pages. */
   paginated?: boolean;
   /**
-   * Which Xero API the report comes from. Payroll and Finance live on their
-   * own base URLs and are SKIPPED for any connection that has not granted the
+   * Which Xero API the report comes from. Payroll has its own base URL
+   * and is SKIPPED for any connection that has not granted the
    * scope — a missing grant is not a failed report.
    */
-  api?: "accounting" | "payroll" | "finance";
+  api?: "accounting" | "payroll";
   /** Collection key inside each page when paginated (default `Invoices`). */
   itemsKey?: string;
   /** Page cap when paginated (default INVOICE_PAGE_LIMIT). */
@@ -227,16 +226,6 @@ export function snapshotReports(today: string = sydneyDate()): SnapshotReport[] 
       paginated: true,
       itemsKey: "Payments",
       pageLimit: RECON_PAGE_LIMIT,
-    },
-    {
-      // Who last signed in to this Xero file, with login and document counts.
-      // One Finance API call; skipped for connections that have not granted
-      // finance.accountingactivity.read (they are flagged for reconnection).
-      reportKey: "user_activities",
-      path: "UserActivities",
-      params: {},
-      asAt: today,
-      api: "finance",
     },
     {
       // Rent received straight into the bank (spend-money's opposite).

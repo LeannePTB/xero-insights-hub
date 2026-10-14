@@ -1063,7 +1063,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     }
   }
   if (r.startsWith("assert_widget_access(")) {
-    // Owner decision 14 Oct 2026: Xero file activity, Advisory pages and Loans
+    // Owner decision 14 Oct 2026: Advisory pages and Loans
     // are refused by the server reader unless the single rule lists the card.
     const card = /assert_widget_access\(([a-z_]+)\)/.exec(r)![1]!;
     const advisoryOn = r.includes("Advisory on");
