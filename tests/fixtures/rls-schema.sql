@@ -3701,6 +3701,74 @@ AS $function$
   else '{}'::text[] end
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.client_early_access_cards(_client_id uuid)
+ RETURNS TABLE(card_key text, package text, module_key text, label text, description text, sort_order integer, report_sections text[], status text)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  return query
+    select c.card_key, c.package, c.module_key, c.label, c.description, c.sort_order, c.report_sections, c.status
+      from public.card_catalogue c
+     where c.card_key = any(app_private.client_early_access_for_caller(_client_id))
+     order by c.sort_order, c.card_key;
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.admin_org_early_access(_firm_id uuid)
+ RETURNS TABLE(card_key text, label text, module_label text, granted boolean, active boolean, ends_at timestamp with time zone, granted_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  perform public.assert_super_admin();
+  return query
+    select c.card_key, c.label, m.label,
+           (e.firm_id is not null and e.revoked_at is null),
+           (e.firm_id is not null and e.revoked_at is null and (e.ends_at is null or e.ends_at > now())),
+           case when e.revoked_at is null then e.ends_at end,
+           case when e.revoked_at is null then e.granted_at end
+      from public.card_catalogue c
+      left join public.card_modules m on m.module_key = c.module_key
+      left join public.org_early_access e on e.card_key = c.card_key and e.firm_id = _firm_id
+     where c.status = 'wip'
+     order by c.sort_order, c.card_key;
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.admin_set_org_early_access(_firm_id uuid, _card_key text, _enabled boolean, _ends_at timestamp with time zone)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  perform public.assert_super_admin();
+  if not exists (select 1 from public.firms where id = _firm_id) then raise exception 'NO_SUCH_ORGANISATION' using errcode = 'no_data_found'; end if;
+  if not exists (select 1 from public.card_catalogue where card_key = _card_key and status = 'wip') then
+    raise exception 'NOT_WORK_IN_PROGRESS' using errcode = 'check_violation';
+  end if;
+  if coalesce(_enabled, false) then
+    if _ends_at is not null and _ends_at <= now() then raise exception 'END_DATE_IN_PAST' using errcode = 'check_violation'; end if;
+    insert into public.org_early_access (firm_id, card_key, granted_by, granted_at, ends_at)
+    values (_firm_id, _card_key, auth.uid(), now(), _ends_at)
+    on conflict (firm_id, card_key) do update
+      set granted_by = auth.uid(), granted_at = now(), ends_at = excluded.ends_at, revoked_at = null, revoked_by = null;
+  else
+    update public.org_early_access set revoked_at = now(), revoked_by = auth.uid()
+     where firm_id = _firm_id and card_key = _card_key and revoked_at is null;
+  end if;
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (auth.uid(), _firm_id, case when coalesce(_enabled,false) then 'org_early_access_granted' else 'org_early_access_revoked' end,
+          'card', _card_key, jsonb_build_object('ends_at', case when coalesce(_enabled,false) then _ends_at end));
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
  RETURNS trigger
  LANGUAGE plpgsql
