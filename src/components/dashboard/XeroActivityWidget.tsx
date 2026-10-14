@@ -46,12 +46,9 @@ export function XeroActivityWidget({
       ) : query.isError ? (
         <p className="mt-6 text-sm text-muted-foreground">Activity could not be loaded.</p>
       ) : !data?.available ? (
-        <p className="mt-6 text-sm text-muted-foreground">
-          Not available yet — reconnect this Xero file so it can share sign-in activity, then it appears after the
-          next overnight refresh.
-        </p>
+        <p className="mt-6 text-sm text-muted-foreground">No sign-in activity reported by Xero yet.</p>
       ) : data.users.length === 0 ? (
-        <p className="mt-6 text-sm text-muted-foreground">Xero reported no user activity for this file.</p>
+        <p className="mt-6 text-sm text-muted-foreground">No sign-in activity reported by Xero yet.</p>
       ) : (
         <ul className="mt-6 divide-y divide-border">
           {data.users.map((u, i) => (

@@ -7,9 +7,9 @@
 - Purchase stays whole-organisation: Standard always; Advisory and Consolidation are organisation switches (`set_org_purchase`, System Administrator only). No per-client billing.
 - The catalogue is data: `public.card_catalogue` (card, package, module, label, description) and `public.card_modules`. `app_private.card_group_cards` reads it; there is no other list. Edited in System Admin → Packages & modules (System Administrator, aal2, audited).
 - Standard: Business health, Aged receivables, Aged payables, Profit & loss, Notes.
-- Advisory modules: **Cash flow** (cashflow, cashflow_scenario); **Profit** (accounting_breakeven); **Tax & compliance** (tax_obligations, gst_reconciliation, superannuation, payg_withholding); **Bookkeeping checks** (xero_audit, transaction_search).
+- Advisory modules: **Cash flow** (cashflow, cashflow_scenario); **Profit** (accounting_breakeven); **Tax & compliance** (tax_obligations, gst_reconciliation, superannuation, payg_withholding); **Bookkeeping checks** (xero_audit, transaction_search, xero_activity — Xero file activity added 14 Oct 2026; clients with both earlier Bookkeeping cards ticked received it so the module stayed fully ticked).
 - Consolidation: loan_consolidation (needs Advisory and more than one client).
-- Not cards: the Rent report renders inside Tax obligations; Xero activity shows for every connected file. `true_breakeven` is a retired alias of Break-even.
+- Not a card: the Rent report renders inside Tax obligations. `true_breakeven` is a retired alias of Break-even.
 - Per client, the Organisation Owner (or a System Administrator) ticks modules in Client settings → Package; a module is a grouping over the client's one `client_cards` list, resolved only by `client_cards_v2` / `assert_widget_access`. An advanced per-card override remains. Staff, Viewers, Business Owners and support grants are read-only.
 - Organisation settings → Default modules sets the template for new clients (Standard always included) and keeps Apply to all clients; Owner and System Administrator only.
 - Existing clients kept exactly their cards on migration; a module shows ticked when all its cards are on, partial when some are.

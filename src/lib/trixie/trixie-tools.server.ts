@@ -258,6 +258,9 @@ async function readHealth(ctx: TrixieContext) {
   if (blocked) return { available: false, reason: blocked, sources: [] as Source[] };
   // The health verdict is a staff-only signal (see health/verdicts.functions.ts).
   if (ctx.audience !== "staff") return { available: false, reason: UNAVAILABLE, sources: [] as Source[] };
+  // Same single rule as the Business health card.
+  const { data: visible } = await (ctx.supabase as any).rpc("client_visible_cards", { _client_id: ctx.clientId });
+  if (!((visible ?? []) as string[]).includes("health")) return { available: false, reason: UNAVAILABLE, sources: [] as Source[] };
   const { computeClientVerdicts } = await import("@/lib/health/verdicts.server");
   const { verdicts } = await computeClientVerdicts(ctx.supabase, [ctx.clientId!]);
   const v: any = verdicts[ctx.clientId!];

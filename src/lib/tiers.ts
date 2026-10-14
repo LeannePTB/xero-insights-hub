@@ -15,7 +15,8 @@ export type WidgetKey =
   | "gst_reconciliation"
   | "tax_obligations"
   | "payg_withholding"
-  | "transaction_search";
+  | "transaction_search"
+  | "xero_activity";
 
 
 export const ALL_WIDGETS: WidgetKey[] = [
@@ -35,6 +36,7 @@ export const ALL_WIDGETS: WidgetKey[] = [
   "tax_obligations",
   "payg_withholding",
   "transaction_search",
+  "xero_activity",
 ];
 
 
@@ -69,6 +71,7 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
   tax_obligations: "Tax obligations",
   payg_withholding: "PAYG Withholding by Month",
   transaction_search: "Transaction Search",
+  xero_activity: "Xero file activity",
 };
 
 /**
@@ -110,6 +113,7 @@ export const DEFAULT_CARD_ORDER: WidgetKey[] = [
   // Advisory section
   "xero_audit",
   "transaction_search",
+  "xero_activity",
   "gst_reconciliation",
   "tax_obligations",
   "payg_withholding",

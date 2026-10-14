@@ -27,9 +27,9 @@ export const getXeroUserActivity = createServerFn({ method: "POST" })
   .inputValidator((i: unknown) => Input.parse(i))
   .handler(async ({ data, context }): Promise<XeroUserActivityResponse> => {
     const { assertWidgetAccess } = await import("./access.server");
-    // The card lives in the statutory block next to Tax obligations and is
-    // gated on the same entitlement.
-    await assertWidgetAccess(context.supabase, data.tenantId, "tax_obligations");
+    // Its own Advisory card (Bookkeeping checks module): the single rule must
+    // list xero_activity for this client, or nothing is read.
+    await assertWidgetAccess(context.supabase, data.tenantId, "xero_activity");
     const { readSnapshot } = await import("./snapshot-read.server");
     const hit = await readSnapshot({
       supabase: context.supabase,

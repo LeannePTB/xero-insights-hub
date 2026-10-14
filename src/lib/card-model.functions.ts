@@ -546,3 +546,22 @@ export const getOrgCardContext = createServerFn({ method: "POST" })
     const [catalogue, canManage] = await Promise.all([readCatalogue(db), canManageCards(db, data.firmId)]);
     return { catalogue, canManage };
   });
+
+const VisibleCardsInput = z.object({ clientId: z.string().uuid() }).strict();
+
+/**
+ * The client's visible cards for menu filtering — the one rule
+ * (public.client_visible_cards: aal2, caller must read the client,
+ * purchase ∩ ticked). Fails closed to an empty list. Presentation only: every
+ * page's own server reader re-checks the same rule.
+ */
+export const getMyClientVisibleCards = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) => VisibleCardsInput.parse(i))
+  .handler(async ({ data, context }): Promise<{ cards: string[] }> => {
+    const { data: cards, error } = await (context.supabase as any).rpc("client_visible_cards", {
+      _client_id: data.clientId,
+    });
+    if (error || !Array.isArray(cards)) return { cards: [] };
+    return { cards: (cards as unknown[]).filter((c): c is string => typeof c === "string") };
+  });

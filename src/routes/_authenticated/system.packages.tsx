@@ -65,7 +65,7 @@ function PackagesPage() {
               </table>
             </div>
             <p className="text-xs text-muted-foreground">
-              Not separate cards: the Rent report shows inside Tax obligations (Tax &amp; compliance), and Xero activity shows for every connected file (always included).
+              Not a separate card: the Rent report shows inside Tax obligations (Tax &amp; compliance). Xero file activity is its own card in Bookkeeping checks.
             </p>
           </section>
         </>

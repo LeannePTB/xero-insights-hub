@@ -102,17 +102,77 @@ describe("card catalogue", () => {
     ).toEqual([]);
   });
 
-  it("warns when a built card is not offered anywhere in the catalogue", () => {
-    const unofferable = [...drawable].filter((c) => !offered.includes(c)).sort();
-    if (unofferable.length) {
-      console.warn(
-        `WARNING — built cards nobody can tick, because no purchasable group offers them: ${unofferable.join(
-          ", ",
-        )}. Add each to app_private.card_group_cards, or delete the component.`,
-      );
+  it("fails when the dashboard draws a card the catalogue does not offer", () => {
+    // Owner decision 14 Oct 2026: a dashboard section may only render a card
+    // that is in the catalogue, so the single entitlement rule decides it.
+    // Retired aliases render inside their merged card and are exempt.
+    const retired = new Set(Object.keys(DEPRECATED_WIDGET_ALIASES));
+    const uncatalogued = [...rendered].filter((c) => !offered.includes(c) && !retired.has(c)).sort();
+    expect(uncatalogued, `Dashboard cards missing from the catalogue: ${uncatalogued.join(", ")}`).toEqual([]);
+  });
+
+  it("renders every dashboard card component only inside a widgets.includes(<catalogued card>) guard", () => {
+    const src = readFileSync(join(ROOT, DASHBOARD), "utf8");
+    const components = [
+      ...src.matchAll(/import\s+\{\s*([A-Za-z]+(?:Widget|Card))\b[^}]*\}\s+from\s+"@\/components\/dashboard\//g),
+    ].map((m) => m[1]!);
+    expect(components.length).toBeGreaterThan(5);
+    const problems: string[] = [];
+    for (const name of components) {
+      for (const use of src.matchAll(new RegExp(`<${name}\\b`, "g"))) {
+        const at = use.index!;
+        const key = guardingCard(src, at);
+        if (!key) problems.push(`<${name}> at offset ${at} renders with no widgets.includes guard`);
+        else if (!offered.includes(key)) problems.push(`<${name}> is guarded by "${key}", which the catalogue does not offer`);
+      }
     }
-    // Deliberately a warning, not a failure: a finished but unreleased card is a
-    // decision, an unofferable card that nobody notices is the fault.
-    expect(Array.isArray(unofferable)).toBe(true);
+    expect(problems).toEqual([]);
   });
 });
+
+/**
+ * The card key of the innermost `if (... widgets.includes("key") ...)` whose
+ * body contains `at`, or null. Bracket-balanced scan; strings are ignored
+ * well enough for this source (no brackets inside the guard strings).
+ */
+function guardingCard(src: string, at: number): string | null {
+  const ifRe = /\bif\s*\(/g;
+  let best: { start: number; key: string } | null = null;
+  for (const m of src.matchAll(ifRe)) {
+    const start = m.index!;
+    if (start >= at) break;
+    // Condition: from the "(" to its matching ")".
+    let i = start + m[0].length - 1;
+    let depth = 0;
+    let condEnd = -1;
+    for (; i < src.length; i++) {
+      const ch = src[i];
+      if (ch === "(") depth++;
+      else if (ch === ")") { depth--; if (depth === 0) { condEnd = i; break; } }
+    }
+    if (condEnd < 0 || condEnd >= at) continue;
+    const cond = src.slice(start, condEnd + 1);
+    const key = /widgets\.includes\(\s*"([a-z_]+)"\s*\)/.exec(cond)?.[1];
+    if (!key) continue;
+    // Body: a { block } or a single statement ending at ";" at depth 0.
+    let j = condEnd + 1;
+    while (/\s/.test(src[j]!)) j++;
+    let end = -1;
+    depth = 0;
+    if (src[j] === "{") {
+      for (let k = j; k < src.length; k++) {
+        if (src[k] === "{") depth++;
+        else if (src[k] === "}") { depth--; if (depth === 0) { end = k; break; } }
+      }
+    } else {
+      for (let k = j; k < src.length; k++) {
+        const ch = src[k];
+        if (ch === "(" || ch === "{" || ch === "[") depth++;
+        else if (ch === ")" || ch === "}" || ch === "]") depth--;
+        else if (ch === ";" && depth === 0) { end = k; break; }
+      }
+    }
+    if (end > at && (!best || start > best.start)) best = { start, key };
+  }
+  return best?.key ?? null;
+}

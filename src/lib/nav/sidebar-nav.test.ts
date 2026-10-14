@@ -3,6 +3,8 @@ import {
   ORGANISATION_NAV,
   allOrganisationsNav,
   clientFileItems,
+  clientNav,
+  CLIENT_NAV,
   isBranchActive,
   isItemActive,
   navForWorkspace,
@@ -107,6 +109,59 @@ describe("client Xero file items", () => {
 describe("organisation settings", () => {
   it("has the five settings sections", () => {
     const settings = ORGANISATION_NAV[0].items.find((i) => i.id === "settings")!;
-    expect(settings.children?.map((c) => c.label)).toEqual(["General", "Card defaults", "Subscription", "Ownership", "Support access"]);
+    expect(settings.children?.map((c) => c.label)).toEqual(["General", "Default modules", "Subscription", "Ownership", "Support access"]);
+  });
+});
+
+describe("client menu follows the client's visible cards (client_visible_cards)", () => {
+  const files = [{ tenantId: "t1", name: "Demo Company (AU)" }];
+  const STANDARD = ["health", "notes", "payables", "pnl", "receivables"];
+  const flat = (groups: ReturnType<typeof clientNav>) => {
+    const out: { id: string; cardKey?: string }[] = [];
+    const walk = (items: { id: string; cardKey?: string; children?: any[] }[]) =>
+      items.forEach((i) => { out.push(i); if (i.children) walk(i.children); });
+    groups.forEach((g) => walk(g.items));
+    return out;
+  };
+
+  it("a Standard-only client shows no Advisory or Consolidation items", () => {
+    const items = flat(clientNav(files, STANDARD));
+    const ids = items.map((i) => i.id);
+    expect(ids).not.toContain("cashflow");
+    expect(ids).not.toContain("loans");
+    expect(ids).not.toContain("loan-matrix");
+    expect(ids).not.toContain("loan-accounts");
+    expect(ids).not.toContain("audit");
+    expect(ids).toEqual(expect.arrayContaining(["dashboard", "reports", "payables", "receivables"]));
+  });
+
+  it("Advisory and Consolidation items appear only when their card is visible", () => {
+    const ids = flat(clientNav(files, [...STANDARD, "cashflow_scenario", "xero_audit", "loan_consolidation"])).map((i) => i.id);
+    expect(ids).toEqual(expect.arrayContaining(["cashflow", "loans", "loan-matrix", "loan-accounts", "audit"]));
+  });
+
+  it("an unknown or failed card list hides every card item (fail closed)", () => {
+    const items = flat(clientNav(files, null));
+    expect(items.filter((i) => i.cardKey)).toEqual([]);
+    expect(items.map((i) => i.id)).not.toContain("xero-files");
+  });
+
+  it("the Xero files parent points at a card that is still visible", () => {
+    const [group] = clientNav(files, STANDARD);
+    const xero = group!.items.find((i) => i.id === "xero-files")!;
+    expect(xero.to).toBe("/clients/$clientId/payables/t1");
+  });
+
+  it("every client item that opens a card page names its catalogue card", () => {
+    const CARD_ROUTES: Record<string, string> = {
+      "/clients/$clientId/cashflow-scenario": "cashflow_scenario",
+      "/clients/$clientId/loans": "loan_consolidation",
+      "/clients/$clientId/loans-accounts": "loan_consolidation",
+    };
+    const items = flat([...CLIENT_NAV, { id: "x", label: "x", items: clientFileItems(files) }]) as any[];
+    for (const i of items) {
+      if (CARD_ROUTES[i.to]) expect(i.cardKey, i.id).toBe(CARD_ROUTES[i.to]);
+      if (/\/(audit|payables|receivables)\//.test(i.to) && i.id !== "xero-files") expect(i.cardKey, i.id).toBeTruthy();
+    }
   });
 });
