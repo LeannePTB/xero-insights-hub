@@ -488,8 +488,9 @@ async function tableOutcome(
 ): Promise<Result["detail"] | Outcome> {
   const spec = TARGET[table];
   if (!spec) return "unsupported";
-  const pk = pkOf(table);
-  const id = spec[pk]!;
+  const pk = table === "client_report_pending_videos" ? "client_id" : pkOf(table);
+  const id = spec[pk];
+  if (!id) return "unsupported";
 
   if (op === "read") {
     const r = await probe(`select 1 from public.${table} where ${pk} = ${id}`);

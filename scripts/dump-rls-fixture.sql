@@ -27,7 +27,7 @@ fns as (
     and (
       ns.nspname = 'app_private'
       or (ns.nspname = 'public' and p.proname in (
-        'get_pending_report_video','save_report_video','me_can_manage_client','upgrade_enquiry_context','client_locked_modules','submit_upgrade_enquiry','admin_upgrade_enquiries','set_upgrade_enquiry_status',
+        'user_can_write_client','get_pending_report_video','save_report_video','me_can_manage_client','upgrade_enquiry_context','client_locked_modules','submit_upgrade_enquiry','admin_upgrade_enquiries','set_upgrade_enquiry_status',
         'user_can_access_firm','user_can_access_client','firm_access_path',
         'client_entitlement','client_allowed_widgets','client_can_use_widget',
         'assert_client_write_access','assert_tenant_belongs_to_client','set_client_widget_enabled',

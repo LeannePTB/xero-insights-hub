@@ -1234,6 +1234,20 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.user_can_write_client(_user_id uuid, _client_id uuid)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  if auth.uid() is not null and _user_id is distinct from auth.uid() then return false; end if;
+  return _user_id is not null and _client_id is not null
+     and app_private.user_can_write_client(_user_id, _client_id);
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION app_private.client_for_tenant(_tenant_id text)
  RETURNS uuid
  LANGUAGE plpgsql
