@@ -1804,3 +1804,7 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - New service-role-only tables `xero_gate_slots`, `xero_gate_state` (RLS on, no policies, aal2 guard, grants revoked from anon/authenticated); definers `xero_gate_acquire/release/backoff` (service role only) and `xero_gate_status()` (aal2 + System Administrator, Path C metadata). No client data stored; no access change.
 - History fill: one request at a time per file, 1.5 s gap, files processed one after another, pauses when day allowance < 20% or recent minute allowance < 15, never while a snapshot run for the file is unfinished.
 - OPEN: cross-request sharing of identical in-flight reports is not possible on the server runtime (a request may not await another request's I/O); identical calls are shared only within one request. Token refreshes from simultaneous card loads still happen in parallel (identity endpoint, not the tenant limit) — follow-up: single-flight refresh via row lock.
+
+## 14 Oct 2026 — Advisory enquiry email alert (CLOSED)
+- New System Administrator-only (AAL2, audited) alert address on Platform branding; not in any anon reader. Alert queued after the enquiry saves; failures never block the save; status shown in Enquiries. Reply-To is the submitter's verified sign-in email. 3-per-hour limit unchanged.
+- Earlier 3 dead-lettered emails (15 Sep, password recovery) failed with `no_matching_sender` before the current sender domain was set up; the domain is now verified. Not re-sent.
