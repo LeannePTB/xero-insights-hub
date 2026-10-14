@@ -253,3 +253,5 @@ Separate from the card-model migration; no file or object shared with it.
 - [ ] Owner: publish, press "Fill 12 months of history", then remove the hourly fill job once finished
 - [ ] Measure Xero calls per full Advisory dashboard load (needs signed-in session)
 - [ ] Owner to confirm Demo Company Oct 2025–Jun 2026 cash at bank in Xero (backfill shows -$8,703.20 with zero profit those months)
+
+- [x] 14 Oct: Cash flow scenario menu item removed; rent report hidden as System-Administrator-only work in progress (UI not shown anywhere).

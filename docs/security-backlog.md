@@ -1813,3 +1813,5 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - ADDED 14 Oct 2026 — `public.client_locked_modules` (AAL2, me_can_manage_cards + user_can_read_client, module keys only) drives the locked Advisory menu item, dashboard tiles and the Upgrade to Advisory page. PGlite proofs: owner sees modules; Business Owner, Staff, Viewer, other organisation get none; fully-ticked Advisory client gets none. Signed-in visual check still MFA-blocked.
 
 - 14 Oct (dashboard review): our own Xero request gate's hold now reports "Waiting for Xero — loading shortly" and cards retry themselves; only a real Xero 429 shows the paused wording. History fill takes a gate slot only when no interactive call holds one. No access change. OPEN: measure Xero calls for one full Advisory dashboard load on a signed-in session (not measured — two-step sign-in blocks tooling); confirm Demo Company Oct 2025–Jun 2026 month-end cash against Xero's Balance Sheet.
+
+- 14 Oct: rent report server functions now require System Administrator (plus existing client checks); widget not rendered. Re-offering it needs owner approval and a catalogue entry.
