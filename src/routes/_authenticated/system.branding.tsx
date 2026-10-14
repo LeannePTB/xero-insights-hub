@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { savePlatformBranding } from "@/lib/platform-branding.functions";
 import { PLATFORM_BRANDING_KEY, usePlatformBranding, DEFAULT_BRANDING } from "@/hooks/usePlatformBranding";
 import { PageContainer } from "@/components/PageContainer";
+import { WebsiteSettingsEditor } from "@/components/website/WebsiteSettingsEditor";
 
 export const Route = createFileRoute("/_authenticated/system/branding")({
   head: () => ({
@@ -129,6 +130,7 @@ function BrandingPage() {
           </Button>
         </CardContent>
       </Card>
+      <WebsiteSettingsEditor />
     </PageContainer>
   );
 }

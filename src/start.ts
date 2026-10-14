@@ -136,6 +136,8 @@ const securityHeadersMiddleware = createMiddleware().server(async ({ next }) => 
       [
         "default-src 'self'",
         "img-src 'self' data: https:",
+        "media-src 'self' https://*.supabase.co",
+        "frame-src https://www.youtube-nocookie.com https://www.loom.com",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com data:",
         `script-src 'self' 'nonce-${cspNonce}'`,
