@@ -1920,6 +1920,58 @@ export type Database = {
           },
         ]
       }
+      org_early_access: {
+        Row: {
+          card_key: string
+          ends_at: string | null
+          firm_id: string
+          granted_at: string
+          granted_by: string
+          revoked_at: string | null
+          revoked_by: string | null
+        }
+        Insert: {
+          card_key: string
+          ends_at?: string | null
+          firm_id: string
+          granted_at?: string
+          granted_by: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+        }
+        Update: {
+          card_key?: string
+          ends_at?: string | null
+          firm_id?: string
+          granted_at?: string
+          granted_by?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_early_access_card_key_fkey"
+            columns: ["card_key"]
+            isOneToOne: false
+            referencedRelation: "card_catalogue"
+            referencedColumns: ["card_key"]
+          },
+          {
+            foreignKeyName: "org_early_access_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "org_early_access_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_subscription_options: {
         Row: {
           advisory_enabled: boolean
@@ -4053,6 +4105,18 @@ export type Database = {
           tenant_ids: string[]
         }[]
       }
+      admin_org_early_access: {
+        Args: { _firm_id: string }
+        Returns: {
+          active: boolean
+          card_key: string
+          ends_at: string
+          granted: boolean
+          granted_at: string
+          label: string
+          module_label: string
+        }[]
+      }
       admin_practice_team: {
         Args: never
         Returns: {
@@ -4083,6 +4147,15 @@ export type Database = {
       }
       admin_set_card_status: {
         Args: { _card_key: string; _status: string }
+        Returns: undefined
+      }
+      admin_set_org_early_access: {
+        Args: {
+          _card_key: string
+          _enabled: boolean
+          _ends_at: string
+          _firm_id: string
+        }
         Returns: undefined
       }
       admin_set_self_firm_membership: {
@@ -4281,6 +4354,19 @@ export type Database = {
       client_can_use_widget: {
         Args: { _client_id: string; _widget: string }
         Returns: boolean
+      }
+      client_early_access_cards: {
+        Args: { _client_id: string }
+        Returns: {
+          card_key: string
+          description: string
+          label: string
+          module_key: string
+          package: string
+          report_sections: string[]
+          sort_order: number
+          status: string
+        }[]
       }
       client_entitlement: {
         Args: { _client_id: string }
