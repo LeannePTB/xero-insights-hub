@@ -29,3 +29,4 @@
 - Auth/public logos share display-only rendering and official fallback; auth logic stays route-owned.
 
 - Charts share pure vector geometry between accessible SVG and jsPDF; history is caller-scoped and frozen only into new report drafts, so charts never widen access or refresh final/sent documents.
+- Card catalogue (packages, Advisory modules, descriptions) lives in `card_catalogue`/`card_modules`, read by `card_group_cards`; modules group `client_cards` and every card write passes `assert_card_manager`, so there is one list and one rule.
