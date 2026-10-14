@@ -1,5 +1,5 @@
 import { useCanManageClient } from "@/hooks/useCanManageClient";
-import { getMyLoansAccess } from "@/lib/card-model.functions";
+import { getCardCatalogue, getMyLoansAccess } from "@/lib/card-model.functions";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -50,6 +50,9 @@ import { RefreshSnapshotsButton } from "@/components/dashboard/RefreshSnapshotsB
 import { OrganisationLapsedNotice } from "@/components/dashboard/OrganisationLapsedNotice";
 import { ClientTrialNotice } from "@/components/dashboard/ClientTrialNotice";
 import { PageContainer } from "@/components/PageContainer";
+import { NotesCard } from "@/components/dashboard/NotesCard";
+import { EMPTY_CATALOGUE } from "@/lib/cards/catalogue";
+import { dashboardCardMeta, dashboardPackageSummary } from "@/components/dashboard/dashboard-card-layout";
 import { AdvisoryEnquiry } from '@/components/billing/AdvisoryEnquiry';
 // import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 
@@ -79,6 +82,9 @@ function ClientDashboard() {
   const fetchClient = useServerFn(getClient);
   const fetchCtx = useServerFn(getMyContext);
   const fetchWidgets = useServerFn(getClientWidgets);
+  const catalogueFn = useServerFn(getCardCatalogue);
+  const catalogueQ = useQuery({ queryKey: ["card-catalogue"], queryFn: () => catalogueFn() });
+  const catalogue = catalogueQ.data?.catalogue ?? EMPTY_CATALOGUE;
   const fetchLoansAccess = useServerFn(getMyLoansAccess);
   // Loan card follows the owner-or-team Loans rule (public.me_can_open_client_loans).
   const loansAccessQ = useQuery({
@@ -169,7 +175,7 @@ function ClientDashboard() {
     queryKey: ["xero-sales-tax-basis", firstTenantId],
     enabled: !!firstTenantId,
     staleTime: 30 * 60 * 1000,
-    queryFn: () => salesTaxBasisFn({ data: { tenantId: firstTenantId! } }),
+    queryFn: () => salesTaxBasisFn({ data: { tenantId: firstTenantId ?? "" } }),
   });
   const gstBasis = gstBasisQ.data?.basis ?? null;
   function basisFor(widget: string): ReportBasis {
@@ -296,7 +302,7 @@ function ClientDashboard() {
             paygRegistered={client?.payg_withholding_cycle !== "not_registered"}
           />
         );
-        advanced.push({ id: `${o.id}:rent_report`, node: <RentReportWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
+        
       }
 
       // Xero file activity is an Advisory card (Bookkeeping checks module,
@@ -335,7 +341,7 @@ function ClientDashboard() {
       });
     }
 
-    // Notes is pinned to the top of the dashboard, outside the sortable grid.
+    if (widgets.includes("notes")) standard.push({ id: "notes", fullWidth: true, node: <NotesCard clientId={clientId} canEdit={isAdvisor} /> });
 
     // DETERMINISTIC DEFAULT ORDER. Cards are pushed above in whatever order the
     // code happens to read best; the order a person actually sees comes from
@@ -365,36 +371,20 @@ function ClientDashboard() {
   }, [client, clientId, orgs, widgets, reportBasis, gstBasis, isAdvisor, orgSearchQ.data?.allowed, capabilityKey]);
 
   const savedOrder = orderQ.data?.order ?? [];
-  const standardIds = new Set(standardCards.map((c) => c.id));
-  const advancedIds = new Set(advancedCards.map((c) => c.id));
-  const standardSavedRaw = savedOrder.filter((id) => standardIds.has(id));
-  const defaultTopStandardIds = ["health"].filter((id) => standardIds.has(id));
-  // Business Health defaults to the top of the
-  // Standard section when it has not been explicitly reordered.
-  const standardSaved = defaultTopStandardIds.some((id) => standardSavedRaw.includes(id))
-    ? standardSavedRaw
-    : [...defaultTopStandardIds, ...standardSavedRaw];
-  // Xero File Audit and Transaction Search default to the top of the Advisory
-  // section when they have not been explicitly reordered; existing saved order
-  // for other cards is preserved.
-  const savedAdvanced = savedOrder.filter((id) => advancedIds.has(id));
-  const xeroAuditIds = advancedCards.filter((c) => c.id.endsWith(":xero_audit")).map((c) => c.id);
-  const advancedDefaultTop = [
-    ...xeroAuditIds,
-    ...(advancedIds.has("transaction_search") ? ["transaction_search"] : []),
-  ];
-  const advancedSaved = advancedDefaultTop.some((id) => savedAdvanced.includes(id))
-    ? savedAdvanced
-    : [...advancedDefaultTop, ...savedAdvanced];
-
-  function handleOrderChangeSection(section: "standard" | "advanced", next: string[]) {
-    const other = section === "standard" ? savedOrder.filter((id) => !standardIds.has(id)) : savedOrder.filter((id) => !advancedIds.has(id));
-    // Keep standard before advanced in merged order
-    const merged = section === "standard"
-      ? [...next, ...savedOrder.filter((id) => advancedIds.has(id))]
-      : [...savedOrder.filter((id) => standardIds.has(id)), ...next];
-    handleOrderChange(merged);
+  const dashboardCards = [...standardCards, ...advancedCards];
+  for (const block of statutoryBlocks) {
+    if (block.taxObligations) dashboardCards.push({ id: `${block.orgId}:tax_obligations`, node: block.taxObligations });
+    if (block.gst) dashboardCards.push({ id: `${block.orgId}:gst_reconciliation`, node: block.gst });
+    if (block.payg) dashboardCards.push({ id: `${block.orgId}:payg_withholding`, node: block.payg });
+    if (block.superannuation) dashboardCards.push({ id: `${block.orgId}:superannuation`, node: block.superannuation });
   }
+  const groupedCards = dashboardCards.map(card => {
+    const meta = dashboardCardMeta(card.id, catalogue);
+    return { ...card, fullWidth: meta.fullWidth, group: meta.group, groupLabel: meta.label };
+  }).sort((a, b) => {
+    const left = dashboardCardMeta(a.id, catalogue); const right = dashboardCardMeta(b.id, catalogue);
+    return left.groupRank - right.groupRank || left.rank - right.rank || a.id.localeCompare(b.id);
+  });
 
   if (ctxQ.isLoading || clientQ.isLoading) {
     return (
@@ -421,7 +411,7 @@ function ClientDashboard() {
           <div className="min-w-0">
             <h1 className="truncate font-display text-lg font-semibold sm:text-lg">{client.name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {cardCount} card{cardCount === 1 ? "" : "s"} enabled · {orgs.length} Xero {orgs.length === 1 ? "org" : "orgs"}
+              {dashboardPackageSummary(catalogue, widgets, orgs.length)}
             </p>
           </div>
           {isAdvisor && (
@@ -465,50 +455,7 @@ function ClientDashboard() {
 
 
         <div className="mt-3 space-y-6">
-          {standardCards.length > 0 && (
-            <section>
-              <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                Standard dashboard
-              </h2>
-              <SortableCardGrid
-                cards={standardCards}
-                savedOrder={standardSaved}
-                onOrderChange={(next) => handleOrderChangeSection("standard", next)}
-              />
-            </section>
-          )}
-
-          {(advancedCards.length > 0 || statutoryBlocks.length > 0) && (
-            <section>
-              <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                Advisory
-              </h2>
-
-              {/* Fixed statutory block: GST beside PAYG withholding, then
-                  superannuation full width. Not draggable, always first. */}
-              {statutoryBlocks.map((b) => (
-                <div key={b.orgId} className="mb-6 space-y-6">
-                  {b.taxObligations && <div>{b.taxObligations}</div>}
-                  {(b.gst || b.payg || b.superannuation) && (
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                      {b.gst && <div>{b.gst}</div>}
-                      {b.payg && <div>{b.payg}</div>}
-                      {b.superannuation && <div>{b.superannuation}</div>}
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {advancedCards.length > 0 && (
-                <SortableCardGrid
-                  cards={advancedCards}
-                  savedOrder={advancedSaved}
-                  onOrderChange={(next) => handleOrderChangeSection("advanced", next)}
-                />
-              )}
-
-            </section>
-          )}
+          {catalogueQ.isLoading || widgetsQ.isLoading ? <p className="text-sm text-muted-foreground">Loading cards…</p> : catalogueQ.error ? <p className="text-sm text-destructive">Card catalogue could not be loaded.</p> : <SortableCardGrid cards={groupedCards} savedOrder={savedOrder} onOrderChange={handleOrderChange}/>}
 
           {orgs.length === 0 && <EmptyOrgs isAdvisor={isAdvisor} clientId={clientId} />}
         </div>
