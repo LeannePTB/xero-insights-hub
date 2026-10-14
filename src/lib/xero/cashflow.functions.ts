@@ -4,6 +4,7 @@ import { requireAal2 } from "@/lib/auth/require-aal2";
 import { analyseBalanceSheet } from './tax-lines';
 
 export type CashflowMonth = {
+  complete?: boolean;
   label: string; // e.g. "Apr 2026"
   fromDate: string;
   toDate: string;
@@ -29,6 +30,8 @@ export type CashflowProjectionBucket = {
 };
 
 export type Cashflow = {
+  actualsComplete?: boolean;
+  projectionComplete?: boolean;
   asOf: string;
   /** Where the figures came from. Cash flow is a live Xero read every load. */
   source: SnapshotSource;
@@ -197,6 +200,7 @@ export const getCashflow = createServerFn({ method: "POST" })
           label: m.label,
           fromDate: toISO(mFrom),
           toDate: toISO(mTo),
+          complete: true,
           moneyIn: received,
           moneyOut: spent,
           net,
@@ -206,6 +210,7 @@ export const getCashflow = createServerFn({ method: "POST" })
           label: m.label,
           fromDate: toISO(mFrom),
           toDate: toISO(mTo),
+          complete: false,
           moneyIn: 0,
           moneyOut: 0,
           net: 0,
@@ -213,6 +218,7 @@ export const getCashflow = createServerFn({ method: "POST" })
       }
     }
 
+    let projectionComplete = true;
     // 3) Forward projection — AR / AP by due bucket
     async function fetchOpen(type: "ACCREC" | "ACCPAY"): Promise<XeroInvoice[]> {
       const out: XeroInvoice[] = [];
@@ -225,6 +231,7 @@ export const getCashflow = createServerFn({ method: "POST" })
         const batch = res.Invoices ?? [];
         out.push(...batch);
         if (batch.length < 100) break;
+        if (page === 5) projectionComplete = false;
       }
       return out;
     }
@@ -266,7 +273,7 @@ export const getCashflow = createServerFn({ method: "POST" })
         else if (days <= 90) bucketAP[2] += amt;
       }
     } catch {
-      // ignore — projection will be zeros
+      projectionComplete = false;
     }
 
     const labels = ["Next 30 days", "31–60 days", "61–90 days"];
@@ -287,6 +294,8 @@ export const getCashflow = createServerFn({ method: "POST" })
     }
 
     const result: Cashflow = {
+      actualsComplete: months.every(m => m.complete !== false),
+      projectionComplete,
       source: liveSource("disabled"),
       asOf: toISO(today),
       totalCash,

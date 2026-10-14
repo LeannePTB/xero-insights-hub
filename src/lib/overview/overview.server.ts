@@ -36,7 +36,7 @@ export type OverviewContext = {
   clients: { client_id: string; client_name: string; firm_id: string; firm_name: string }[];
   rowsByClient: Map<string, Row[]>;
   datedByClient: Map<string, Row[]>;
-  connections: Map<string, { tenantId: string; status: string }[]>;
+  connections: Map<string, { tenantId: string; status: string; currency?: string | null }[]>;
   overrides: Map<string, any[]>;
   cycles: Map<string, { gst: string | null; payg: string | null }>;
   lastSent: Map<string, string>;
@@ -116,7 +116,7 @@ export async function loadOverviewContext(sb: Sb, firmId: string | null = null):
       sb.from("xero_snapshots").select(cols).eq("report_key", "balance_sheet").in("params->>date", dates).in("client_id", part),
       sb.from("xero_snapshots").select(cols).eq("report_key", "profit_and_loss_mtd").in("params->>toDate", dates).in("client_id", part),
       sb.from("xero_snapshots").select(cols).eq("report_key", "profit_and_loss_ytd").in("params->>toDate", dates.slice(0, 3)).in("client_id", part),
-      sb.from("client_xero_orgs").select("client_id, xero_connections(tenant_id, status)").in("client_id", part),
+      sb.from("client_xero_orgs").select("client_id, xero_connections(tenant_id, status, base_currency)").in("client_id", part),
       sb.from("client_statutory_accounts").select("client_id, account_name, category").in("client_id", part),
       sb.from("clients").select("id, gst_cycle, payg_withholding_cycle").in("id", part),
       sb.from("client_reports").select("client_id, period_end, sent_at").not("sent_at", "is", null).in("client_id", part),
@@ -135,7 +135,7 @@ export async function loadOverviewContext(sb: Sb, firmId: string | null = null):
       push(ctx.datedByClient, row.client_id, row);
     for (const link of (links.data ?? []) as any[]) {
       const c = link.xero_connections;
-      if (c) push(ctx.connections, link.client_id, { tenantId: c.tenant_id, status: c.status });
+      if (c) push(ctx.connections, link.client_id, { tenantId: c.tenant_id, status: c.status, currency: c.base_currency ?? null });
     }
     for (const row of (ov.data ?? []) as any[]) push(ctx.overrides, row.client_id, row);
     for (const row of (cl.data ?? []) as any[])
@@ -289,6 +289,8 @@ export async function buildOverview(
   feed: import("./feed.server").FeedEvent[];
   cleared: import("./feed.server").FeedEvent[];
   feedNotes: string[];
+  charts: import("./charts.server").OverviewCharts;
+  latestReport: { clientId: string; clientName: string; periodEnd: string; sentAt: string } | null;
 }> {
   const ctx = await loadOverviewContext(sb, firmId);
   const { logClientDataRead } = await import("@/lib/audit.server");
@@ -334,6 +336,7 @@ export async function buildOverview(
       rank: verdictRank(verdict as any),
       bucket: bucketOf(verdict as any),
       cash,
+      protectedMoney: prot,
       creditCardDebt,
       netCash,
       cashChange7d: m7.state === "evaluated" ? m7.change : null,
@@ -368,5 +371,13 @@ export async function buildOverview(
   out.sort((a, b) => b.rank - a.rank || a.clientName.localeCompare(b.clientName));
   const { buildFeed } = await import("./feed.server");
   const feed = buildFeed(ctx);
-  return { rows: out, feed: feed.events, cleared: feed.cleared, feedNotes: feed.notes };
+  const { buildOverviewCharts } = await import('./charts.server');
+  const charts = await buildOverviewCharts(sb, ctx, out);
+  const latestClient = out.filter(r => r.lastReportSentAt).sort((a,b) => (b.lastReportSentAt ?? '').localeCompare(a.lastReportSentAt ?? ''))[0];
+  let latestReport = null;
+  if (latestClient) {
+    const { data } = await sb.from('client_reports').select('period_end, sent_at').eq('client_id', latestClient.clientId).eq('report_key', 'monthly_management').eq('status','sent').order('sent_at',{ascending:false}).limit(1).maybeSingle();
+    if (data?.sent_at) latestReport = {clientId:latestClient.clientId,clientName:latestClient.clientName,periodEnd:String(data.period_end),sentAt:String(data.sent_at)};
+  }
+  return { rows: out, feed: feed.events, cleared: feed.cleared, feedNotes: feed.notes, charts, latestReport };
 }

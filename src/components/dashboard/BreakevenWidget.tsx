@@ -1,3 +1,4 @@
+import { BreakevenChart } from "@/components/charts/BreakevenChart";
 import { type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { Loader2, RefreshCw, Target, AlertTriangle, Settings2 } from "lucide-react";
@@ -113,6 +114,7 @@ export function BreakevenWidget({
                 estimate, not a settled month.
               </p>
             )}
+            <BreakevenChart revenue={f.monthlyIncome} target={f.monthlyBreakeven} />
             <div className="mt-6 overflow-hidden rounded-lg border border-border">
 
               <table className="w-full text-sm">
