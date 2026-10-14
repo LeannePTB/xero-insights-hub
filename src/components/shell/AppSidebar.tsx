@@ -13,6 +13,7 @@ import {
   MessageCircle,
   Layers,
   Link2,
+  Lock,
   LogOut,
   Palette,
   Settings,
@@ -45,7 +46,7 @@ import { getMyContext } from "@/lib/roles.functions";
 import { listMyFirms } from "@/lib/firms.functions";
 import { getClient } from "@/lib/clients.functions";
 import { getMyClientCapabilities } from "@/lib/roles.functions";
-import { getMyClientVisibleCards, getMyLoansAccess } from "@/lib/card-model.functions";
+import { getMyClientVisibleCards, getMyLoansAccess, getMyLockedModules } from "@/lib/card-model.functions";
 import { useSignOut } from "@/lib/use-sign-out";
 
 import { useRef } from "react";
@@ -78,6 +79,7 @@ const ICONS: Record<NavIcon, LucideIcon> = {
   trending: TrendingUp,
   landmark: Landmark,
   message: MessageCircle,
+  lock: Lock,
 };
 
 export function AppSidebar({ badges = {} }: { badges?: Record<string, number> }) {
@@ -155,7 +157,16 @@ export function AppSidebar({ badges = {} }: { badges?: Record<string, number> })
     enabled: !!clientId || !!loansFirmId,
     retry: false,
   });
+  // Practice-only upsell entry; the database returns nothing to anyone else.
+  const fetchLocked = useServerFn(getMyLockedModules);
+  const lockedQ = useQuery({
+    queryKey: ["client-locked-modules", clientId],
+    queryFn: () => fetchLocked({ data: { clientId: clientId! } }),
+    enabled: !!clientId,
+    retry: false,
+  });
   const groups = navForWorkspace(workspace, {
+    lockedModules: lockedQ.data?.modules ?? [],
     canSeeSystem, clientFiles, organisations, clientVisibleCards,
     canOpenLoans: loansQ.data?.clientLoans === true,
     canOpenConsolidations: loansQ.data?.consolidations === true,

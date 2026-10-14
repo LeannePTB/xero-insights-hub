@@ -586,3 +586,17 @@ export const getMyLoansAccess = createServerFn({ method: "POST" })
     ]);
     return { clientLoans: !c.error && c.data === true, consolidations: !f.error && f.data === true };
   });
+
+/**
+ * Practice-only upsell signal: catalogue module keys this client lacks.
+ * public.client_locked_modules returns [] unless the caller may manage cards
+ * for the client's organisation and can read the client. Never a grant.
+ */
+export const getMyLockedModules = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) => z.object({ clientId: z.string().uuid() }).strict().parse(i))
+  .handler(async ({ data, context }) => {
+    const { data: keys, error } = await (context.supabase as any).rpc("client_locked_modules", { _client_id: data.clientId });
+    if (error) return { modules: [] as string[] };
+    return { modules: ((keys ?? []) as string[]).filter((k) => /^[a-z_]+$/.test(k)) };
+  });
