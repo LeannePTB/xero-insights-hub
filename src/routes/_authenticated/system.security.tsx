@@ -37,6 +37,7 @@ import { AuditMonitoringCard } from "@/components/admin/AuditMonitoringCard";
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/system/security")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "Security & Compliance — Traction Advisory" },

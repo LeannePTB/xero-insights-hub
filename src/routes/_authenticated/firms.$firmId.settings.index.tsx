@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/settings/")({
+  staticData: { sitemap: false },
   beforeLoad: ({ params, location }) => {
     // Old "#people" links now go to the People & access page.
     if (location.hash === "people") {

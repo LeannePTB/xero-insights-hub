@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { OverviewView } from "@/components/overview/OverviewView";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/overview")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "Organisation overview — Traction Advisory" },

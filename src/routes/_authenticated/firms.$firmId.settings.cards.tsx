@@ -4,6 +4,7 @@ import { OrgCardDefaultsCard } from "@/components/admin/OrgCardDefaultsCard";
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/settings/cards")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "Card defaults — Organisation settings" },

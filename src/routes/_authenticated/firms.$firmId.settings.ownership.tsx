@@ -4,6 +4,7 @@ import { TransferOwnershipCard } from "@/components/admin/TransferOwnershipCard"
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/settings/ownership")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "Ownership — Organisation settings" },

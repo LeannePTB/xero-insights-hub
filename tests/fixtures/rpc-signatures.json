@@ -601,6 +601,12 @@
     },
     {
         "args": [
+        ],
+        "name": "get_public_website_settings",
+        "required": 0
+    },
+    {
+        "args": [
             "_client_id",
             "_user_id",
             "_tier",
@@ -991,6 +997,13 @@
         ],
         "name": "save_platform_branding",
         "required": 5
+    },
+    {
+        "args": [
+            "_settings"
+        ],
+        "name": "save_public_website_settings",
+        "required": 1
     },
     {
         "args": [

@@ -40,6 +40,7 @@ function lastUserText(messages: UIMessage[]): string {
 }
 
 export const Route = createFileRoute("/api/trixie")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       POST: async ({ request }) => {

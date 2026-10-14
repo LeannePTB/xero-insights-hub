@@ -16,6 +16,7 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
 
 export const Route = createFileRoute("/api/public/trixie/alerts")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       POST: async ({ request }) => {

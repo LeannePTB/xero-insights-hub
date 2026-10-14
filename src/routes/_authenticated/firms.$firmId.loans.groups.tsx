@@ -22,6 +22,7 @@ import {
 } from "@/lib/consolidation-groups.functions";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/loans/groups")({
+  staticData: { sitemap: false },
   component: LoanGroupsTab,
 });
 

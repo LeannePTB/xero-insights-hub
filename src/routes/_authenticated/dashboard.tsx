@@ -16,6 +16,7 @@ import { PageContainer } from "@/components/PageContainer";
 
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
+  staticData: { sitemap: false },
   head: () => ({ meta: [
     { title: "Your workspaces — Traction Advisory" },
     { name: "description", content: "Open your Traction Advisory organisations and client dashboards." },

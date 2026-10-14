@@ -14,6 +14,7 @@ import { PageContainer } from "@/components/PageContainer";
 import { WebsiteSettingsEditor } from "@/components/website/WebsiteSettingsEditor";
 
 export const Route = createFileRoute("/_authenticated/system/branding")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "Platform branding — System Admin" },

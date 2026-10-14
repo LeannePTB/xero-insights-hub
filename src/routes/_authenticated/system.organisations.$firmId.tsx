@@ -56,6 +56,7 @@ import { organisationOptionDisplay } from "@/lib/organisation-option-display";
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/system/organisations/$firmId")({
+  staticData: { sitemap: false },
   validateSearch: (search: Record<string, unknown>) => ({
     tab: SYSTEM_ORGANISATION_TABS.some(([value]) => value === search.tab)
       ? (search.tab as SystemOrganisationTab)

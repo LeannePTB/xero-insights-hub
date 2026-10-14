@@ -45,6 +45,7 @@ import { CostBasisControls } from "@/components/dashboard/CostBasisControls";
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/cashflow-scenario")({
+  staticData: { sitemap: false },
   validateSearch: (search: Record<string, unknown>) => ({
     tenantId: typeof search.tenantId === "string" ? search.tenantId : undefined,
   }),

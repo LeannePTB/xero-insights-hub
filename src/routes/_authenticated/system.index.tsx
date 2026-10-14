@@ -21,6 +21,7 @@ import type { SubscriptionState } from "@/lib/subscription-state";
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/system/")({
+  staticData: { sitemap: false },
   head: () => ({ meta: [
     { title: "Organisations — Traction Advisory" },
     { name: "description", content: "Manage organisation plans, billing and platform metadata." },

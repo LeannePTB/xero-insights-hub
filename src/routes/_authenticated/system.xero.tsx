@@ -9,6 +9,7 @@ import { OrphanXeroConnectionsCard } from "@/components/admin/OrphanXeroConnecti
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/system/xero")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "Xero monitoring — System Admin" },

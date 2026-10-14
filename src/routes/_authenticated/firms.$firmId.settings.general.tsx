@@ -5,6 +5,7 @@ import { LogoUploadCard } from "@/components/branding/LogoUploadCard";
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/settings/general")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "General settings — Organisation settings" },

@@ -33,6 +33,7 @@ import { PageContainer } from "@/components/PageContainer";
 
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/reports")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "Monthly management reports — Traction Advisory" },

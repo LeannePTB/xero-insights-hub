@@ -15,6 +15,7 @@ import { useCanManageClient } from "@/hooks/useCanManageClient";
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/audit/$tenantId")({
+  staticData: { sitemap: false },
   head: () => ({ meta: [{ title: "Xero file audit — Traction Advisory" }] }),
   component: AuditPage,
 });

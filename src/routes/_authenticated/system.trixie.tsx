@@ -18,6 +18,7 @@ import {
 } from "@/lib/trixie/trixie.functions";
 
 export const Route = createFileRoute("/_authenticated/system/trixie")({
+  staticData: { sitemap: false },
   head: () => ({ meta: [
     { title: "Trixie — System Admin" },
     { name: "description", content: "Manage Trixie knowledge, allowances, model, spend alerts and usage." },

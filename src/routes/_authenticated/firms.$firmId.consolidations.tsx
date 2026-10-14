@@ -7,6 +7,7 @@ import { getConsolidationsAccess } from "@/lib/consolidations.functions";
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/consolidations")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "Company consolidations — Traction Advisory" },

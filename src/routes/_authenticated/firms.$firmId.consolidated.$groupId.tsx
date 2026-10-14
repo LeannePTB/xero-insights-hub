@@ -11,6 +11,7 @@ import {
 } from "@/components/dashboard/ConsolidatedAgeingWidget";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/consolidated/$groupId")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "Consolidated view — Traction Advisory" },

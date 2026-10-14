@@ -61,6 +61,7 @@ async function moveToDlq(
 }
 
 export const Route = createFileRoute("/lovable/email/queue/process")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       POST: async ({ request }) => {

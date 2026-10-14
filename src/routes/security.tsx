@@ -3,10 +3,16 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { BrandMark } from "@/components/BrandMark";
 
 export const Route = createFileRoute("/security")({
-  ssr: false,
+  staticData: { sitemap: true },
   head: () => ({
+    links: [{ rel: "canonical", href: "https://tractionadvisory.com.au/security" }],
     meta: [
+      { property: "og:url", content: "https://tractionadvisory.com.au/security" },
       { title: "Reporting a security issue — Traction Advisory" },
+      { property: "og:title", content: "Security — Traction Advisory" },
+      { property: "og:description", content: "Report a security issue to Traction Advisory." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       {
         name: "description",
         content:

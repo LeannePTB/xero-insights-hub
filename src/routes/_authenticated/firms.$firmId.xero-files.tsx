@@ -4,6 +4,7 @@ import { FirmXeroFilesCard } from "@/components/admin/FirmXeroFilesCard";
 import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/xero-files")({
+  staticData: { sitemap: false },
   head: () => ({
     meta: [
       { title: "Xero files — Organisation" },

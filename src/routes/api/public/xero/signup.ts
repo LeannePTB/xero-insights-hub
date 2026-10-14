@@ -24,6 +24,7 @@ function base64url(buf: Buffer) {
  * and the canonical site origin (never a caller-supplied host).
  */
 export const Route = createFileRoute("/api/public/xero/signup")({
+  staticData: { sitemap: false },
   server: {
     handlers: {
       GET: async () => {

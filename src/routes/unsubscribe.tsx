@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 
 export const Route = createFileRoute("/unsubscribe")({
+  staticData: { sitemap: false },
   head: () => ({ meta: [{ title: "Unsubscribe — Traction Advisory" }] }),
   component: UnsubscribePage,
 });
