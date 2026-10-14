@@ -488,10 +488,10 @@ export async function xeroGet<T = unknown>(
   const { memoiseXeroGet, xeroMemoKey } = await import("./request-memo.server");
   const key = xeroMemoKey("accounting", conn.tenant_id, path, params);
   return memoiseXeroGet<T>(key, async () => {
-    const { shareInFlight } = await import("./inflight.server");
-    const result = await shareInFlight<T>(key, () => xeroGetUncached<T>(conn, path, params, retries, rateRetries));
-    // Audited per caller, even when the payload was shared with a concurrent
-    // identical request for the same file.
+    // Identical calls within one request are already shared by the memo.
+    // Cross-request sharing is deliberately NOT done: the server runtime does
+    // not allow one request to await I/O started by another.
+    const result = await xeroGetUncached<T>(conn, path, params, retries, rateRetries);
     const { logXeroRead } = await import("@/lib/audit.server");
     await logXeroRead(conn, path);
     return result;
