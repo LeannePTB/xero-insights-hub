@@ -49,6 +49,8 @@ export type ScenarioData = {
   avg3: ScenarioAverages | null;
   /** Expense accounts with no decided classification — treated as Fixed. */
   unclassifiedCount: number;
+  /** Names of the genuinely untagged operating accounts (empty when unknown). */
+  unclassifiedNames: string[];
 };
 
 type XeroInvoice = {
@@ -272,6 +274,11 @@ export const getScenarioData = createServerFn({ method: "POST" })
     // account type seeds a default, and anything undecided is FIXED.
     const { buildClassificationResolver } = await import("@/lib/cost-classification");
     let xeroAccounts: { code?: string | null; name: string; type?: string | null }[] = [];
+    // When Xero's account types cannot be read we cannot tell seeded from
+    // untagged, so no account is reported as untagged (never a false notice).
+    let accountTypesKnown = true;
+    const { data: clientRow } = await sb.from("clients").select("cost_classification_enabled").eq("id", data.clientId).maybeSingle();
+    const classificationEnabled = clientRow?.cost_classification_enabled !== false;
     try {
       const accRes = await xeroGet<{ Accounts?: any[] }>(conn, "Accounts", {
         where: 'Class=="EXPENSE"',
@@ -283,8 +290,10 @@ export const getScenarioData = createServerFn({ method: "POST" })
       }));
     } catch {
       xeroAccounts = [];
+      accountTypesKnown = false;
     }
     const resolver = buildClassificationResolver({
+      enabled: classificationEnabled,
       stored: ((tagsRes.data ?? []) as any[]).map((r) => ({
         account_name: String(r.account_name),
         classification: String(r.classification) as any,
@@ -324,7 +333,7 @@ export const getScenarioData = createServerFn({ method: "POST" })
       // cost-of-sales line falls back to VARIABLE, not the resolver's fixed
       // default, so the two cards never disagree about the same account.
       const effective = isCogs ? (r.decided ?? "variable") : r.effective;
-      if (r.unclassified && !isCogs) unclassifiedNames.add(line.name);
+      if (r.unclassified && !isCogs && accountTypesKnown) unclassifiedNames.add(line.name);
       expenses.push({
         id: `${line.month}:${line.name}`,
         name: line.name,
@@ -381,6 +390,7 @@ export const getScenarioData = createServerFn({ method: "POST" })
       pnl: summarisePnl(pnlLines, months),
       avg3,
       unclassifiedCount: unclassifiedNames.size,
+      unclassifiedNames: [...unclassifiedNames].sort(),
     };
   });
 

@@ -296,7 +296,7 @@ function CashflowScenarioPage() {
 
             {/* Scenario */}
             <section className="mt-8">
-              <UnclassifiedNotice clientId={clientId} count={data?.unclassifiedCount ?? 0} />
+              <UnclassifiedNotice clientId={clientId} count={data?.unclassifiedCount ?? 0} names={data?.unclassifiedNames} />
               <div className="mb-5 border-b border-border/60 pb-4">
                 <h2 className="font-display text-lg font-semibold">Scenario</h2>
                 <p className="text-sm text-muted-foreground">If this, then that</p>
@@ -667,7 +667,7 @@ function CashflowScenarioPage() {
             <p className="mt-6 text-xs text-muted-foreground">
               Figures come from the Xero Profit &amp; Loss on the accrual basis, so wages and
               superannuation are included. Operating expenses are split using the fixed/variable tags
-              in client settings — untagged accounts are treated as variable.
+              in client settings — an untagged operating expense is treated as fixed, and untagged cost of sales as variable, the same rule as break-even.
             </p>
 
           </>
