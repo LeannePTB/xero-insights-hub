@@ -309,6 +309,13 @@
       "when": 1791955490764,
       "tag": "0043_xero_gate_aal2_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1791957434062,
+      "tag": "0044_upgrade_enquiries",
+      "breakpoints": true
     }
   ]
 }

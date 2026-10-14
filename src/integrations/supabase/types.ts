@@ -3237,6 +3237,69 @@ export type Database = {
           },
         ]
       }
+      upgrade_enquiries: {
+        Row: {
+          client_ids: string[]
+          created_at: string
+          email: string
+          firm_id: string
+          id: string
+          message: string
+          module_keys: string[]
+          name: string
+          organisation_name: string
+          status: string
+          submission_key: string
+          submitter_id: string
+          updated_at: string
+        }
+        Insert: {
+          client_ids?: string[]
+          created_at?: string
+          email: string
+          firm_id: string
+          id?: string
+          message: string
+          module_keys?: string[]
+          name: string
+          organisation_name: string
+          status?: string
+          submission_key: string
+          submitter_id: string
+          updated_at?: string
+        }
+        Update: {
+          client_ids?: string[]
+          created_at?: string
+          email?: string
+          firm_id?: string
+          id?: string
+          message?: string
+          module_keys?: string[]
+          name?: string
+          organisation_name?: string
+          status?: string
+          submission_key?: string
+          submitter_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upgrade_enquiries_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "upgrade_enquiries_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_presence: {
         Row: {
           last_seen_at: string
@@ -4097,6 +4160,30 @@ export type Database = {
           questions: number
           reasoning_tokens: number
         }[]
+      }
+      admin_upgrade_enquiries: {
+        Args: never
+        Returns: {
+          client_ids: string[]
+          created_at: string
+          email: string
+          firm_id: string
+          id: string
+          message: string
+          module_keys: string[]
+          name: string
+          organisation_name: string
+          status: string
+          submission_key: string
+          submitter_id: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "upgrade_enquiries"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       apply_org_card_defaults: { Args: { _firm_id: string }; Returns: number }
       apply_viewer_invite: {
@@ -5012,6 +5099,10 @@ export type Database = {
         Args: { _enabled: boolean; _tier: string }
         Returns: undefined
       }
+      set_upgrade_enquiry_status: {
+        Args: { _id: string; _status: string }
+        Returns: undefined
+      }
       set_viewer_scope: {
         Args: {
           _client_ids: string[]
@@ -5022,6 +5113,17 @@ export type Database = {
         Returns: number
       }
       start_figure_backfill: { Args: { _firm_id?: string }; Returns: string }
+      submit_upgrade_enquiry: {
+        Args: {
+          _client_ids: string[]
+          _firm_id: string
+          _message: string
+          _module_keys: string[]
+          _name: string
+          _submission_key: string
+        }
+        Returns: string
+      }
       test_accounts_posture: { Args: never; Returns: Json }
       touch_session_activity: { Args: never; Returns: undefined }
       transfer_organisation_ownership: {
@@ -5057,6 +5159,7 @@ export type Database = {
           spend_usd: number
         }[]
       }
+      upgrade_enquiry_context: { Args: { _firm_id: string }; Returns: Json }
       upsert_xero_snapshot: {
         Args: {
           _as_at: string
