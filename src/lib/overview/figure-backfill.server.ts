@@ -90,8 +90,6 @@ async function backfillFile(db: any, item: Item): Promise<{ cash: number; profit
     }
     return xeroGet<T>(conn0, path, params);
   };
-  const conn = conn0;
-  void conn;
   const months = completedMonthEnds(sydneyDate());
   const last = months[months.length - 1];
 
