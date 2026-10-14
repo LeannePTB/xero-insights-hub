@@ -335,6 +335,12 @@ export function MonthlyReportPreview({
         )}
       </SectionShell>
 
+      {payload.charts && sectionIncluded(payload,'charts') && <SectionShell title="Financial trends">
+        {payload.charts.pnl && <VectorChart title="Income, expenses and net profit" points={payload.charts.pnl} series={[{label:'Income',kind:'bar'},{label:'Expenses',kind:'bar'},{label:'Net profit',kind:'line'}]} currency={m.currency}/>}
+        <VectorChart title="Cash at bank" points={payload.charts.cash.map(p=>({label:p.label,values:[p.value]}))} series={[{label:'Cash at bank',kind:'line'}]} currency={m.currency}/>
+        {!payload.charts.pnl && <VectorChart title="Net profit" points={payload.charts.profit.map(p=>({label:p.label,values:[p.value]}))} series={[{label:'Net profit',kind:'line'}]} currency={m.currency}/>}
+        <p className="text-xs text-muted-foreground">{payload.charts.note}</p>
+      </SectionShell>}
       {/* 2. Key figures */}
       <SectionShell title="Key figures" included={sectionIncluded(payload, "key_figures")}>
 

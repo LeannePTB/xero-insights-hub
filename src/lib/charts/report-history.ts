@@ -1,6 +1,6 @@
 import type { HistoryRow } from './history';
 export type FrozenTrend = { label: string; date: string; value: number | null; source: string | null };
-export type ReportCharts = { cash: FrozenTrend[]; profit: FrozenTrend[]; note: string };
+export type ReportCharts = { cash: FrozenTrend[]; profit: FrozenTrend[]; pnl?: {label:string;values:(number|null)[]}[]; note: string };
 export function freezeReportCharts(rows: HistoryRow[], reports: { id: string; period_end: string; version: number; payload: any }[], current: {periodEnd:string;currency:string;profit:number|null}, monthEnd: {month_end:string;net_profit:number|null}[] = []): ReportCharts {
   const months: string[] = [];
   const [year,month] = current.periodEnd.split('-').map(Number);

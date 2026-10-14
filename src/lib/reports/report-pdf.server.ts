@@ -410,6 +410,12 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
 
   // v12: only frozen payload points. Old final/sent reports never acquire charts.
   if (payload.charts && sectionIncluded(payload, "charts")) {
+    if(payload.charts.pnl) {
+      need(240);
+      heading(`Income, expenses and net profit (${m.currency})`);
+      y += drawPdfChart(doc,payload.charts.pnl,[{label:'Income',kind:'bar'},{label:'Expenses',kind:'bar'},{label:'Net profit',kind:'line'}],M.left,y,PAGE.w-M.left-M.right);
+      table({head:['Month','Income','Expenses','Net profit'],body:payload.charts.pnl.map(p=>[p.label,...p.values.map(v=>v===null?'Unavailable':money(v))])});
+    }
     for (const [title, points, kind] of [
       ['Cash at bank trend', payload.charts.cash, 'line'],
       ['Net profit by month', payload.charts.profit, 'bar'],
