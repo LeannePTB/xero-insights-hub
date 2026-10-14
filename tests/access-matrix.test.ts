@@ -2264,3 +2264,28 @@ describe('public website security boundary',()=>{
   });
  });
 });
+
+describe('client_locked_modules — practice-only Advisory upsell signal', () => {
+  const locked = async (role: Role, advisory: boolean, cards: string) => asRole(role, async () => {
+    await db.exec('set local role postgres');
+    await db.exec(`update public.org_subscription_options set advisory_enabled=${advisory}, trial_advisory_enabled=false where firm_id='${ORG_A}';
+      insert into public.org_subscription_options(firm_id, advisory_enabled, consolidation_enabled) select '${ORG_A}', ${advisory}, false where not exists (select 1 from public.org_subscription_options where firm_id='${ORG_A}');
+      delete from public.client_cards where client_id='${CLIENT_A}';
+      insert into public.client_cards(client_id, cards) values ('${CLIENT_A}', ${cards});`);
+    await db.exec('set local role authenticated');
+    const r = await db.query<{ m: string[] }>(`select public.client_locked_modules('${CLIENT_A}') as m`);
+    return r.rows[0]?.m ?? [];
+  });
+  const standard = `array['health','pnl','receivables','payables','notes']`;
+  it('Standard client: the Organisation Owner gets the locked Advisory modules', async () => {
+    const m = await locked('org_owner', false, standard);
+    expect(m).toEqual(expect.arrayContaining(['cash_flow', 'matrix_module']));
+  });
+  it.each(['business_owner', 'org_staff', 'client_viewer', 'other_org_member'] as Role[])('Standard client: %s gets nothing', async (role) => {
+    expect(await locked(role, false, standard)).toEqual([]);
+  });
+  it('Advisory client with every module ticked: the owner gets no Advisory modules', async () => {
+    const m = await locked('org_owner', true, `(select array_agg(card_key) from public.card_catalogue where package in ('standard','advisory'))`);
+    expect(m.filter((k) => k !== 'consolidation')).toEqual([]);
+  });
+});
