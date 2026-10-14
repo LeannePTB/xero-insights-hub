@@ -1,7 +1,7 @@
 # Roadmap
 - [x] Build public practices-first sales homepage, preserve signed-in landing, add public sitemap/robots.
 - [x] Add audited AAL2 System Administrator website settings and prove read/write boundaries.
-- [ ] Enable public buckets in workspace Privacy & Security, then create website-media through Storage API and verify bounded public uploads; currently blocked by public_buckets_blocked.
+- [x] Created public website-media bucket (25 MB cap); anon read OK, anon upload/overwrite/delete denied. Remaining: bucket-level MIME allowlist (tool cannot set it; INSERT policy enforces MIME) and AAL2 admin upload via UI.
 - [x] Verify desktop/mobile, public routing, website rules and full security checks; delivery details in docs/design/public-website-delivery.md. Authenticated save/upload readback remains MFA-blocked.
 - [x] Consolidate shell headers; all 79 route sources audited; rendered header/action/standalone tests and compilation pass. Real-user visual verification remains blocked by MFA.
 - [x] Remove Unreconciled since and Last Xero login from both overview views; build OK, 23 focused tests and full security gate pass.
