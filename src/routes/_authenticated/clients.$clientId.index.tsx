@@ -1,4 +1,5 @@
 import { useCanManageClient } from "@/hooks/useCanManageClient";
+import { getMyLoansAccess } from "@/lib/card-model.functions";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -77,6 +78,14 @@ function ClientDashboard() {
   const fetchClient = useServerFn(getClient);
   const fetchCtx = useServerFn(getMyContext);
   const fetchWidgets = useServerFn(getClientWidgets);
+  const fetchLoansAccess = useServerFn(getMyLoansAccess);
+  // Loan card follows the owner-or-team Loans rule (public.me_can_open_client_loans).
+  const loansAccessQ = useQuery({
+    queryKey: ["loans-access", clientId, null],
+    queryFn: () => fetchLoansAccess({ data: { clientId } }),
+    retry: false,
+  });
+  const canOpenLoans = loansAccessQ.data?.clientLoans === true;
   const salesTaxBasisFn = useServerFn(getXeroSalesTaxBasis);
   // Organisation-wide search is for organisation staff only; an invited client
   // viewer must not even see the card. The server function enforces the same
@@ -309,7 +318,7 @@ function ClientDashboard() {
         block.payg = <PaygWithholdingWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} />;
 
 
-      if (widgets.includes("loan_consolidation"))
+      if (widgets.includes("loan_consolidation") && canOpenLoans)
         advanced.push({ id: `${o.id}:loan_consolidation`, node: <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
 
       if (block.taxObligations || block.gst || block.payg || block.superannuation) statutory.push(block);

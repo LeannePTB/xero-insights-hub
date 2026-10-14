@@ -32,8 +32,9 @@ export const getConsolidationsAccess = createServerFn({ method: "POST" })
         };
       }
 
-      const { firmCanUseWidget } = await import("@/lib/widget-access.server");
-      const allowed = await firmCanUseWidget(context.supabase, data.firmId, "loan_consolidation");
+      // Owner or active Traction Advisory team member, Consolidation purchased.
+      const { data: canOpen } = await (context.supabase as any).rpc("me_can_open_consolidations", { _firm_id: data.firmId });
+      const allowed = canOpen === true;
 
       return {
         allowed,
@@ -42,7 +43,7 @@ export const getConsolidationsAccess = createServerFn({ method: "POST" })
           ? {}
           : {
               message:
-                "Consolidation tools aren't included in this organisation's plan. Upgrade the plan to turn them on.",
+                "Consolidations open only for the Organisation Owner and the Traction Advisory team, when the organisation has the Consolidation package.",
             }),
       };
     },

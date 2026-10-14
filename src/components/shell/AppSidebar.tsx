@@ -45,7 +45,7 @@ import { getMyContext } from "@/lib/roles.functions";
 import { listMyFirms } from "@/lib/firms.functions";
 import { getClient } from "@/lib/clients.functions";
 import { getMyClientCapabilities } from "@/lib/roles.functions";
-import { getMyClientVisibleCards } from "@/lib/card-model.functions";
+import { getMyClientVisibleCards, getMyLoansAccess } from "@/lib/card-model.functions";
 import { useSignOut } from "@/lib/use-sign-out";
 
 import { useRef } from "react";
@@ -146,7 +146,20 @@ export function AppSidebar({ badges = {} }: { badges?: Record<string, number> })
     staleTime: 0,
   });
   const clientVisibleCards = visibleCardsQ.data?.cards ?? null;
-  const groups = navForWorkspace(workspace, { canSeeSystem, clientFiles, organisations, clientVisibleCards }).map((group) => ({
+  // Loans / Consolidations follow the owner-or-team rule, fetched from the server.
+  const fetchLoansAccess = useServerFn(getMyLoansAccess);
+  const loansFirmId = workspace.kind === "organisation" ? (workspace as any).firmId as string | undefined : undefined;
+  const loansQ = useQuery({
+    queryKey: ["loans-access", clientId ?? null, loansFirmId ?? null],
+    queryFn: () => fetchLoansAccess({ data: { ...(clientId ? { clientId } : {}), ...(loansFirmId ? { firmId: loansFirmId } : {}) } }),
+    enabled: !!clientId || !!loansFirmId,
+    retry: false,
+  });
+  const groups = navForWorkspace(workspace, {
+    canSeeSystem, clientFiles, organisations, clientVisibleCards,
+    canOpenLoans: loansQ.data?.clientLoans === true,
+    canOpenConsolidations: loansQ.data?.consolidations === true,
+  }).map((group) => ({
     ...group,
     items: workspace.kind === "client" && manageQ.data?.canManageClient !== true
       ? group.items.filter((item) => !["cashflow", "loans", "client-settings"].includes(item.id))

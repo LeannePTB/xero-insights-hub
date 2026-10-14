@@ -1,4 +1,5 @@
 import { useWorkspaceBranding } from "@/hooks/useWorkspaceBranding";
+import { ReportSectionsUpsell } from "@/components/billing/ClientCardSetupPanel";
 import { useCanManageClient } from "@/hooks/useCanManageClient";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
@@ -208,6 +209,7 @@ function ReportsPage() {
             </p>
           </div>
         </div>
+        <ReportSectionsUpsell clientId={clientId} />
 
         {/* Preview — sits directly under the page title so the period, version and
             status in its header are visible without scrolling. */}

@@ -367,6 +367,13 @@
     },
     {
         "args": [
+            "_client_id"
+        ],
+        "name": "client_report_sections",
+        "required": 1
+    },
+    {
+        "args": [
             "_client_ids"
         ],
         "name": "client_setup_account_counts",
@@ -726,6 +733,20 @@
             "_firm_id"
         ],
         "name": "me_can_manage_firm_viewers",
+        "required": 1
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "me_can_open_client_loans",
+        "required": 1
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "me_can_open_consolidations",
         "required": 1
     },
     {

@@ -69,7 +69,7 @@ create table public.audit_findings (id uuid, run_id uuid, tenant_id text, rule_i
 create table public.audit_log (id uuid, actor_user_id uuid, firm_id uuid, action text, target_type text, target_id text, ip text, user_agent text, meta jsonb, at timestamp with time zone);
 create table public.audit_runs (id uuid, tenant_id text, run_at timestamp with time zone, run_by uuid, summary jsonb, duration_ms integer, error text);
 create table public.billing_events (id uuid, firm_id uuid, stripe_event_id text, type text, payload jsonb, occurred_at timestamp with time zone, client_id uuid);
-create table public.card_catalogue (card_key text, package text, module_key text, label text, description text, sort_order integer, updated_at timestamp with time zone, updated_by uuid);
+create table public.card_catalogue (card_key text, package text, module_key text, label text, description text, sort_order integer, updated_at timestamp with time zone, updated_by uuid, report_sections text[]);
 create table public.card_modules (module_key text, label text, description text, sort_order integer, updated_at timestamp with time zone, updated_by uuid);
 create table public.client_access (id uuid, client_id uuid, user_id uuid, tier text, created_at timestamp with time zone, updated_at timestamp with time zone, relationship client_access_relationship, inviter_label text);
 create table public.client_bank_account_classifications (client_id uuid, tenant_id text, account_id uuid, classification text, updated_by uuid, updated_at timestamp with time zone);
@@ -726,6 +726,109 @@ AS $function$
   select app_private.assert_aal2();
 
   select _widget = any(public.client_allowed_widgets(_client_id))
+$function$
+;
+CREATE OR REPLACE FUNCTION public.firm_allowed_widgets(_firm_id uuid)
+ RETURNS text[]
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare result text[];
+begin
+  perform app_private.assert_aal2();
+
+  if auth.uid() is not null
+     and not public.user_can_access_firm(auth.uid(), _firm_id)
+     and not app_private.is_super_admin(auth.uid()) then
+    return '{}'::text[];
+  end if;
+
+  if app_private.setting_bool('card_model_v2') then
+    select coalesce(array(
+      select w from unnest(public.org_addon_widgets()) as w
+       where public.firm_has_consolidation(_firm_id)
+      union
+      select distinct w2
+        from public.clients c
+        cross join lateral unnest(app_private.client_cards_v2(c.id)) as w2
+       where c.firm_id = _firm_id
+         and not (w2 = any(public.org_addon_widgets()))
+    ), '{}'::text[]) into result;
+    return result;
+  end if;
+
+  select coalesce(array(
+    select w from unnest(public.org_addon_widgets()) as w
+     where public.firm_has_consolidation(_firm_id)
+    union
+    select distinct w2
+      from public.clients c
+      cross join lateral unnest(public.client_allowed_widgets(c.id)) as w2
+     where c.firm_id = _firm_id
+       and not (w2 = any(public.org_addon_widgets()))
+  ), '{}'::text[]) into result;
+
+  return result;
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.firm_can_use_widget(_firm_id uuid, _widget text)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select app_private.assert_aal2();
+
+  select case when auth.uid() is not null
+               and not public.user_can_access_firm(auth.uid(), _firm_id)
+               and not app_private.is_super_admin(auth.uid())
+          then false else (
+  select _widget = any(public.firm_allowed_widgets(_firm_id))
+  ) end
+$function$
+;
+CREATE OR REPLACE FUNCTION public.org_addon_widgets()
+ RETURNS text[]
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO 'public'
+AS $function$
+  select array['loan_consolidation']
+$function$
+;
+CREATE OR REPLACE FUNCTION public.firm_has_consolidation(_firm_id uuid)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+
+  if auth.uid() is not null
+     and not public.user_can_access_firm(auth.uid(), _firm_id)
+     and not app_private.is_super_admin(auth.uid()) then
+    return false;
+  end if;
+
+  if app_private.firm_subscription_lapsed(_firm_id) then
+    return false;
+  end if;
+
+  if app_private.setting_bool('card_model_v2') then
+    return exists (
+      select 1 from public.org_subscription_options o
+      where o.firm_id = _firm_id and o.consolidation_enabled
+    );
+  end if;
+
+  return exists (
+    select 1 from public.subscriptions s
+    where s.firm_id = _firm_id and s.consolidation_enabled
+  );
+end;
 $function$
 ;
 CREATE OR REPLACE FUNCTION public.set_all_client_tiers(_firm_id uuid, _tier dashboard_tier, _include_billed boolean DEFAULT false, _reason text DEFAULT NULL::text)
@@ -3405,6 +3508,70 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION app_private.can_open_loans(_user_id uuid, _firm_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select _user_id is not null and _firm_id is not null
+     and _user_id = auth.uid()
+     and (app_private.is_firm_owner(_user_id, _firm_id) or app_private.is_practice_member_of(_user_id, _firm_id))
+$function$
+;
+CREATE OR REPLACE FUNCTION public.me_can_open_consolidations(_firm_id uuid)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  if auth.uid() is null or _firm_id is null then return false; end if;
+  if not app_private.can_open_loans(auth.uid(), _firm_id) then return false; end if;
+  return public.firm_can_use_widget(_firm_id, 'loan_consolidation');
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.me_can_open_client_loans(_client_id uuid)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _firm uuid;
+begin
+  perform app_private.assert_aal2();
+  if auth.uid() is null or _client_id is null then return false; end if;
+  select c.firm_id into _firm from public.clients c where c.id = _client_id;
+  if _firm is null then return false; end if;
+  if not public.me_can_open_consolidations(_firm) then return false; end if;
+  if not exists (
+    select 1 from public.consolidation_group_members m
+    join public.consolidation_groups g on g.id = m.group_id
+    where m.client_id = _client_id and g.firm_id = _firm
+  ) then return false; end if;
+  return 'loan_consolidation' = any(app_private.client_cards_v2(_client_id));
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.client_report_sections(_client_id uuid)
+ RETURNS text[]
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _cards text[];
+begin
+  perform app_private.assert_aal2();
+  _cards := public.client_visible_cards(_client_id);
+  return coalesce(array(
+    select distinct s from public.card_catalogue cc, unnest(cc.report_sections) s
+    where cc.card_key = any(_cards) order by s
+  ), '{}'::text[]);
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -4803,4 +4970,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: 73b0fa890b010ec4f79957134c6fcf9c82df5cd663c6294becca160ed2ca102c
+-- catalogue-fingerprint: 72406fd07ec5ec4bf9fa7c30c423683845a45cce83f848f58e36055ebd5b2f26

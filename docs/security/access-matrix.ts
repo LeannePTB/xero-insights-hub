@@ -1228,6 +1228,56 @@ export const MATRIX: MatrixRow[] = [
     layers: ["pglite"],
     note: "Added 17 Sep 2026 with the creation flow. Proves the unticked Advisory cards stay in client_available_cards (so they can be turned back on) while being absent from the resolved dashboard.",
   },
+  // ------------------------- Loans / Consolidations: Owner or Traction Advisory team (14 Oct 2026)
+  ...rows(
+    ["org_owner"],
+    ["loans: me_can_open_consolidations(organisation with Consolidation)", "loans: me_can_open_client_loans(grouped client, Consolidation ticked)"],
+    ["execute"],
+    "allow",
+    "Owner decision 14 Oct 2026: Loans and Consolidations open for the Organisation Owner (or an active Traction Advisory team member of that organisation) when Consolidation is bought; a client's Loans also need consolidation-group membership and the ticked Consolidation card",
+    ["pglite"],
+  ),
+  ...rows(
+    ["org_staff"],
+    ["loans: me_can_open_consolidations — Traction Advisory team member who is Staff", "loans: me_can_open_client_loans(grouped client) — Traction Advisory team member who is Staff"],
+    ["execute"],
+    "allow",
+    "An active Traction Advisory team member of the organisation opens Loans and Consolidations whatever their member role",
+    ["pglite"],
+  ),
+  ...rows(
+    ["org_staff", "client_viewer", "business_owner", "standing_viewer", "support_grant_active", "super_admin_no_membership", "other_org_member", "aal1_member", "anonymous"],
+    ["loans: me_can_open_consolidations(organisation with Consolidation)", "loans: me_can_open_client_loans(grouped client, Consolidation ticked)"],
+    ["execute"],
+    "deny",
+    "Staff, Viewers, Business Owners, support passes, another organisation, a System Administrator with no membership, aal1 and signed-out callers are refused Loans and Consolidations at the server (PK 3, PK 5)",
+    ["pglite"],
+  ),
+  ...rows(
+    ["org_owner"],
+    ["loans: me_can_open_client_loans(client not in a consolidation group)", "loans: me_can_open_client_loans(grouped client, Consolidation unticked)", "loans: me_can_open_consolidations(Consolidation not bought)"],
+    ["execute"],
+    "deny",
+    "Consolidation appears only for clients in a consolidation group with the Consolidation card ticked, and only when the organisation bought it",
+    ["pglite"],
+  ),
+  // ------------------------- Monthly report sections follow visible cards (14 Oct 2026)
+  ...rows(
+    ["org_owner"],
+    ["client_report_sections(all Standard cards ticked)", "client_report_sections(Notes unticked)"],
+    ["execute"],
+    "allow",
+    "New report drafts include a section only when a visible card (client_cards_v2) maps to it through card_catalogue.report_sections — one list; final/sent payloads are never rebuilt",
+    ["pglite"],
+  ),
+  ...rows(
+    ["other_org_member", "aal1_member", "anonymous"],
+    ["client_report_sections(all Standard cards ticked)"],
+    ["execute"],
+    "deny",
+    "Caller-scoped through client_visible_cards: another organisation, aal1 and signed-out callers get nothing",
+    ["pglite"],
+  ),
   // ------------------------- card readers refuse outside the purchase (14 Oct 2026)
   ...rows(
     ["org_owner", "org_staff", "client_viewer", "business_owner"],

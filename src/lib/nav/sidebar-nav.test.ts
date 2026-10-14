@@ -165,3 +165,20 @@ describe("client menu follows the client's visible cards (client_visible_cards)"
     }
   });
 });
+
+describe("Loans / Consolidations menu follow the server owner-or-team signal (14 Oct 2026)", () => {
+  const ids = (g: ReturnType<typeof navForWorkspace>) => g.flatMap((x) => x.items.map((i) => i.id));
+  const cards = ["loan_consolidation", "pnl"];
+  it("hides client Loans without the signal, even with the card visible", () => {
+    const g = navForWorkspace({ kind: "client", clientId: "c" } as any, { canSeeSystem: false, clientVisibleCards: cards });
+    expect(ids(g)).not.toContain("loans");
+  });
+  it("shows client Loans with the signal and the card", () => {
+    const g = navForWorkspace({ kind: "client", clientId: "c" } as any, { canSeeSystem: false, clientVisibleCards: cards, canOpenLoans: true });
+    expect(ids(g)).toContain("loans");
+  });
+  it("hides organisation Consolidations without the signal", () => {
+    expect(ids(navForWorkspace({ kind: "organisation", firmId: "f" }, { canSeeSystem: false }))).not.toContain("consolidations");
+    expect(ids(navForWorkspace({ kind: "organisation", firmId: "f" }, { canSeeSystem: false, canOpenConsolidations: true }))).toContain("consolidations");
+  });
+});

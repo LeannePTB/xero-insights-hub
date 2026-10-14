@@ -15,6 +15,9 @@
 
 /** Database authorisation functions server code is allowed to rely on. */
 export const REGISTERED_DB_AUTH_CALLS = [
+  "me_can_open_consolidations",
+  "me_can_open_client_loans",
+  "client_report_sections",
   "assert_widget_access",
   "effective_tier_for_tenant",
   "client_for_tenant",

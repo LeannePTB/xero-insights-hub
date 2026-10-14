@@ -370,6 +370,14 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Copies one client's ticked card list onto other clients in the SAME organisation. app_private.assert_card_manager for that organisation (Organisation Owner or System Administrator), refuses any target in another organisation, and audits one row per target. What each target then shows is still capped by its organisation's purchase.",
   "public.set_client_module":
     "Ticks or unticks one Advisory module for one client: adds or removes that module's catalogue cards in the same client_cards list (a grouping over client_cards_v2, never a second rule). aal2, app_private.assert_card_manager for the client's organisation, refuses when none of the module's cards are in the purchase, adds only purchase-available cards, audited.",
+  "app_private.can_open_loans":
+    "Loans/Consolidations caller rule (owner decision 14 Oct 2026): true only for auth.uid() itself when they are the active Organisation Owner or an active Traction Advisory team member of that organisation (is_firm_owner / is_practice_member_of). No support, Viewer, Business Owner or bare System Administrator path. Not exposed through the API schema.",
+  "public.me_can_open_consolidations":
+    "aal2, caller-scoped: app_private.can_open_loans for the organisation AND firm_can_use_widget(loan_consolidation). Gates every Consolidations / group loan server reader and the menu. Returns only a boolean.",
+  "public.me_can_open_client_loans":
+    "aal2, caller-scoped: me_can_open_consolidations for the client's organisation AND the client is in one of that organisation's consolidation groups AND loan_consolidation is in client_cards_v2. Gates every client Loans server reader, the dashboard loan card and the menu. Returns only a boolean.",
+  "public.client_report_sections":
+    "aal2, caller-scoped through client_visible_cards (CLIENT_ACCESS_DENIED otherwise): the monthly report sections a new draft includes, from card_catalogue.report_sections of the visible cards. Returns section keys only, no client data.",
   "public.me_can_manage_cards":
     "Presentation signal: whether the caller may change card/module ticks for one organisation (Organisation Owner or System Administrator, aal2). Grants nothing; every write re-checks through app_private.assert_card_manager. Returns only a boolean.",
   "public.admin_set_card_entry":

@@ -280,12 +280,23 @@ export function navForWorkspace(
     organisations?: OrganisationSummary[];
     /** Server-provided client_visible_cards list; null hides card items. */
     clientVisibleCards?: readonly string[] | null;
+    /** Server signal public.me_can_open_client_loans; absent/false hides Loans. */
+    canOpenLoans?: boolean;
+    /** Server signal public.me_can_open_consolidations; absent/false hides Consolidations. */
+    canOpenConsolidations?: boolean;
   },
 ): NavGroup[] {
   if (ws.kind === "system") return opts.canSeeSystem ? SYSTEM_NAV : [];
   if (ws.kind === "all") return allOrganisationsNav(opts.organisations ?? []);
-  if (ws.kind === "organisation") return ORGANISATION_NAV;
-  if (ws.kind === "client") return clientNav(opts.clientFiles ?? [], opts.clientVisibleCards ?? null);
+  if (ws.kind === "organisation") return dropItems(ORGANISATION_NAV, opts.canOpenConsolidations === true ? [] : ["consolidations"]);
+  if (ws.kind === "client") {
+    return dropItems(clientNav(opts.clientFiles ?? [], opts.clientVisibleCards ?? null), opts.canOpenLoans === true ? [] : ["loans"]);
+  }
   return [];
 }
 
+
+function dropItems(groups: NavGroup[], ids: string[]): NavGroup[] {
+  if (ids.length === 0) return groups;
+  return groups.map((g) => ({ ...g, items: g.items.filter((i) => !ids.includes(i.id)) }));
+}

@@ -26,8 +26,11 @@ import {
   moduleCards,
   moduleState,
   packageCards,
+  REPORT_SECTION_LABEL,
+  reportSectionsForCards,
   type CardCatalogue,
 } from "@/lib/cards/catalogue";
+import { getPublicWebsiteSettings } from "@/lib/website-settings.functions";
 import { listClients } from "@/lib/clients.functions";
 import { cardLabel } from "@/lib/card-labels";
 
@@ -179,6 +182,7 @@ export function ClientCardSetupPanel({
                     <span className="block text-xs text-muted-foreground">
                       {m.cards.map((c) => catalogue.cards.find((x) => x.key === c)?.label ?? cardLabel(c)).join(" · ")}
                     </span>
+                    {canManage && <ModuleReportLine catalogue={catalogue} cards={m.cards} />}
                   </label>
                   {busy === `module:${m.key}` && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                 </li>
@@ -187,6 +191,8 @@ export function ClientCardSetupPanel({
           </ul>
         </div>
       )}
+
+      {canManage && modules.length === 0 && <AdvisoryTalkToUs />}
 
       {consolidation.length > 0 && (
         <div>
@@ -362,5 +368,74 @@ function CopyToClientsDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Practice-only: which monthly report sections a module adds. */
+function ModuleReportLine({ catalogue, cards }: { catalogue: CardCatalogue; cards: string[] }) {
+  const standard = reportSectionsForCards(catalogue, packageCards(catalogue, "standard"));
+  const adds = reportSectionsForCards(catalogue, cards).filter((s) => !standard.includes(s));
+  return (
+    <span className="mt-1 block text-xs text-muted-foreground">
+      Monthly report:{" "}
+      {adds.length ? `adds ${adds.map((s) => REPORT_SECTION_LABEL[s] ?? s).join(", ")}` : "adds no report sections yet (dashboard only)"}
+    </span>
+  );
+}
+
+/** Practice-only note when the organisation hasn't bought Advisory. */
+function AdvisoryTalkToUs() {
+  const fetchSettings = useServerFn(getPublicWebsiteSettings);
+  const q = useQuery({ queryKey: ["public-website-settings"], queryFn: () => fetchSettings(), retry: false, staleTime: 300_000 });
+  const url = (q.data as any)?.calendlyUrl as string | null | undefined;
+  return (
+    <p className="rounded-xl border border-border px-4 py-3 text-xs text-muted-foreground">
+      Cash flow, Profit, Tax & compliance and Bookkeeping checks modules are available with Advisory.{" "}
+      {url ? (
+        <a href={url} target="_blank" rel="noopener noreferrer" className="font-medium text-primary underline-offset-2 hover:underline">
+          Talk to us
+        </a>
+      ) : (
+        "Talk to us."
+      )}
+    </p>
+  );
+}
+
+/**
+ * Report editor note for the practice (Organisation Owner / System
+ * Administrator only — canManage from me_can_manage_cards). Business Owners,
+ * Staff and Viewers never see it. Never printed in the client-facing report.
+ */
+export function ReportSectionsUpsell({ clientId }: { clientId: string }) {
+  const fetchSetup = useServerFn(getClientCardSetup);
+  const q = useQuery({ queryKey: ["client-card-setup", clientId], queryFn: () => fetchSetup({ data: { clientId } }), retry: false });
+  const d = q.data as any;
+  if (!d || d.modelActive !== true || d.canManage !== true) return null;
+  const catalogue = (d.catalogue ?? EMPTY_CATALOGUE) as CardCatalogue;
+  const visible = new Set<string>(d.visible ?? []);
+  const available = new Set<string>(d.available ?? []);
+  const unticked = activeModules(catalogue)
+    .map((m) => ({ ...m, cards: moduleCards(catalogue, m.key).filter((c) => available.has(c)) }))
+    .filter((m) => m.cards.length > 0 && moduleState(m.cards, visible) !== "on");
+  const hasAdvisory = catalogue.cards.some((c) => c.package === "advisory" && available.has(c.key));
+  if (!hasAdvisory) return <div className="mt-4"><AdvisoryTalkToUs /></div>;
+  if (unticked.length === 0) return null;
+  const standard = reportSectionsForCards(catalogue, packageCards(catalogue, "standard"));
+  return (
+    <div className="mt-4 rounded-xl border border-border px-4 py-3 text-xs text-muted-foreground">
+      <p className="font-medium text-foreground">For your practice — not shown to the client</p>
+      <ul className="mt-1 space-y-0.5">
+        {unticked.map((m) => {
+          const adds = reportSectionsForCards(catalogue, m.cards).filter((s) => !standard.includes(s));
+          return (
+            <li key={m.key}>
+              Ticking <span className="font-medium">{m.label}</span> in Client settings → Package{" "}
+              {adds.length ? `adds ${adds.map((s) => REPORT_SECTION_LABEL[s] ?? s).join(", ")} to new reports.` : "adds dashboard cards; no report sections yet."}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
