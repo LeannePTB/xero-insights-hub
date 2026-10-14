@@ -16,7 +16,7 @@ export function classificationSourceLabel(resolved: ResolvedClassification): str
         : type === "OVERHEADS"
           ? "overheads"
           : type.toLowerCase() || "account type";
-    return `Seeded from Xero · ${label}`;
+    return `Seeded from Xero · ${label} — confirm or change`;
   }
   return "No classification saved · treated as fixed";
 }
