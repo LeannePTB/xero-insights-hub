@@ -83,7 +83,7 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
 
 
       {q.isLoading && (isGateWait(q.failureReason) ? <XeroWaiting /> : <LoadingState />)}
-      {q.error && !q.data && (
+      {!!q.error && !q.data && (
         <XeroErrorNotice error={q.error} onRetry={() => q.refetch()} isRetrying={q.isFetching} />
       )}
 
