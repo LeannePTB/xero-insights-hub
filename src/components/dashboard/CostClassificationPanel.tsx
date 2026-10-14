@@ -289,7 +289,7 @@ export function CostClassificationPanel({
                     <p className="truncate text-sm">{a.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {new Intl.NumberFormat(undefined, {
-                        style: "currency",
+                        style: "currency", signDisplay: "negative",
                         currency: "AUD",
                         maximumFractionDigits: 0,
                       }).format(a.amount)}{" "}

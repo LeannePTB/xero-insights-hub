@@ -413,7 +413,7 @@ function PaymentRows({ finding }: { finding: any }) {
           <li key={`${d}-${i}`} className="flex justify-between gap-4 text-sm tabular-nums">
             <span>{new Date(d).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}</span>
             <span>
-              {amount.toLocaleString("en-AU", { style: "currency", currency: "AUD" })}
+              {amount.toLocaleString("en-AU", { style: "currency", signDisplay: "negative", currency: "AUD" })}
             </span>
           </li>
         ))}

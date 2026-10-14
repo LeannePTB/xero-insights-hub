@@ -24,7 +24,7 @@ export function useTenantCurrency(tenantId: string | undefined): string {
 /** Shared currency/locale setup; only the fraction-digit setting varies. */
 function format(amount: number, currency: string, fractionDigits: number): string {
   const opts: Intl.NumberFormatOptions = {
-    style: "currency",
+    style: "currency", signDisplay: "negative",
     currency,
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,

@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 function fmt(n: number, ccy = "AUD") {
-  return new Intl.NumberFormat(undefined, { style: "currency", currency: ccy, maximumFractionDigits: 2 }).format(n);
+  return new Intl.NumberFormat(undefined, { style: "currency", signDisplay: "negative", currency: ccy, maximumFractionDigits: 2 }).format(n);
 }
 
 export function ConsolidatedReceivablesWidget({

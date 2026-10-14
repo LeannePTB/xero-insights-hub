@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { VectorChart } from '@/components/charts/VectorChart';
 import type { OverviewCharts as Charts } from '@/lib/overview/charts.server';
 export function OverviewCharts({ data, latest }: {data: Charts; latest?: {clientId:string;clientName:string;periodEnd:string;sentAt:string} | null}) {
-  const fmt = (v: number | null) => v === null ? '—' : v.toLocaleString('en-AU',{style:'currency',currency:data.currency ?? 'AUD',maximumFractionDigits:0});
+  const fmt = (v: number | null) => v === null ? '—' : v.toLocaleString('en-AU',{style: 'currency', signDisplay: 'negative',currency:data.currency ?? 'AUD',maximumFractionDigits:0});
   const change = (c: Charts['cashChange']) => !c ? '— · Last-month comparison unavailable' : `${c.difference >= 0 ? '+' : '−'}${fmt(Math.abs(c.difference))}${c.pct === null ? '' : ` (${c.pct >= 0 ? '+' : ''}${c.pct.toFixed(1)}%)`} vs ${data.comparisonDate}`;
   return <section className="space-y-3 border-y border-border py-4">
     <div className="grid gap-4 sm:grid-cols-3">

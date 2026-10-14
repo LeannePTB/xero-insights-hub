@@ -343,7 +343,7 @@ export async function buildOverview(
       cashBigMove: m7.state === "evaluated" && m7.big,
       ...(() => {
         const share = cash !== null && prot !== null ? protectedShareOfCash(prot, cash) : null;
-        const money = (n: number) => n.toLocaleString("en-AU", { style: "currency", currency: "AUD" });
+        const money = (n: number) => n.toLocaleString("en-AU", { style: "currency", signDisplay: "negative", currency: "AUD" });
         const lines = (today?.protectedAccounts ?? []).map(
           (a) => `${a.name}: ${money(a.amount)}${a.counted ? "" : " (debit balance, not a refund — not counted)"}`,
         );

@@ -43,7 +43,7 @@ export function isStalePayload(report: { payload_version?: number | null } | nul
 function money(n: number | null | undefined, currency: string) {
   if (n == null || !Number.isFinite(n)) return "—";
   const s = new Intl.NumberFormat("en-AU", {
-    style: "currency",
+    style: "currency", signDisplay: "negative",
     currency: currency || "AUD",
     minimumFractionDigits: 2,
   }).format(Math.abs(n));
