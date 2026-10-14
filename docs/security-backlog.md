@@ -10,6 +10,10 @@
 Verified against code and database 6 September 2026. Re-verify before acting on any item.
 Referenced by Access Control Spec §12. Update this file in the same change that closes an item.
 
+## Chart delivery verification — 14 October 2026
+
+SECURITY-RELEVANT, approved: charts reuse caller-scoped readers/card gates; no policy, grant, role, entitlement or Xero-call change. New drafts freeze report chart history at payload v12; final/sent payloads/PDFs untouched. Full security gate: 248 tests, 2,072 proofs, zero known/unexpected failures, 18 live checks. Linter unchanged (156 existing issues, three types). OPEN: real authorised chart/draft-PDF end-to-end check is MFA-blocked; security_posture() is tool-permission blocked. No bypass. Existing multi-file current Overview ambiguity is documented, combined current totals suppressed rather than silently fixed. Exact implementation and evidence: docs/design/chart-delivery.md.
+
 ## Closed — do not reopen on the strength of an older note
 
 - **14 Oct 2026 — Public website display settings (SECURITY-RELEVANT, owner approved).** Added only allowlisted public fields on the grant-free platform branding table, an explicit anon-safe reader, and separate audited AAL2 canonical-System-Administrator save RPC. No client/organisation/support/viewer access rules changed. Anonymous and direct-table write denials, AAL1 admin denial, support-only denial, projection and audit tests pass alongside full isolation/live checks. Public media bucket creation was blocked; 14 Oct after owner enabled public buckets, `website-media` was created via Storage API (public read, 25 MB cap). Only storage policy on it is `website_media_admin_insert` (authenticated, AAL2 + canonical System Administrator, path/MIME/size bounded); no UPDATE/DELETE policies exist. Live: anon read 200, anon upload/overwrite/delete denied by RLS. OPEN: bucket-level MIME allowlist not settable with available tooling (policy enforces it); AAL2 admin UI upload not yet verified. See `docs/design/public-website-delivery.md` for exact functions, storage policy, copy and outstanding verification/owner inputs.
