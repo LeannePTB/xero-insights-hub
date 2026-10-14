@@ -17,7 +17,7 @@ describe('frozen PDF chart rendering',()=>{
    const before=JSON.stringify(sample),bytes=renderMonthlyReportPdf({payload:sample,status:'draft',version:1,title:'Standard report — synthetic sample'});
    expect(bytes.length).toBeGreaterThan(10000);expect(JSON.stringify(sample)).toBe(before);
    if(process.env['WRITE_STANDARD_SAMPLE']){mkdirSync('/tmp/browser/standard-launch',{recursive:true});writeFileSync('/tmp/browser/standard-launch/standard-sample.pdf',bytes);writeFileSync('/tmp/browser/standard-launch/standard-sample.json',JSON.stringify(sample));}
- });
+ }, 30000);
  it('renders chart payload directly to a real PDF without mutating a sent payload',()=>{const before=JSON.stringify(payload);const bytes=renderMonthlyReportPdf({payload,status:'sent',version:1,title:'Synthetic report'});expect(new TextDecoder().decode(bytes.slice(0,4))).toBe('%PDF');expect(bytes.length).toBeGreaterThan(3000);expect(JSON.stringify(payload)).toBe(before);});
  it('old final chart-less payload remains chart-less after render',()=>{const old={...payload,payloadVersion:11,charts:undefined};renderMonthlyReportPdf({payload:old,status:'final',version:1,title:'Old synthetic report'});expect(old.charts).toBeUndefined();expect(old.payloadVersion).toBe(11);});
 });

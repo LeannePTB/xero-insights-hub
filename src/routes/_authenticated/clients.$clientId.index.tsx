@@ -1,5 +1,5 @@
 import { useCanManageClient } from "@/hooks/useCanManageClient";
-import { getCardCatalogue, getMyLoansAccess } from "@/lib/card-model.functions";
+import { getClientCatalogue, getMyLoansAccess } from "@/lib/card-model.functions";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -82,10 +82,11 @@ function ClientDashboard() {
   const fetchClient = useServerFn(getClient);
   const fetchCtx = useServerFn(getMyContext);
   const fetchWidgets = useServerFn(getClientWidgets);
-  const catalogueFn = useServerFn(getCardCatalogue);
-  // includeWip: the database returns Work-in-progress rows to System Administrators only,
-  // and their cards reach `widgets` only on clients they can already read.
-  const catalogueQ = useQuery({ queryKey: ["card-catalogue", "with-wip"], queryFn: () => catalogueFn({ data: { includeWip: true } }) });
+  const catalogueFn = useServerFn(getClientCatalogue);
+  // Work-in-progress rows reach this catalogue only for System Administrators
+  // (RLS) or as this client's early-access cards (caller-scoped in the database);
+  // their cards reach `widgets` only through the single card rule.
+  const catalogueQ = useQuery({ queryKey: ["card-catalogue", "client", clientId], queryFn: () => catalogueFn({ data: { clientId } }) });
   const catalogue = catalogueQ.data?.catalogue ?? EMPTY_CATALOGUE;
   const fetchLoansAccess = useServerFn(getMyLoansAccess);
   // Loan card follows the owner-or-team Loans rule (public.me_can_open_client_loans).
@@ -379,10 +380,11 @@ function ClientDashboard() {
   }
   const groupedCards = dashboardCards.map(card => {
     const meta = dashboardCardMeta(card.id, catalogue);
-    const wip = catalogue.cards.find((c) => c.key === card.id.split(":").pop())?.status === "wip";
+    const entry = catalogue.cards.find((c) => c.key === card.id.split(":").pop());
+    const wip = entry?.status === "wip";
     const node = wip ? (
       <div className="space-y-2">
-        <span className="inline-flex rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Work in progress</span>
+        <span className="inline-flex rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">{entry?.earlyAccess ? "Early access — work in progress" : "Work in progress"}</span>
         {card.node}
       </div>
     ) : card.node;

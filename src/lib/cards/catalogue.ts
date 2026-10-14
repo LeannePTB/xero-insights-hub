@@ -15,6 +15,8 @@ export type CatalogueCard = {
   reportSections?: string[];
   /** "wip" = Work in progress: not offered. Only System Administrators can read WIP rows. */
   status?: "available" | "wip";
+  /** Work in progress, shown only because this client's organisation has early access. */
+  earlyAccess?: boolean;
 };
 export type CardCatalogue = { modules: CatalogueModule[]; cards: CatalogueCard[] };
 
@@ -118,4 +120,16 @@ export function reportSectionsForCards(catalogue: CardCatalogue, cards: readonly
   const out = new Set<string>();
   for (const c of catalogue.cards) if (cards.includes(c.key)) for (const s of c.reportSections ?? []) out.add(s);
   return [...out];
+}
+
+/**
+ * Adds caller-scoped early-access rows (public.client_early_access_cards) to a
+ * catalogue. Presentation only: the database already decided they may be shown.
+ */
+export function withEarlyAccess(catalogue: CardCatalogue, rows: any[] | null): CardCatalogue {
+  const extra = mapCatalogue([], rows).cards
+    .filter((c) => !catalogue.cards.some((x) => x.key === c.key))
+    .map((c) => ({ ...c, status: "wip" as const, earlyAccess: true }));
+  if (extra.length === 0) return catalogue;
+  return { modules: catalogue.modules, cards: [...catalogue.cards, ...extra] };
 }

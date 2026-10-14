@@ -1033,6 +1033,77 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       return "deny";
     }
   }
+  if (r.startsWith("ea:")) {
+    // Early access (org_early_access): a Work-in-progress card behaves as Available
+    // for practice members of the granted organisation only, through client_cards_v2.
+    const granted = !r.includes("no early access");
+    const ended = r.includes("end date passed");
+    const revoked = r.includes("revoked");
+    await seedThenActAs(row.role, `
+      create or replace function app_private.setting_bool(_key text) returns boolean
+        language sql stable as $f$ select _key = 'card_model_v2' $f$;
+      create unique index if not exists org_subscription_options_firm_key
+        on public.org_subscription_options (firm_id);
+      delete from public.org_subscription_options where firm_id = '${ORG_A}'::uuid;
+      insert into public.org_subscription_options
+        (firm_id, client_limit, advisory_enabled, consolidation_enabled, billing_mode)
+      values ('${ORG_A}'::uuid, 10, true, false, 'bookkeeping');
+      update public.card_catalogue set status = case when card_key = 'cashflow' then 'wip' else 'available' end;
+      delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
+      insert into public.client_cards (client_id, cards)
+      select '${CLIENT_A}'::uuid, array_agg(card_key) from public.card_catalogue;
+      create unique index if not exists org_early_access_firm_card on public.org_early_access (firm_id, card_key);
+      delete from public.org_early_access;
+      ${granted ? `insert into public.org_early_access (firm_id, card_key, granted_by, ends_at, revoked_at)
+        values ('${ORG_A}'::uuid, 'cashflow', gen_random_uuid(), ${ended ? "now() - interval '1 day'" : "now() + interval '30 days'"}, ${revoked ? "now()" : "null"});` : ""}
+    `);
+    try {
+      if (r.includes("admin_set_org_early_access")) {
+        const p = await probe(`select public.admin_set_org_early_access('${ORG_A}'::uuid, 'cashflow', true, null)`);
+        if (!p.ok && process.env.MATRIX_DEBUG) console.log("EA-SET", row.role, p.error);
+        return p.ok ? "allow" : "deny";
+      }
+      if (r.includes("select org_early_access")) {
+        const res = await db.query<{ n: number }>(`select count(*)::int as n from public.org_early_access`);
+        return (res.rows[0]?.n ?? 0) > 0 ? "allow" : "deny";
+      }
+      if (r.includes("Apply defaults")) {
+        await db.query(`reset role`);
+        await db.query(`delete from public.org_card_defaults where firm_id = '${ORG_A}'::uuid`);
+        await db.query(`insert into public.org_card_defaults (firm_id, cards) values ('${ORG_A}'::uuid, array['health','pnl'])`);
+        await seedThenActAs(row.role, ``);
+        await db.query(`select public.apply_org_card_defaults('${ORG_A}'::uuid)`);
+        await db.query(`reset role`);
+        const res = await db.query<{ c: string[] }>(`select cards as c from public.client_cards where client_id = '${CLIENT_A}'::uuid`);
+        const c = res.rows[0]?.c ?? [];
+        return c.includes("cashflow") && !c.includes("receivables") ? "allow" : "deny";
+      }
+      if (r.includes("assert_widget_access")) {
+        const p = await probe(`select public.assert_widget_access('${TENANT_A}', 'cashflow')`);
+        return p.ok ? "allow" : "deny";
+      }
+      if (r.includes("report sections")) {
+        await db.query(`reset role`);
+        await db.query(`update public.card_catalogue set report_sections = array['wip_section'] where card_key = 'cashflow'`);
+        await seedThenActAs(row.role, ``);
+        const res = await db.query<{ s: string[] }>(`select public.client_report_sections('${CLIENT_A}'::uuid) as s`);
+        return (res.rows[0]?.s ?? []).includes("wip_section") ? "allow" : "deny";
+      }
+      if (r.includes("catalogue row")) {
+        const res = await db.query<{ k: string }>(`select card_key as k from public.client_early_access_cards('${CLIENT_A}'::uuid)`);
+        return res.rows.some((x) => x.k === "cashflow") ? "allow" : "deny";
+      }
+      const res = await db.query<{ c: string[] }>(`select public.client_visible_cards('${CLIENT_A}'::uuid) as c`);
+      return (res.rows[0]?.c ?? []).includes("cashflow") ? "allow" : "deny";
+    } catch (e) {
+      if (process.env.MATRIX_DEBUG) console.log("EA", row.role, r, (e as Error).message);
+      return "deny";
+    } finally {
+      await db.query(`reset role`).catch(() => {});
+      await db.query(`delete from public.org_early_access`).catch(() => {});
+      await db.query(`update public.card_catalogue set status = 'available', report_sections = case when card_key = 'cashflow' then '{}'::text[] else report_sections end`).catch(() => {});
+    }
+  }
   if (r.startsWith("wip:")) {
     // Work-in-progress cards (card_catalogue.status = 'wip') are not offered through
     // the single rule client_cards_v2; ticks stay dormant. System Administrators see

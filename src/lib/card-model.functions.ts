@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAal2 } from "@/lib/auth/require-aal2";
-import { mapCatalogue, offeredCatalogue, type CardCatalogue } from "@/lib/cards/catalogue";
+import { mapCatalogue, offeredCatalogue, withEarlyAccess, type CardCatalogue } from "@/lib/cards/catalogue";
 
 /**
  * Admin reads and writes for the purchase + ticked-list card model (v2).
@@ -209,11 +209,20 @@ export const getClientCardSetup = createServerFn({ method: "POST" })
 
     const { data: client } = await db.from("clients").select("firm_id").eq("id", data.clientId).maybeSingle();
     const firmId = ((client as any)?.firm_id ?? null) as string | null;
-    const [catalogue, canManage] = await Promise.all([readCatalogue(db), canManageCards(db, firmId)]);
+    const [base, canManage, early] = await Promise.all([
+      readCatalogue(db, true),
+      canManageCards(db, firmId),
+      db.rpc("client_early_access_cards", { _client_id: data.clientId }),
+    ]);
+    // Early access: Work-in-progress cards this organisation may try become
+    // tickable here. The database decides; this only shows them.
+    const earlyRows = early.error ? [] : (early.data ?? []);
+    const catalogue = withEarlyAccess(offeredCatalogue(base), earlyRows);
+    const earlyKeys = (earlyRows as any[]).map((r) => r.card_key as string);
 
     return {
       modelActive: true as const,
-      available: (available ?? []) as string[],
+      available: [...new Set([...((available ?? []) as string[]), ...earlyKeys])],
       visible: (visible ?? []) as string[],
       ticked: ((stored as any)?.cards ?? null) as string[] | null,
       groups: await readGroups(db),
@@ -474,6 +483,79 @@ export const getCardCatalogue = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: unknown) => z.object({ includeWip: z.boolean().optional() }).strict().optional().parse(i))
   .handler(async ({ data, context }) => ({ catalogue: await readCatalogue(context.supabase as any, data?.includeWip === true) }));
+
+/**
+ * Catalogue for one client's dashboard: offered cards, WIP rows RLS returns to
+ * System Administrators, plus this client's early-access cards (caller-scoped
+ * in the database: practice members of the organisation only).
+ */
+export const getClientCatalogue = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) => z.object({ clientId: z.string().uuid() }).strict().parse(i))
+  .handler(async ({ data, context }) => {
+    const db = context.supabase as any;
+    const [base, early] = await Promise.all([
+      readCatalogue(db, true),
+      db.rpc("client_early_access_cards", { _client_id: data.clientId }),
+    ]);
+    return { catalogue: withEarlyAccess(base, early.error ? [] : early.data ?? []) };
+  });
+
+export type OrgEarlyAccessRow = {
+  cardKey: string;
+  label: string;
+  moduleLabel: string | null;
+  granted: boolean;
+  active: boolean;
+  endsAt: string | null;
+  grantedAt: string | null;
+};
+
+/** System Administrator: every Work-in-progress card and this organisation's early access. */
+export const getOrgEarlyAccess = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) => z.object({ firmId: z.string().uuid() }).strict().parse(i))
+  .handler(async ({ data, context }): Promise<{ rows: OrgEarlyAccessRow[] }> => {
+    const { data: rows, error } = await (context.supabase as any).rpc("admin_org_early_access", { _firm_id: data.firmId });
+    if (error) throw new Error("Early access could not be loaded.");
+    return {
+      rows: ((rows ?? []) as any[]).map((r) => ({
+        cardKey: r.card_key,
+        label: r.label,
+        moduleLabel: r.module_label ?? null,
+        granted: !!r.granted,
+        active: !!r.active,
+        endsAt: r.ends_at ?? null,
+        grantedAt: r.granted_at ?? null,
+      })),
+    };
+  });
+
+export const saveOrgEarlyAccess = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) =>
+    z.object({
+      firmId: z.string().uuid(),
+      cardKey: z.string().regex(/^[a-z][a-z_]{1,39}$/),
+      enabled: z.boolean(),
+      endsAt: z.string().datetime({ offset: true }).nullable(),
+    }).strict().parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase as any).rpc("admin_set_org_early_access", {
+      _firm_id: data.firmId,
+      _card_key: data.cardKey,
+      _enabled: data.enabled,
+      _ends_at: data.endsAt,
+    });
+    if (error) {
+      if (/END_DATE_IN_PAST/.test(error.message)) throw new Error("The end date must be in the future.");
+      if (/NOT_WORK_IN_PROGRESS/.test(error.message)) throw new Error("That card is not work in progress.");
+      if (/Forbidden|NO_ACCESS|insufficient|super/i.test(error.message)) throw new Error("Forbidden");
+      throw new Error("Early access could not be saved.");
+    }
+    return { ok: true };
+  });
 
 export const saveCardStatus = createServerFn({ method: "POST" })
   .middleware([requireAal2])

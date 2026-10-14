@@ -15,16 +15,17 @@ import {
 } from "@/lib/rent";
 
 /**
- * The Rent report is its own catalogue card ("rental_properties"), currently
- * Work in progress, so the single card rule refuses it for everyone else.
- * Defence in depth (kept from 14 Oct 2026): the rent report is not offered to any
- * organisation. Every function first requires a System Administrator, then
- * still applies its normal client checks — System Administrator alone grants
- * no client data, so this only narrows access.
+ * The Rent report is its own catalogue card ("rental_properties"). While it is
+ * Work in progress the single card rule (client_visible_cards /
+ * assert_widget_access) refuses it to everyone except a System Administrator on
+ * a client they can open, and practice members of an organisation granted early
+ * access. Every handler applies that rule; nothing here widens it.
  */
-async function assertRentWip(supabase: any) {
-  const { assertSuperAdminDb } = await import("@/lib/auth/super-admin.server");
-  await assertSuperAdminDb(supabase);
+async function assertRentCard(supabase: any, clientId: string) {
+  const { data, error } = await supabase.rpc("client_visible_cards", { _client_id: clientId });
+  if (error || !Array.isArray(data) || !data.includes("rental_properties")) {
+    throw new Error("This widget is not enabled for your dashboard.");
+  }
 }
 
 const ClientTenant = z.object({
@@ -128,7 +129,6 @@ export const getRentReport = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: unknown) => ClientTenant.parse(i))
   .handler(async ({ data, context }): Promise<RentReport> => {
-    await assertRentWip(context.supabase);
     const { assertWidgetAccess } = await import("@/lib/xero/access.server");
     await assertWidgetAccess(context.supabase, data.tenantId, "rental_properties");
     const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
@@ -161,7 +161,6 @@ export const getRentPickers = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: unknown) => ClientTenant.parse(i))
   .handler(async ({ data, context }): Promise<RentPickers> => {
-    await assertRentWip(context.supabase);
     const { data: canEdit } = await context.supabase.rpc("can_manage_client_rental_properties", {
       _client_id: data.clientId,
     });
@@ -206,7 +205,7 @@ export const saveRentalProperty = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: unknown) => SaveInput.parse(i))
   .handler(async ({ data, context }) => {
-    await assertRentWip(context.supabase);
+    await assertRentCard(context.supabase, data.clientId);
     const { error } = await context.supabase.rpc("save_client_rental_property", {
       _id: data.id as any,
       _client_id: data.clientId,
@@ -226,7 +225,9 @@ export const deleteRentalProperty = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: unknown) => z.object({ id: z.string().uuid() }).strict().parse(i))
   .handler(async ({ data, context }) => {
-    await assertRentWip(context.supabase);
+    const { data: row } = await context.supabase.from("client_rental_properties").select("client_id").eq("id", data.id).maybeSingle();
+    if (!row) throw new Error("The rental property could not be removed.");
+    await assertRentCard(context.supabase, (row as any).client_id);
     const { error } = await context.supabase.rpc("delete_client_rental_property", { _id: data.id });
     if (error) throw new Error("The rental property could not be removed.");
     return { ok: true };
@@ -249,7 +250,6 @@ export const getRentConsolidation = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: unknown) => z.object({ groupId: z.string().uuid() }).strict().parse(i))
   .handler(async ({ data, context }): Promise<RentConsolidation> => {
-    await assertRentWip(context.supabase);
     const { data: group, error } = await context.supabase
       .from("consolidation_groups")
       .select("name, consolidation_group_members(client_id)")
