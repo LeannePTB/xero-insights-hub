@@ -1,4 +1,7 @@
 # Roadmap
+- [ ] Owner 14 Oct 14:16: report Demo Practice purchase/trial cause first; never change its purchase.
+- [ ] Catalogue module dashboard grouping, balanced widths, shared headers, compact empty states and preserved user order.
+- [ ] Entitlement/security regressions and Standard/Advisory desktop/mobile checks (real session requires MFA).
 - [x] Monday Standard launch: stored-data charts on Standard dashboard cards, preserving card access and honest coverage.
 - [x] Standard report charts and synthetic Demo Company sample page renders; final/sent reports untouched.
 - [x] Practice-only catalogue Advisory dialog, audited confirmed-identity owner-scoped enquiries, three/hour cap, retry deduplication and System Admin status list.
