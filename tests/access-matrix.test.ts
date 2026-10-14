@@ -1662,6 +1662,12 @@ beforeAll(async () => {
   // application object changes.
   await db.exec(`alter table public.practice_team add primary key (user_id);`);
   await db.exec(`alter table public.platform_branding add primary key (id);`);
+  // This structural fixture omits RPC ACLs. Mirror the two new live ACLs
+  // explicitly so anonymous-save denial proves both grant and guard layers.
+  await db.exec(`revoke all on function public.get_public_website_settings() from public;
+                grant execute on function public.get_public_website_settings() to anon, authenticated, service_role;
+                revoke all on function public.save_public_website_settings(jsonb) from public, anon;
+                grant execute on function public.save_public_website_settings(jsonb) to authenticated, service_role;`);
   // overview_alert_states is unique on (client_id, event_key) live (7 Oct 2026); the
   // acknowledge upsert depends on it.
   await db.exec(`alter table public.overview_alert_states add unique (client_id, event_key);`);

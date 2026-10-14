@@ -107,4 +107,11 @@ export const AAL1_ALLOWLIST: Aal1Exception[] = [
     containment:
       "The owner-added SECURITY_TEST_TRIGGER_SECRET is the credential, compared in constant time over SHA-256 digests; a wrong or missing secret gets a bare 401. Rate limited app-wide to six trigger attempts per fixed 3,600-second bucket BEFORE any work. A database claim prevents overlapping runs; sign-ins are serialised, paced and reused. A 429 returns an explicit incomplete result and is never green or an access denial. Touches only the isolated ZZ Security Test Org and the suite's own three accounts, which database triggers refuse to attach to any real organisation. Returns counts and failed expectations only — never a token, password, TOTP secret, email address or anything about a real organisation.",
   },
+  {
+    file: 'src/lib/website-settings.functions.ts',
+    fn: 'getPublicWebsiteSettings',
+    kind: 'unauthenticated',
+    reason: 'Owner approved 14 Oct: public sales page display settings must be readable before sign-in.',
+    containment: 'Publishable-key client calls only the narrow get_public_website_settings projection: validated public booking/media/embed URLs and optional prices. No table reads, client identifiers, tokens or private branding. Writes use a separate audited canonical-admin AAL2 function.',
+  },
 ];
