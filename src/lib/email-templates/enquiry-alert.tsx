@@ -61,9 +61,9 @@ export const template = {
 
 const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
 const container = { padding: '24px 28px', maxWidth: '560px' }
-const h1 = { fontSize: '18px', fontWeight: 600, color: theme.foreground, margin: '0 0 16px' }
-const text = { fontSize: '14px', color: theme.foreground, margin: '0 0 6px', lineHeight: '20px' }
+const h1 = { fontSize: '18px', fontWeight: 600, color: theme.text, margin: '0 0 16px' }
+const text = { fontSize: '14px', color: theme.text, margin: '0 0 6px', lineHeight: '20px' }
 const label = { ...text, fontWeight: 600, margin: '14px 0 4px' }
 const quote = { ...text, whiteSpace: 'pre-wrap' as const, borderLeft: `3px solid ${theme.border}`, paddingLeft: '10px' }
 const button = { backgroundColor: theme.primary, color: '#ffffff', fontSize: '14px', borderRadius: '6px', padding: '10px 16px', textDecoration: 'none', marginTop: '16px' }
-const small = { fontSize: '12px', color: theme.mutedForeground, marginTop: '16px' }
+const small = { fontSize: '12px', color: theme.muted, marginTop: '16px' }
