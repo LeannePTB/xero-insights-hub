@@ -345,7 +345,7 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "app_private.tg_client_cards_default":
     "After-insert trigger on public.clients: writes the new client's card list in the same transaction, defaulting to every card its organisation's purchase allows, so a client created after cutover never has a blank dashboard. Revoked from PUBLIC, anon and authenticated; the INSERT it follows is itself authorised.",
   "public.card_group_list":
-    "Returns the card groupings (Standard, Advisory, Consolidation) for the configuration screens so the grouping is never mirrored in TypeScript. aal2-guarded, holds no client, organisation or personal data.",
+    "Returns the card groupings (Standard, Advisory, Consolidation) from public.card_catalogue for the configuration screens so the grouping is never mirrored in TypeScript. aal2-guarded, holds no client, organisation or personal data.",
   "public.org_purchase":
     "Returns one organisation's purchase options (client number, Advisory, Consolidation, billing mode), its trial options and end date, its effective options (purchased OR unexpired trial) and its client count for the admin and organisation settings screens. aal2 first, then refuses unless the caller is a member of that organisation, platform staff with a path to it, or a super admin reading plan metadata (Path C). No client or Xero data.",
   "app_private.org_effective_options":
@@ -365,9 +365,23 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.set_org_purchase":
     "Records what an organisation has bought: client number, Advisory on/off, Consolidation on/off (refused unless Advisory is on) and billing mode. aal2 + super admin via public.assert_super_admin, validated inputs, audited. Switching an option on ticks its cards for every client in that organisation; switching it off writes no ticks, so each client's arrangement returns intact. Never grants access to anything and never reads client data.",
   "public.set_client_card_enabled":
-    "Ticks or unticks one card in one client's list under the purchase + ticked-list model. Authorisation is public.assert_client_write_access (aal2 + ownership or active organisation membership — never a read-only support or adviser grant), a card outside the organisation's purchase is refused, and the change is audited.",
+    "Ticks or unticks one card (the advanced per-card override) in one client's list under the purchase + ticked-list model. Authorisation is app_private.assert_card_manager for the client's organisation (aal2 + Organisation Owner or System Administrator; Staff, Viewers, Business Owners and support grants refused — owner decision 14 Oct 2026), a card outside the organisation's purchase is refused, and the change is audited.",
   "public.copy_client_cards":
-    "Copies one client's ticked card list onto other clients in the SAME organisation, for organisations with many entities. Requires write access to the source and to every target, refuses any target in another organisation, and audits one row per target. What each target then shows is still capped by its organisation's purchase.",
+    "Copies one client's ticked card list onto other clients in the SAME organisation. app_private.assert_card_manager for that organisation (Organisation Owner or System Administrator), refuses any target in another organisation, and audits one row per target. What each target then shows is still capped by its organisation's purchase.",
+  "public.set_client_module":
+    "Ticks or unticks one Advisory module for one client: adds or removes that module's catalogue cards in the same client_cards list (a grouping over client_cards_v2, never a second rule). aal2, app_private.assert_card_manager for the client's organisation, refuses when none of the module's cards are in the purchase, adds only purchase-available cards, audited.",
+  "public.me_can_manage_cards":
+    "Presentation signal: whether the caller may change card/module ticks for one organisation (Organisation Owner or System Administrator, aal2). Grants nothing; every write re-checks through app_private.assert_card_manager. Returns only a boolean.",
+  "public.admin_set_card_entry":
+    "Moves one catalogue card between packages/Advisory modules and edits its description. aal2 + System Administrator via public.assert_super_admin, validated (Advisory cards need an existing module), audited with old and new package/module. Product catalogue only; no organisation or client data. Changes what every purchase includes; client_cards_v2 still intersects with each client's ticks.",
+  "public.admin_set_card_module":
+    "Renames or redescribes one Advisory module. aal2 + System Administrator via public.assert_super_admin, length-validated, audited. Product catalogue copy only.",
+  "app_private.assert_card_manager":
+    "The single gate for card and module writes: aal2, then allows only a System Administrator or the Organisation Owner of that organisation (app_private.is_org_owner, caller-scoped). Execute revoked from PUBLIC and anon.",
+  "app_private.card_group_cards":
+    "Returns the cards a package (standard/advisory/consolidation) offers, read from public.card_catalogue — the one catalogue definition. No authorisation of its own; only called from definer functions that authorise first, and returns product keys only.",
+  "app_private.known_cards":
+    "Returns every card key in public.card_catalogue for input validation. Product keys only; grants nothing.",
   "public.client_visible_cards":
     "Returns the cards one client shows: aal2 first, then refuses unless the caller already has read access to that client, then intersects the purchase-available set with the client's ticked list. A missing ticked list means all available cards, never none, so a recording fault fails visible rather than blank. Never returns a card the purchase does not allow.",
 

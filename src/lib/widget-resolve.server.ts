@@ -22,7 +22,7 @@
 //   visible  = ceiling − excluded
 // Mirrors public.client_allowed_widgets' v1 branch — never diverge from it.
 
-import { ALL_WIDGETS, DEFAULT_TIER_WIDGETS, type WidgetKey } from "@/lib/tiers";
+import { ALL_WIDGETS, type WidgetKey } from "@/lib/tiers";
 
 /** True once the purchase + ticked-list model is switched on. Fails closed. */
 export async function cardModelV2(supabase: any): Promise<boolean> {
@@ -73,7 +73,7 @@ export async function tierCeilings(supabase: any): Promise<TierCeilings> {
 export function ceilingFor(ceilings: TierCeilings, tier: string): WidgetKey[] {
   const c = ceilings.get(tier);
   if (c && c.length) return c;
-  return (DEFAULT_TIER_WIDGETS as any)[tier] ?? [];
+  return []; // fail closed: no catalogue ceiling, no cards
 }
 
 export type ExclusionRow = {

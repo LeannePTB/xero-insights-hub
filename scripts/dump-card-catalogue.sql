@@ -1,15 +1,9 @@
--- Read-only snapshot of the card catalogue: the body of
--- app_private.card_group_cards, which is the one place the cards each
--- purchasable group offers are defined.
---
--- Read from pg_proc rather than by calling the function, because the dumping
--- role has no USAGE on app_private — and should not be given any.
---
--- Used by tests/card-catalogue.test.ts to prove every offerable card has a
--- component in the dashboard, and by scripts/check-card-catalogue.sh to prove
--- the snapshot itself is not stale after a migration.
-select p.prosrc
-from pg_proc p
-join pg_namespace n on n.oid = p.pronamespace
-where n.nspname = 'app_private'
-  and p.proname = 'card_group_cards';
+-- Read-only snapshot of the card catalogue: public.card_catalogue, the one
+-- place the cards each purchasable package offers are defined (read by
+-- app_private.card_group_cards). Emitted in the "WHEN 'group' THEN ARRAY[...]"
+-- shape tests/card-catalogue.test.ts parses.
+select string_agg(format('WHEN %L THEN ARRAY[%s]', package, cards), E'\n' order by package)
+from (
+  select package, string_agg(quote_literal(card_key), ',' order by sort_order, card_key) as cards
+  from public.card_catalogue group by package
+) t;

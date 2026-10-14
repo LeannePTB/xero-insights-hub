@@ -5,7 +5,6 @@ import { requireAal2 } from "@/lib/auth/require-aal2";
 import {
   ALL_TIERS,
   ALL_WIDGETS,
-  DEFAULT_TIER_WIDGETS,
   type DashboardTier,
   type WidgetKey,
 } from "@/lib/tiers";

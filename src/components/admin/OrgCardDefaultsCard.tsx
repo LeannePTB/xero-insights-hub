@@ -20,8 +20,16 @@ import {
   getOrgCardDefaults,
   getOrgPurchase,
   saveOrgCardDefaults,
+  getOrgCardContext,
 } from "@/lib/card-model.functions";
-import { cardLabel, cardNotBuilt, CARD_GROUP_LABEL } from "@/lib/card-labels";
+import {
+  activeModules,
+  defaultCardsFromModules,
+  EMPTY_CATALOGUE,
+  moduleCards,
+  moduleState,
+  packageCards,
+} from "@/lib/cards/catalogue";
 
 /**
  * Default cards for new clients.
@@ -41,6 +49,14 @@ export function OrgCardDefaultsCard({ firmId }: { firmId: string }) {
   const fetchDefaults = useServerFn(getOrgCardDefaults);
   const save = useServerFn(saveOrgCardDefaults);
   const apply = useServerFn(applyOrgCardDefaults);
+  const fetchContext = useServerFn(getOrgCardContext);
+  const ctxQ = useQuery({
+    queryKey: ["org-card-context", firmId],
+    queryFn: () => fetchContext({ data: { firmId } }),
+    retry: false,
+  });
+  const catalogue = ctxQ.data?.catalogue ?? EMPTY_CATALOGUE;
+  const canManage = ctxQ.data?.canManage === true;
 
   const purchaseQ = useQuery({
     queryKey: ["org-purchase", firmId],
@@ -115,7 +131,7 @@ export function OrgCardDefaultsCard({ firmId }: { firmId: string }) {
     },
   });
 
-  if (purchaseQ.isLoading || defaultsQ.isLoading) {
+  if (purchaseQ.isLoading || defaultsQ.isLoading || ctxQ.isLoading) {
     return (
       <section className="rounded-lg border p-6">
         <p className="text-sm text-muted-foreground">
@@ -134,11 +150,18 @@ export function OrgCardDefaultsCard({ firmId }: { firmId: string }) {
   }
 
   const current = ticked ?? [];
-  const toggle = (card: string, on: boolean) =>
-    setTicked((prev) => {
-      const base = prev ?? [];
-      return on ? Array.from(new Set([...base, card])) : base.filter((c) => c !== card);
-    });
+  const on = new Set(current);
+  const availableSet = new Set(available);
+  const modules = activeModules(catalogue)
+    .map((m) => ({ ...m, cards: moduleCards(catalogue, m.key).filter((c) => availableSet.has(c)) }))
+    .filter((m) => m.cards.length > 0);
+  const consCards = packageCards(catalogue, "consolidation").filter((c) => availableSet.has(c));
+  const consOn = consCards.length > 0 && consCards.every((c) => on.has(c));
+  const ticksFrom = (mods: string[], cons: boolean) =>
+    defaultCardsFromModules(catalogue, mods, cons).filter((c) => availableSet.has(c));
+  const onModules = modules.filter((m) => moduleState(m.cards, on) === "on").map((m) => m.key);
+  const setModule = (key: string, value: boolean) =>
+    setTicked(ticksFrom(value ? [...onModules, key] : onModules.filter((k) => k !== key), consOn));
 
   const saved = defaultsQ.data?.configured ? defaultsQ.data.cards : null;
   const dirty =
@@ -151,53 +174,58 @@ export function OrgCardDefaultsCard({ firmId }: { firmId: string }) {
     <section className="space-y-4 rounded-lg border p-6">
       <div className="flex flex-wrap items-center gap-2">
         <LayoutTemplate className="h-4 w-4" />
-        <h2 className="text-lg font-semibold">Default cards for new clients</h2>
+        <h2 className="text-lg font-semibold">Default modules for new clients</h2>
       </div>
       <p className="text-sm text-muted-foreground">
-        This is the card set a client added to this organisation from now on starts with. It applies
-        at the moment the client is created and never afterwards, so changing it does not change any
-        existing client. Each client's own ticks stay in charge of what that client sees.
+        The modules a client added to this organisation from now on starts with. Standard is always
+        included. This applies when the client is created and never afterwards, unless you use
+        Apply to all clients.
+        {!canManage && " Only the Organisation Owner can change this."}
       </p>
       {!defaultsQ.data?.configured && (
         <p className="text-sm text-muted-foreground">
-          No default has been saved yet, so new clients currently start with every card this
-          organisation has bought — the ticks below.
+          No default has been saved yet, so new clients currently start with everything this
+          organisation has bought.
         </p>
       )}
 
-      <div className="space-y-4">
-        {availableGroups.map((g) => (
-          <div key={g.group} className="space-y-2">
-            <p className="text-xs font-medium uppercase text-muted-foreground">
-              {CARD_GROUP_LABEL[g.group] ?? g.group}
-            </p>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {g.cards.map((card) => (
-                <label key={card} className="flex items-center gap-2 rounded-md border p-2 text-sm">
-                  <Checkbox
-                    checked={current.includes(card)}
-                    onCheckedChange={(v) => toggle(card, v === true)}
-                  />
-                  <span>{cardLabel(card)}</span>
-                  {cardNotBuilt(card) && (
-                    <span className="text-xs text-muted-foreground">not built yet</span>
-                  )}
-                </label>
-              ))}
-            </div>
-          </div>
-        ))}
+      <div className="space-y-2">
+        <p className="text-xs font-medium uppercase text-muted-foreground">Standard — always included</p>
+        {modules.length > 0 && <p className="pt-2 text-xs font-medium uppercase text-muted-foreground">Advisory modules</p>}
+        {modules.map((m) => {
+          const st = moduleState(m.cards, on);
+          return (
+            <label key={m.key} className="flex items-start gap-2 rounded-md border p-3 text-sm">
+              <Checkbox
+                className="mt-0.5"
+                disabled={!canManage}
+                checked={st === "on" ? true : st === "partial" ? "indeterminate" : false}
+                onCheckedChange={() => setModule(m.key, st !== "on")}
+              />
+              <span>
+                <span className="block font-medium">{m.label}</span>
+                <span className="block text-xs text-muted-foreground">{m.description}</span>
+              </span>
+            </label>
+          );
+        })}
+        {consCards.length > 0 && (
+          <label className="flex items-start gap-2 rounded-md border p-3 text-sm">
+            <Checkbox className="mt-0.5" disabled={!canManage} checked={consOn} onCheckedChange={(v) => setTicked(ticksFrom(onModules, v === true))} />
+            <span className="font-medium">Consolidation</span>
+          </label>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={() => saveMut.mutate()} disabled={!dirty || saveMut.isPending}>
+        <Button onClick={() => saveMut.mutate()} disabled={!canManage || !dirty || saveMut.isPending}>
           {saveMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Save default card set
+          Save default modules
         </Button>
         <Button
           variant="outline"
           onClick={() => setConfirming(true)}
-          disabled={!defaultsQ.data?.configured || clientCount === 0 || applyMut.isPending}
+          disabled={!canManage || !defaultsQ.data?.configured || clientCount === 0 || applyMut.isPending}
         >
           Apply to all clients in this organisation
         </Button>
@@ -216,7 +244,7 @@ export function OrgCardDefaultsCard({ firmId }: { firmId: string }) {
             </AlertDialogTitle>
             <AlertDialogDescription>
               Every one of the {clientCount} {clientCount === 1 ? "client" : "clients"} in this
-              organisation will have its current ticks replaced by the saved default card set. Any
+              organisation will have its current ticks replaced by the saved default modules. Any
               card a client has turned on or off individually is overwritten and cannot be recovered
               except by setting it again. This is recorded in the audit log.
             </AlertDialogDescription>

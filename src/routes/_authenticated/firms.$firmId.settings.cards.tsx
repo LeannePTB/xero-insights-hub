@@ -7,10 +7,10 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId/settings/car
   staticData: { sitemap: false },
   head: () => ({
     meta: [
-      { title: "Card defaults — Organisation settings" },
-      { name: "description", content: "The dashboard cards new clients start with." },
-      { property: "og:title", content: "Card defaults — Organisation settings" },
-      { property: "og:description", content: "The dashboard cards new clients start with." },
+      { title: "Default modules — Organisation settings" },
+      { name: "description", content: "The Advisory modules new clients start with." },
+      { property: "og:title", content: "Default modules — Organisation settings" },
+      { property: "og:description", content: "The Advisory modules new clients start with." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -22,7 +22,7 @@ function CardDefaultsPage() {
   const { firmId } = Route.useParams();
   return (
     <PageContainer width="readable" className="space-y-6">
-      <FirmPageHeader title="Card defaults" description="The dashboard cards new clients start with." />
+      <FirmPageHeader title="Default modules" description="The Advisory modules new clients start with." />
       <OrgCardDefaultsCard firmId={firmId} />
     </PageContainer>
   );

@@ -7,6 +7,7 @@ import { PublicPanelLogo } from '@/components/branding/PublicPanelLogo';
 import { usePlatformBranding } from '@/hooks/usePlatformBranding';
 import { supabase } from '@/integrations/supabase/client';
 import { walkthroughEmbed, WEBSITE_MEDIA_BUCKET, type WebsiteSettings } from '@/lib/website-settings';
+import { activeModules, EMPTY_CATALOGUE, type CardCatalogue, type CatalogueCard } from '@/lib/cards/catalogue';
 import overview from '@/assets/website-overview.jpg';
 import report from '@/assets/website-report.jpg';
 import cash from '@/assets/website-cash.jpg';
@@ -53,9 +54,10 @@ function HeroMedia({settings}:{settings:WebsiteSettings}){
  <div className="sales-demo-label">Illustrative preview · fictional data</div>
  </div>;
 }
-export function SalesPage({settings}:{settings:WebsiteSettings}){
+export function SalesPage({settings}:{settings:WebsiteSettings&{packages?:CardCatalogue}}){
  const brand=usePlatformBranding();const embed=walkthroughEmbed(settings.walkthroughUrl);
- const packages=[{title:'Standard',icon:LayoutDashboard,description:'The essentials, clearly laid out.',price:settings.standardPrice,features:['Business health','Receivables and payables','Profit & loss','Client notes']},{title:'Advisory',icon:Sparkles,description:'Go deeper into what comes next.',price:settings.advisoryPrice,features:['Cash flow and scenarios','Accounting break-even','Tax, GST, super and PAYG','Xero audit and transaction search']},{title:'Consolidation',icon:Layers,description:'A connected view of the group.',price:settings.consolidationPrice,features:['Multi-company views','Loan consolidation','Group account mappings','Optional extra with Advisory']},{title:'White label',icon:Palette,description:'Your practice. Your identity.',price:settings.whiteLabelPrice,features:['Your organisation’s name','Your organisation’s logo','Branded client experience','Independent optional extra']}];
+ const cat=settings.packages??EMPTY_CATALOGUE;const labels=(f:(c:CatalogueCard)=>boolean)=>cat.cards.filter(f).map(c=>c.label);
+ const packages=[{title:'Standard',icon:LayoutDashboard,description:'The essentials, clearly laid out.',price:settings.standardPrice,features:labels(c=>c.package==='standard')},{title:'Advisory',icon:Sparkles,description:'Choose the modules each client needs.',price:settings.advisoryPrice,features:activeModules(cat).map(m=>`${m.label} — ${m.description}`)},{title:'Consolidation',icon:Layers,description:'A connected view of the group.',price:settings.consolidationPrice,features:[...labels(c=>c.package==='consolidation'),'Optional extra with Advisory']},{title:'White label',icon:Palette,description:'Your practice. Your identity.',price:settings.whiteLabelPrice,features:['Your organisation’s name','Your organisation’s logo','Branded client experience','Independent optional extra']}];
  return <div className="sales-page bg-background text-foreground">
  <a href="#sales-main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-card focus:p-4">Skip to content</a>
  <header className="border-b border-border bg-card"><div className="sales-wrap flex min-h-20 items-center justify-between gap-4 py-2"><Link to="/" aria-label="Traction Advisory home"><PublicPanelLogo brand={brand}/></Link><div className="flex shrink-0 items-center gap-6"><span className="hidden text-sm text-muted-foreground sm:block">A clearer picture. A better conversation.</span><Button asChild variant="outline" className="h-10 px-5"><Link to="/auth">Sign in <ArrowUpRight className="ml-2 h-4 w-4"/></Link></Button></div></div></header>

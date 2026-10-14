@@ -19,13 +19,14 @@
 - App typography is governed by the shared Tailwind size tokens and PageHeader; only explicitly marked dashboard KPI figures use the separate KPI utility, so density changes remain centralised.
 - Print and email rendering use server-safe presentation tokens mirroring the global semantic palette, because CSS variables are unavailable in PDFs and email clients.
 - Official web colours are represented by OKLCH semantic tokens; approved logo crops are bundled circular TA marks, because artwork must retain its proportions and the colour sheet's printed conversions are not authoritative.
-- Trixie chats are saved per person in `trixie_threads`/`trixie_messages` (owner-only RLS that re-checks client/organisation read access on every read; visible text and source labels only, never tool payloads), written by the Trixie route as the caller, because history must never outlive or widen the person's current access.
+- Trixie chats live per person in `trixie_threads`/`trixie_messages` (owner-only RLS re-checking read access; visible text and source labels only), written as the caller, so history never widens current access.
 - Trixie alerting runs as one scheduled public route calling service-role-only database functions, because alert evaluation needs every organisation's usage and no signed-in caller exists.
 - Trixie spend is priced in TypeScript from recorded token counts (`src/lib/trixie/trixie-cost.ts`), so the per-question cost guard and the spend reports use one rate table.
-- Bank-reconciliation warnings use only `client_key_figures.bank_reconciliation` per-account dates, cash's account-settings overlay and the recent-line window in `src/lib/overview/bank-reconciliation.ts`; file-wide oldest dates include closed accounts/ancient leftovers. Missing data shows nothing.
+- Bank-reconciliation warnings use only per-account dates, the cash account overlay and the recent-line window in `src/lib/overview/bank-reconciliation.ts`, never file-wide oldest dates. Missing data shows nothing.
 - Protected money is compared with cash at bank only through `src/lib/health/protected-money-share.ts`, because the health rule, Overview, reports and Trixie must agree on one definition.
 - Viewer is one read-only login type whose scope (All clients via firm_viewer_access, Selected via client_access external_adviser rows) is changed only through `set_viewer_scope`, because the two storage paths must switch atomically without a new predicate.
 - Login labels use `LOGIN_TYPE_LABEL`; database keys stay unchanged to preserve access rules.
 - Auth/public logos share display-only rendering and official fallback; auth logic stays route-owned.
 
 - Charts share pure vector geometry between accessible SVG and jsPDF; history is caller-scoped and frozen only into new report drafts, so charts never widen access or refresh final/sent documents.
+- Card packages/modules live in `card_catalogue`/`card_modules` (read by `card_group_cards`); modules group `client_cards`; card writes pass `assert_card_manager`: one list, one rule.

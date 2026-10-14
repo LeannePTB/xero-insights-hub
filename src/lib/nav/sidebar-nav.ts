@@ -54,6 +54,7 @@ export const SYSTEM_NAV: NavGroup[] = [
       { id: "staff", label: "Platform staff", icon: "users", to: "/system/staff" },
       { id: "branding", label: "Platform branding", icon: "palette", to: "/system/branding" },
       { id: "trixie", label: "Trixie", icon: "message", to: "/system/trixie" },
+      { id: "packages", label: "Packages & modules", icon: "grid", to: "/system/packages" },
     ],
   },
   {
@@ -94,7 +95,7 @@ export const ORGANISATION_NAV: NavGroup[] = [
         to: "/firms/$firmId/settings",
         children: [
           { id: "s-general", label: "General", icon: "settings", to: "/firms/$firmId/settings/general" },
-          { id: "s-cards", label: "Card defaults", icon: "grid", to: "/firms/$firmId/settings/cards" },
+          { id: "s-cards", label: "Default modules", icon: "grid", to: "/firms/$firmId/settings/cards" },
           { id: "s-subscription", label: "Subscription", icon: "file", to: "/firms/$firmId/settings/subscription" },
           { id: "s-ownership", label: "Ownership", icon: "users", to: "/firms/$firmId/settings/ownership" },
           { id: "s-support", label: "Support access", icon: "shield", to: "/firms/$firmId/settings/support" },
@@ -123,7 +124,7 @@ export const CLIENT_NAV: NavGroup[] = [
         id: "client-settings", label: "Client settings", icon: "settings", to: "/clients/$clientId/settings",
         children: [
           { id: "client-general", label: "General", icon: "settings", to: "/clients/$clientId/settings/general" },
-          { id: "client-cards", label: "Cards & report branding", icon: "grid", to: "/clients/$clientId/settings/cards" },
+          { id: "client-cards", label: "Package & report branding", icon: "grid", to: "/clients/$clientId/settings/cards" },
           { id: "client-people", label: "People", icon: "users", to: "/clients/$clientId/settings/people" },
           { id: "client-xero", label: "Xero connections", icon: "link", to: "/clients/$clientId/settings/xero" },
           { id: "client-tax", label: "Tax & reporting", icon: "file", to: "/clients/$clientId/settings/tax-reporting" },

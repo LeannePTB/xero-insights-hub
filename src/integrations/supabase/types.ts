@@ -320,6 +320,74 @@ export type Database = {
           },
         ]
       }
+      card_catalogue: {
+        Row: {
+          card_key: string
+          description: string
+          label: string
+          module_key: string | null
+          package: string
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          card_key: string
+          description?: string
+          label: string
+          module_key?: string | null
+          package: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          card_key?: string
+          description?: string
+          label?: string
+          module_key?: string | null
+          package?: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_catalogue_module_key_fkey"
+            columns: ["module_key"]
+            isOneToOne: false
+            referencedRelation: "card_modules"
+            referencedColumns: ["module_key"]
+          },
+        ]
+      }
+      card_modules: {
+        Row: {
+          description: string
+          label: string
+          module_key: string
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          description?: string
+          label: string
+          module_key: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          description?: string
+          label?: string
+          module_key?: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       client_access: {
         Row: {
           client_id: string
@@ -3694,6 +3762,19 @@ export type Database = {
         Args: { _user_id: string }
         Returns: undefined
       }
+      admin_set_card_entry: {
+        Args: {
+          _card_key: string
+          _description: string
+          _module_key: string
+          _package: string
+        }
+        Returns: undefined
+      }
+      admin_set_card_module: {
+        Args: { _description: string; _label: string; _module_key: string }
+        Returns: undefined
+      }
       admin_set_self_firm_membership: {
         Args: { _firm_id: string; _join: boolean }
         Returns: boolean
@@ -4138,6 +4219,7 @@ export type Database = {
         Returns: undefined
       }
       mark_trixie_alert_emailed: { Args: { _id: string }; Returns: boolean }
+      me_can_manage_cards: { Args: { _firm_id: string }; Returns: boolean }
       me_can_manage_client: { Args: { _client_id: string }; Returns: boolean }
       me_can_manage_client_viewers: {
         Args: { _client_id: string }
@@ -4527,6 +4609,10 @@ export type Database = {
       set_client_dashboard_tier: {
         Args: { _client_id: string; _reason: string; _tier: string }
         Returns: string
+      }
+      set_client_module: {
+        Args: { _client_id: string; _enabled: boolean; _module_key: string }
+        Returns: string[]
       }
       set_client_overview_hidden: {
         Args: { _client_id: string; _hidden: boolean }

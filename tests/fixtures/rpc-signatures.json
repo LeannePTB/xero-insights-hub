@@ -93,6 +93,25 @@
     },
     {
         "args": [
+            "_card_key",
+            "_package",
+            "_module_key",
+            "_description"
+        ],
+        "name": "admin_set_card_entry",
+        "required": 4
+    },
+    {
+        "args": [
+            "_module_key",
+            "_label",
+            "_description"
+        ],
+        "name": "admin_set_card_module",
+        "required": 3
+    },
+    {
+        "args": [
             "_firm_id",
             "_join"
         ],
@@ -670,6 +689,13 @@
     },
     {
         "args": [
+            "_firm_id"
+        ],
+        "name": "me_can_manage_cards",
+        "required": 1
+    },
+    {
+        "args": [
             "_client_id"
         ],
         "name": "me_can_manage_client",
@@ -1131,6 +1157,15 @@
             "_reason"
         ],
         "name": "set_client_dashboard_tier",
+        "required": 3
+    },
+    {
+        "args": [
+            "_client_id",
+            "_module_key",
+            "_enabled"
+        ],
+        "name": "set_client_module",
         "required": 3
     },
     {

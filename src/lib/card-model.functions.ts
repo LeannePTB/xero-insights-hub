@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireAal2 } from "@/lib/auth/require-aal2";
+import { mapCatalogue, type CardCatalogue } from "@/lib/cards/catalogue";
 
 /**
  * Admin reads and writes for the purchase + ticked-list card model (v2).
@@ -14,8 +16,9 @@ import { requireAal2 } from "@/lib/auth/require-aal2";
  *   public.set_org_purchase(...)        System Administrator only, audited
  *   public.client_available_cards(c)    what the purchase allows
  *   public.client_visible_cards(c)      purchase ∩ ticked
- *   public.set_client_card_enabled(...)  write access to that client, audited
- *   public.copy_client_cards(from, to[]) same organisation only, audited
+ *   public.set_client_card_enabled(...)  Organisation Owner or System Administrator, audited
+ *   public.set_client_module(...)        same gate; ticks a module's cards, audited
+ *   public.copy_client_cards(from, to[]) same gate, same organisation only, audited
  */
 
 export type CardGroup = { group: string; cards: string[] };
@@ -204,12 +207,18 @@ export const getClientCardSetup = createServerFn({ method: "POST" })
       .eq("client_id", data.clientId)
       .maybeSingle();
 
+    const { data: client } = await db.from("clients").select("firm_id").eq("id", data.clientId).maybeSingle();
+    const firmId = ((client as any)?.firm_id ?? null) as string | null;
+    const [catalogue, canManage] = await Promise.all([readCatalogue(db), canManageCards(db, firmId)]);
+
     return {
       modelActive: true as const,
       available: (available ?? []) as string[],
       visible: (visible ?? []) as string[],
       ticked: ((stored as any)?.cards ?? null) as string[] | null,
       groups: await readGroups(db),
+      catalogue,
+      canManage,
     };
   });
 
@@ -373,7 +382,7 @@ export const saveOrgTrial = createServerFn({ method: "POST" })
  * the client.
  *
  *   public.org_card_defaults(firm)        read the template
- *   public.set_org_card_defaults(...)     active membership only, audited
+ *   public.set_org_card_defaults(...)     Organisation Owner or System Administrator, audited
  *   public.apply_org_card_defaults(firm)  overwrites every client, audited
  */
 export const getOrgCardDefaults = createServerFn({ method: "POST" })
@@ -435,4 +444,105 @@ export const applyOrgCardDefaults = createServerFn({ method: "POST" })
       throw rpcError(error.message);
     }
     return { clientsChanged: Number(n ?? 0) };
+  });
+
+// ---------------------------------------------------------------------------
+// Packages & modules — the card catalogue as data (public.card_catalogue,
+// public.card_modules). Reads are product copy for signed-in aal2 users; writes
+// go through System-Administrator-only, audited database functions. Module
+// ticks are a grouping over the same client_cards list (client_cards_v2).
+// ---------------------------------------------------------------------------
+
+async function readCatalogue(db: any): Promise<CardCatalogue> {
+  const [m, c] = await Promise.all([
+    db.from("card_modules").select("module_key, label, description, sort_order").order("sort_order"),
+    db.from("card_catalogue").select("card_key, package, module_key, label, description, sort_order").order("sort_order"),
+  ]);
+  if (m.error || c.error) throw rpcError("The card catalogue is unavailable.");
+  return mapCatalogue(m.data, c.data);
+}
+
+async function canManageCards(db: any, firmId: string | null): Promise<boolean> {
+  const { data, error } = await db.rpc("me_can_manage_cards", { _firm_id: firmId });
+  return !error && data === true;
+}
+
+export const getCardCatalogue = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .handler(async ({ context }) => ({ catalogue: await readCatalogue(context.supabase as any) }));
+
+const cardEntrySchema = z.object({
+  cardKey: z.string().regex(/^[a-z][a-z_]{1,39}$/),
+  package: z.enum(["standard", "advisory", "consolidation"]),
+  moduleKey: z.string().regex(/^[a-z][a-z_]{1,39}$/).nullable(),
+  description: z.string().trim().max(300),
+});
+
+export const saveCardEntry = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) => cardEntrySchema.parse(i))
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase as any).rpc("admin_set_card_entry", {
+      _card_key: data.cardKey,
+      _package: data.package,
+      _module_key: data.package === "advisory" ? data.moduleKey : null,
+      _description: data.description,
+    });
+    if (error) {
+      if (/MODULE_REQUIRED/.test(error.message)) throw new Error("Choose a module for an Advisory card.");
+      if (/Forbidden|NO_ACCESS|insufficient/i.test(error.message)) throw new Error("Forbidden");
+      throw new Error("The card could not be saved.");
+    }
+    return { ok: true };
+  });
+
+const moduleSchema = z.object({
+  moduleKey: z.string().regex(/^[a-z][a-z_]{1,39}$/),
+  label: z.string().trim().min(1).max(60),
+  description: z.string().trim().max(300),
+});
+
+export const saveCardModule = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) => moduleSchema.parse(i))
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase as any).rpc("admin_set_card_module", {
+      _module_key: data.moduleKey,
+      _label: data.label,
+      _description: data.description,
+    });
+    if (error) {
+      if (/Forbidden|NO_ACCESS|insufficient/i.test(error.message)) throw new Error("Forbidden");
+      throw new Error("The module could not be saved.");
+    }
+    return { ok: true };
+  });
+
+export const setClientModuleTick = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) =>
+    z.object({ clientId: z.string().uuid(), moduleKey: z.string().regex(/^[a-z][a-z_]{1,39}$/), enabled: z.boolean() }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: visible, error } = await (context.supabase as any).rpc("set_client_module", {
+      _client_id: data.clientId,
+      _module_key: data.moduleKey,
+      _enabled: data.enabled,
+    });
+    if (error) {
+      if (/CARD_NOT_AVAILABLE/.test(error.message)) throw new Error("This module is not part of what the organisation has bought.");
+      if (/NO_ACCESS|insufficient/i.test(error.message)) throw new Error("Only the Organisation Owner can change this client's package.");
+      throw new Error("The module could not be changed.");
+    }
+    return { visible: (visible ?? []) as string[] };
+  });
+
+/** Catalogue plus whether the caller may change cards for this organisation. */
+export const getOrgCardContext = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) => z.object({ firmId: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const db: any = context.supabase;
+    const [catalogue, canManage] = await Promise.all([readCatalogue(db), canManageCards(db, data.firmId)]);
+    return { catalogue, canManage };
   });

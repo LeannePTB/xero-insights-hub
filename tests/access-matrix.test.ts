@@ -870,6 +870,19 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const p = await probe(`select public.rename_my_organisation('${ORG_A}'::uuid, 'Matrix renamed')`);
     return p.ok ? "allow" : "deny";
   }
+  if (r.startsWith("set_client_module(") || r.startsWith("set_client_card_enabled(") || r.startsWith("admin_set_card_entry(")) {
+    const ctx = CONTEXT[row.role];
+    await db.query(`select set_config('request.jwt.claims', $1, true)`, [claims(ctx)]);
+    await db.exec(`set local role ${ctx.dbRole}`);
+    const sql = r.startsWith("set_client_module(")
+      ? `select public.set_client_module('${CLIENT_A}'::uuid, 'cash_flow', false)`
+      : r.startsWith("set_client_card_enabled(")
+        ? `select public.set_client_card_enabled('${CLIENT_A}'::uuid, 'health', false)`
+        : `select public.admin_set_card_entry('cashflow', 'advisory', 'cash_flow', 'matrix probe')`;
+    const p = await probe(sql);
+    if (process.env.MATRIX_DEBUG && !p.ok) console.log('PROBE', row.role, r, p.error);
+    return p.ok ? "allow" : "deny";
+  }
   if (r.startsWith("set_org_card_defaults(")) {
     const p = await probe(
       `select public.set_org_card_defaults('${ORG_A}'::uuid, array['cashflow','profit_loss'])`,
@@ -1662,6 +1675,21 @@ beforeAll(async () => {
   // application object changes.
   await db.exec(`alter table public.practice_team add primary key (user_id);`);
   await db.exec(`alter table public.platform_branding add primary key (id);`);
+  // The product catalogue is data since 14 Oct 2026; the structural fixture
+  // holds no rows, so seed it from the same snapshot the catalogue test reads.
+  await db.exec(`alter table public.card_modules add primary key (module_key);
+                 alter table public.card_catalogue add primary key (card_key);`);
+  {
+    const snap = fs.readFileSync(path.join(process.cwd(), "tests/fixtures/card-catalogue.sql"), "utf8");
+    await db.exec(`insert into public.card_modules (module_key, label) values ('matrix_module', 'Matrix module'), ('cash_flow', 'Cash flow');`);
+    let i = 0;
+    for (const m of snap.matchAll(/when\s+'([a-z_]+)'\s+then\s+array\[([^\]]*)\]/gi)) {
+      for (const c of m[2]!.matchAll(/'([a-z_]+)'/g)) {
+        const mod = m[1] === "advisory" ? (c[1] === "cashflow" ? "'cash_flow'" : "'matrix_module'") : "null";
+        await db.exec(`insert into public.card_catalogue (card_key, package, module_key, label, sort_order) values ('${c[1]}', '${m[1]}', ${mod}, '${c[1]}', ${i++});`);
+      }
+    }
+  }
   // This structural fixture omits RPC ACLs. Mirror the two new live ACLs
   // explicitly so anonymous-save denial proves both grant and guard layers.
   await db.exec(`revoke all on function public.get_public_website_settings() from public;
@@ -2067,7 +2095,9 @@ describe('public website security boundary',()=>{
    await db.query(`insert into public.platform_branding(id,website_settings,updated_by) values(true,$1::jsonb,$2::uuid)`,[JSON.stringify({standardPrice:'Demo',calendlyUrl:'https://calendly.com/demo',privateToken:'must-not-leak',clientId:CLIENT_A}),U.superAdmin]);
    await db.exec('set local role anon');
    const result=await db.query<{settings:Record<string,unknown>}>(`select public.get_public_website_settings() settings`);
-   expect(Object.keys(result.rows[0]!.settings).sort()).toEqual(['calendlyUrl','heroVideoPath','heroPosterPath','walkthroughUrl','standardPrice','advisoryPrice','consolidationPrice','whiteLabelPrice'].sort());
+   expect(Object.keys(result.rows[0]!.settings).sort()).toEqual(['calendlyUrl','heroVideoPath','heroPosterPath','walkthroughUrl','standardPrice','advisoryPrice','consolidationPrice','whiteLabelPrice','packages'].sort());
+   // Catalogue copy only: module and card labels/descriptions, no keys tied to any organisation.
+   const pk=(result.rows[0]!.settings as any).packages;expect(Object.keys(pk).sort()).toEqual(['cards','modules']);for(const c of pk.cards)expect(Object.keys(c).sort()).toEqual(['description','label','module','package']);
    expect(JSON.stringify(result.rows)).not.toContain('must-not-leak');expect(JSON.stringify(result.rows)).not.toContain(CLIENT_A);
   });
  });
