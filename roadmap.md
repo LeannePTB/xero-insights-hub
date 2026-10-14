@@ -1,4 +1,7 @@
 # Roadmap
+- [ ] Build public practices-first sales homepage, preserve signed-in landing, add public sitemap/robots.
+- [ ] Add audited AAL2 System Administrator website settings and size-limited public media uploads; prove read/write boundaries.
+- [ ] Verify desktop/mobile, routing, website rules and full security checks; report owner-supplied media and links.
 - [x] Consolidate shell headers; all 79 route sources audited; rendered header/action/standalone tests and compilation pass. Real-user visual verification remains blocked by MFA.
 - [x] Remove Unreconciled since and Last Xero login from both overview views; build OK, 23 focused tests and full security gate pass.
 - [x] Add explicit in-app bank/credit-card account classification in Client settings → Tax & reporting, scoped to client/Xero file/account ID. Shared overview, snapshot, health, cash-flow and report calculations apply it; no name guessing or Xero rewrite. Real-user AAL2 save/readback remains unverified; no Positive Traction override was saved by tooling.
