@@ -267,6 +267,13 @@
       "when": 1791942712183,
       "tag": "0037_public_website_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791949536964,
+      "tag": "0038_card_catalogue_and_modules",
+      "breakpoints": true
     }
   ]
 }
