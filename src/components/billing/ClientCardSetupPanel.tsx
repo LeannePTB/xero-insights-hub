@@ -33,6 +33,7 @@ import {
 import { getPublicWebsiteSettings } from "@/lib/website-settings.functions";
 import { listClients } from "@/lib/clients.functions";
 import { cardLabel } from "@/lib/card-labels";
+import { AdvisoryEnquiry } from './AdvisoryEnquiry';
 
 /**
  * Client "Package": Standard (included), Advisory modules and Consolidation,
@@ -130,6 +131,7 @@ export function ClientCardSetupPanel({
 
   return (
     <div className="space-y-5">
+      {firmId && <AdvisoryEnquiry firmId={firmId} compact/>}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-xl text-xs text-muted-foreground">
           What this client's dashboard includes. Only what the organisation has bought is shown.

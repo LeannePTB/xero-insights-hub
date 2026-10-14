@@ -50,6 +50,7 @@ import { RefreshSnapshotsButton } from "@/components/dashboard/RefreshSnapshotsB
 import { OrganisationLapsedNotice } from "@/components/dashboard/OrganisationLapsedNotice";
 import { ClientTrialNotice } from "@/components/dashboard/ClientTrialNotice";
 import { PageContainer } from "@/components/PageContainer";
+import { AdvisoryEnquiry } from '@/components/billing/AdvisoryEnquiry';
 // import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
@@ -414,6 +415,7 @@ function ClientDashboard() {
         />
       )}
       <PageContainer>
+        {!previewing && client.firm_id && <AdvisoryEnquiry firmId={client.firm_id}/>}
         {/* SubscriptionGate disabled until payments re-enabled */}
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
           <div className="min-w-0">

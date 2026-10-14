@@ -38,6 +38,7 @@ import { Route as AuthenticatedSettingsAdvisorsRouteImport } from './routes/_aut
 import { Route as AuthenticatedSettingsPracticeTeamRouteImport } from './routes/_authenticated/settings.practice-team'
 import { Route as AuthenticatedSystemIndexRouteImport } from './routes/_authenticated/system.index'
 import { Route as AuthenticatedSystemBrandingRouteImport } from './routes/_authenticated/system.branding'
+import { Route as AuthenticatedSystemEnquiriesRouteImport } from './routes/_authenticated/system.enquiries'
 import { Route as AuthenticatedSystemPackagesRouteImport } from './routes/_authenticated/system.packages'
 import { Route as AuthenticatedSystemSecurityRouteImport } from './routes/_authenticated/system.security'
 import { Route as AuthenticatedSystemStaffRouteImport } from './routes/_authenticated/system.staff'
@@ -243,6 +244,12 @@ const AuthenticatedSystemBrandingRoute =
   AuthenticatedSystemBrandingRouteImport.update({
     id: '/branding',
     path: '/branding',
+    getParentRoute: () => AuthenticatedSystemRoute,
+  } as any)
+const AuthenticatedSystemEnquiriesRoute =
+  AuthenticatedSystemEnquiriesRouteImport.update({
+    id: '/enquiries',
+    path: '/enquiries',
     getParentRoute: () => AuthenticatedSystemRoute,
   } as any)
 const AuthenticatedSystemPackagesRoute =
@@ -589,6 +596,7 @@ export interface FileRoutesByFullPath {
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/practice-team': typeof AuthenticatedSettingsPracticeTeamRoute
   '/system/branding': typeof AuthenticatedSystemBrandingRoute
+  '/system/enquiries': typeof AuthenticatedSystemEnquiriesRoute
   '/system/packages': typeof AuthenticatedSystemPackagesRoute
   '/system/security': typeof AuthenticatedSystemSecurityRoute
   '/system/staff': typeof AuthenticatedSystemStaffRoute
@@ -670,6 +678,7 @@ export interface FileRoutesByTo {
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/practice-team': typeof AuthenticatedSettingsPracticeTeamRoute
   '/system/branding': typeof AuthenticatedSystemBrandingRoute
+  '/system/enquiries': typeof AuthenticatedSystemEnquiriesRoute
   '/system/packages': typeof AuthenticatedSystemPackagesRoute
   '/system/security': typeof AuthenticatedSystemSecurityRoute
   '/system/staff': typeof AuthenticatedSystemStaffRoute
@@ -754,6 +763,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/_authenticated/settings/practice-team': typeof AuthenticatedSettingsPracticeTeamRoute
   '/_authenticated/system/branding': typeof AuthenticatedSystemBrandingRoute
+  '/_authenticated/system/enquiries': typeof AuthenticatedSystemEnquiriesRoute
   '/_authenticated/system/packages': typeof AuthenticatedSystemPackagesRoute
   '/_authenticated/system/security': typeof AuthenticatedSystemSecurityRoute
   '/_authenticated/system/staff': typeof AuthenticatedSystemStaffRoute
@@ -840,6 +850,7 @@ export interface FileRouteTypes {
     | '/settings/advisors'
     | '/settings/practice-team'
     | '/system/branding'
+    | '/system/enquiries'
     | '/system/packages'
     | '/system/security'
     | '/system/staff'
@@ -921,6 +932,7 @@ export interface FileRouteTypes {
     | '/settings/advisors'
     | '/settings/practice-team'
     | '/system/branding'
+    | '/system/enquiries'
     | '/system/packages'
     | '/system/security'
     | '/system/staff'
@@ -1004,6 +1016,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/advisors'
     | '/_authenticated/settings/practice-team'
     | '/_authenticated/system/branding'
+    | '/_authenticated/system/enquiries'
     | '/_authenticated/system/packages'
     | '/_authenticated/system/security'
     | '/_authenticated/system/staff'
@@ -1296,6 +1309,13 @@ declare module '@tanstack/react-router' {
       path: '/branding'
       fullPath: '/system/branding'
       preLoaderRoute: typeof AuthenticatedSystemBrandingRouteImport
+      parentRoute: typeof AuthenticatedSystemRoute
+    }
+    '/_authenticated/system/enquiries': {
+      id: '/_authenticated/system/enquiries'
+      path: '/enquiries'
+      fullPath: '/system/enquiries'
+      preLoaderRoute: typeof AuthenticatedSystemEnquiriesRouteImport
       parentRoute: typeof AuthenticatedSystemRoute
     }
     '/_authenticated/system/packages': {
@@ -1696,6 +1716,7 @@ const AuthenticatedAdminRouteWithChildren =
 
 interface AuthenticatedSystemRouteChildren {
   AuthenticatedSystemBrandingRoute: typeof AuthenticatedSystemBrandingRoute
+  AuthenticatedSystemEnquiriesRoute: typeof AuthenticatedSystemEnquiriesRoute
   AuthenticatedSystemPackagesRoute: typeof AuthenticatedSystemPackagesRoute
   AuthenticatedSystemSecurityRoute: typeof AuthenticatedSystemSecurityRoute
   AuthenticatedSystemStaffRoute: typeof AuthenticatedSystemStaffRoute
@@ -1707,6 +1728,7 @@ interface AuthenticatedSystemRouteChildren {
 
 const AuthenticatedSystemRouteChildren: AuthenticatedSystemRouteChildren = {
   AuthenticatedSystemBrandingRoute: AuthenticatedSystemBrandingRoute,
+  AuthenticatedSystemEnquiriesRoute: AuthenticatedSystemEnquiriesRoute,
   AuthenticatedSystemPackagesRoute: AuthenticatedSystemPackagesRoute,
   AuthenticatedSystemSecurityRoute: AuthenticatedSystemSecurityRoute,
   AuthenticatedSystemStaffRoute: AuthenticatedSystemStaffRoute,
