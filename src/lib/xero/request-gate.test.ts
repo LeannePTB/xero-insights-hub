@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert";
+import { describe, it as test } from "node:test";
 import {
   backoffSeconds,
   fillShouldPause,
@@ -45,14 +46,14 @@ describe("Xero request gate", () => {
     const results = await Promise.all(
       Array.from({ length: 12 }, () => runThroughGate("t1", work, { store, sleep: () => tick(1), maxWaitMs: 5000 })),
     );
-    expect(peak).toBe(2);
-    expect(results.length).toBe(12);
+    assert.equal(peak, 2);
+    assert.equal(results.length, 12);
   });
 
   test("a 429 backs off for Retry-After, otherwise exponentially", () => {
-    expect(backoffSeconds(7, 1)).toBe(7);
-    expect(backoffSeconds(null, 3, () => 0)).toBe(8);
-    expect(backoffSeconds(500, 1)).toBe(60);
+    assert.equal(backoffSeconds(7, 1), 7);
+    assert.equal(backoffSeconds(null, 3, () => 0), 8);
+    assert.equal(backoffSeconds(500, 1), 60);
   });
 
   test("while backed off, callers wait instead of calling Xero", async () => {
@@ -61,31 +62,31 @@ describe("Xero request gate", () => {
     let called = false;
     const start = Date.now();
     await runThroughGate("t1", async () => { called = true; }, { store, sleep: () => tick(5), maxWaitMs: 2000 });
-    expect(called).toBe(true);
-    expect(Date.now() - start).toBeGreaterThanOrEqual(40);
+    assert.equal(called, true);
+    assert.ok(Date.now() - start >= 40);
   });
 
   test("gives up after the bounded wait rather than hanging", async () => {
     const store = memoryStore(0);
-    await expect(runThroughGate("t1", async () => 1, { store, sleep: () => tick(1), maxWaitMs: 20 })).rejects.toBeInstanceOf(XeroGateTimeoutError);
+    await assert.rejects(runThroughGate("t1", async () => 1, { store, sleep: () => tick(1), maxWaitMs: 20 }), XeroGateTimeoutError);
   });
 
   test("a broken gate store fails open", async () => {
     const store: GateStore = { acquire: async () => { throw new Error("x"); }, release: async () => {}, backoff: async () => {} };
-    expect(await runThroughGate("t1", async () => 5, { store })).toBe(5);
+    assert.equal(await runThroughGate("t1", async () => 5, { store }), 5);
   });
 });
 
 describe("history fill pauses on low allowance", () => {
   test("pauses under 20% of the day allowance", () => {
-    expect(fillShouldPause(999, null)).toBe(true);
-    expect(fillShouldPause(1000, null)).toBe(false);
+    assert.equal(fillShouldPause(999, null), true);
+    assert.equal(fillShouldPause(1000, null), false);
   });
   test("pauses when the minute allowance is low", () => {
-    expect(fillShouldPause(4000, 10)).toBe(true);
-    expect(fillShouldPause(4000, 40)).toBe(false);
+    assert.equal(fillShouldPause(4000, 10), true);
+    assert.equal(fillShouldPause(4000, 40), false);
   });
   test("unknown allowance does not pause", () => {
-    expect(fillShouldPause(null, null)).toBe(false);
+    assert.equal(fillShouldPause(null, null), false);
   });
 });
