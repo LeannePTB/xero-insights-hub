@@ -57,9 +57,16 @@ function Line({
 }
 
 function netGst(data: GstResponse) {
-  const sales = data.gstOnSales ?? 0;
-  const purchases = data.gstOnPurchases ?? 0;
-  return { net: sales - purchases, sales, purchases };
+  // Never turn a missing input into $0.00: no net figure without both parts.
+  if (data.gstOnSales === null || data.gstOnPurchases === null) return { net: null, sales: data.gstOnSales, purchases: data.gstOnPurchases };
+  return { net: data.gstOnSales - data.gstOnPurchases, sales: data.gstOnSales, purchases: data.gstOnPurchases };
+}
+
+/** Plain-language name of the GST inputs that could not be read. */
+export function missingGstInputs(data: Pick<GstResponse, "gstOnSales" | "gstOnPurchases">): string | null {
+  const missing = [data.gstOnSales === null ? "GST on sales" : null, data.gstOnPurchases === null ? "GST on purchases" : null].filter(Boolean);
+  if (!missing.length) return null;
+  return `${missing.join(" and ")} could not be read from Xero for this period, so no GST figure is shown.`;
 }
 
 /**
@@ -184,6 +191,15 @@ export function GstReconciliationWidget({
           <div className="mt-6">
             {(() => {
               const { net } = netGst(data);
+              if (net === null) {
+                return (
+                  <>
+                    <p className="text-xs text-muted-foreground">Estimated GST for this period</p>
+                    <p className="font-display text-lg font-semibold text-muted-foreground">Not available</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{missingGstInputs(data)}</p>
+                  </>
+                );
+              }
               const isRefund = net < 0;
               return (
                 <>
