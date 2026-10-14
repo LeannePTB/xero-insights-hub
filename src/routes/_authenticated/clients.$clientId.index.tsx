@@ -52,6 +52,7 @@ import { ClientTrialNotice } from "@/components/dashboard/ClientTrialNotice";
 import { PageContainer } from "@/components/PageContainer";
 import { NotesCard } from "@/components/dashboard/NotesCard";
 import { EMPTY_CATALOGUE } from "@/lib/cards/catalogue";
+import { standardFallbackCards } from "@/components/dashboard/dashboard-card-layout";
 import { dashboardCardMeta, dashboardPackageSummary } from "@/components/dashboard/dashboard-card-layout";
 import { AdvisoryEnquiry } from '@/components/billing/AdvisoryEnquiry';
 // import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
@@ -455,7 +456,7 @@ function ClientDashboard() {
 
 
         <div className="mt-3 space-y-6">
-          {catalogueQ.isLoading || widgetsQ.isLoading ? <p className="text-sm text-muted-foreground">Loading cards…</p> : catalogueQ.error ? <p className="text-sm text-destructive">Card catalogue could not be loaded.</p> : <SortableCardGrid cards={groupedCards} savedOrder={savedOrder} onOrderChange={handleOrderChange}/>}
+          {catalogueQ.isLoading || widgetsQ.isLoading ? <p className="text-sm text-muted-foreground">Loading cards…</p> : catalogueQ.error ? <><p className="text-xs text-muted-foreground" role="status">Showing Standard cards only — the package list could not be loaded. Refresh to try again.</p><SortableCardGrid cards={standardFallbackCards(groupedCards).map(c => ({ ...c, group: 'standard', groupLabel: 'Standard' }))} savedOrder={savedOrder} onOrderChange={handleOrderChange}/></> : <SortableCardGrid cards={groupedCards} savedOrder={savedOrder} onOrderChange={handleOrderChange}/>}
 
           {orgs.length === 0 && <EmptyOrgs isAdvisor={isAdvisor} clientId={clientId} />}
         </div>
