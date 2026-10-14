@@ -895,6 +895,7 @@ function CostClassificationSection({
     },
   );
 
+  const activeSection = useContext(ActiveSettingsSection);
   // Deep link from the Setup checklist: scroll to the first untagged account.
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -907,7 +908,7 @@ function CostClassificationSection({
     return () => window.clearTimeout(t);
   }, []);
 
-  if (useContext(ActiveSettingsSection) !== "cost-classification") return null;
+  if (activeSection !== "cost-classification") return null;
   if (widgetsQ.isLoading) return null;
   if (!usesCostSplit && !usesWages) return null;
 
