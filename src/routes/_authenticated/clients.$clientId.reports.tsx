@@ -9,7 +9,7 @@ import { CheckCircle2, Download, FileText, Loader2, Mail, RefreshCw, Trash2 } fr
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getClient } from "@/lib/clients.functions";
-import { getMyContext } from "@/lib/roles.functions";
+
 import { periodOptions } from "@/components/dashboard/recon-periods";
 import {
   generateMonthlyReport,
@@ -29,7 +29,7 @@ import { getMonthlyReportPdfUrl } from "@/lib/reports/report-pdf.functions";
 import type { MonthlyReportPayload } from "@/lib/reports/monthly-report";
 import { MONTHLY_REPORT_PAYLOAD_VERSION, wasRateLimited } from "@/lib/reports/monthly-report";
 import { reportVideoFrom } from "@/lib/reports/report-video";
-import { ReportVideoEditor } from "@/components/reports/ReportVideoEditor";
+import { ReportVideoEditor, type ReportVideoEditorHandle } from "@/components/reports/ReportVideoEditor";
 import { PageContainer } from "@/components/PageContainer";
 
 
@@ -69,7 +69,7 @@ function ReportsPage() {
   const { clientId } = Route.useParams();
   const qc = useQueryClient();
   const fetchClient = useServerFn(getClient);
-  const fetchCtx = useServerFn(getMyContext);
+
   const listFn = useServerFn(listMonthlyReports);
   const generateFn = useServerFn(generateMonthlyReport);
   const openFn = useServerFn(getStoredMonthlyReport);
@@ -88,7 +88,7 @@ function ReportsPage() {
   >(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
+
   const clientQ = useQuery({
     queryKey: ["client", clientId],
     queryFn: () => fetchClient({ data: { clientId } }),
@@ -99,7 +99,7 @@ function ReportsPage() {
   });
 
   const { canManage: isAdvisor } = useCanManageClient(clientId);
-  const isSuperAdmin = ctxQ.data?.isSuperAdmin ?? false;
+  const videoEditor = useRef<ReportVideoEditorHandle>(null);
 
 
   const client = clientQ.data?.client as any;
@@ -111,8 +111,10 @@ function ReportsPage() {
     .filter((o: any) => !!o.tenantId);
 
   const genMut = useMutation({
-    mutationFn: (override: string | undefined) =>
-      generateFn({ data: { clientId, periodEnd: override ?? periodEnd, tenantId: tenantId || null } }),
+    mutationFn: async (override: string | undefined) => {
+      if (!override || override === periodEnd) await videoEditor.current?.save();
+      return generateFn({ data: { clientId, periodEnd: override ?? periodEnd, tenantId: tenantId || null } });
+    },
     onSuccess: (res: any) => {
       setPreview({ payload: res.payload, status: res.status, version: res.version, source: "generated" });
       setSelectedId(res.id ?? null);
@@ -151,6 +153,8 @@ function ReportsPage() {
   // not in the payload, so both the player and the editor read them from here.
   const shownRow = reports.find((r) => r.id === selectedId) ?? null;
   const shownVideo = reportVideoFrom(shownRow);
+  const shownStatus = shownRow?.status ?? preview?.status;
+  const editorDraft = shownRow?.status === "draft" && shownRow.period_end === periodEnd ? shownRow : undefined;
 
   // Auto-load the most recent stored report (period_end desc, version desc — the
   // order the list already comes back in). Never recomputes; reads the snapshot only.
@@ -211,117 +215,66 @@ function ReportsPage() {
         </div>
         <ReportSectionsUpsell clientId={clientId} />
 
-        {/* Preview — sits directly under the page title so the period, version and
-            status in its header are visible without scrolling. */}
+        {isAdvisor && (
+          <section className="mt-5 border-y border-border py-4">
+            <h2 className="mb-3 font-display text-base font-semibold">Prepare report</h2>
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm">
+                <span>① Period</span>
+                <select className="h-8 max-w-full rounded-md border border-border bg-background px-2 text-sm" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)}>
+                  {periods.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                </select>
+              </label>
+              {orgs.length > 1 && <label className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
+                <span>Xero file</span>
+                <select className="h-8 max-w-full rounded-md border border-border bg-background px-2 text-sm" value={tenantId} onChange={(e) => setTenantId(e.target.value)}>
+                  <option value="">{orgs[0]?.tenantName} (default)</option>
+                  {orgs.map((o) => <option key={o.tenantId} value={o.tenantId}>{o.tenantName}</option>)}
+                </select>
+              </label>}
+            </div>
+            <div className="grid min-w-0 gap-5 md:grid-cols-2">
+              <NotesCard clientId={clientId} canEdit={true} compact />
+              <ReportVideoEditor key={`${clientId}:${periodEnd}:${editorDraft?.id ?? "pending"}`} ref={videoEditor}
+                clientId={clientId} periodEnd={periodEnd} report={editorDraft}
+                onSaved={() => { qc.invalidateQueries({ queryKey: ["monthly-reports", clientId] }); }} />
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-4">
+              <Button onClick={() => genMut.mutate(undefined)} disabled={genMut.isPending || !periodEnd}>
+                {genMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                {genMut.isPending ? "Generating…" : "④ Generate draft"}
+              </Button>
+              <p className="text-xs text-muted-foreground">Tick notes before generating; finalised and sent reports are never overwritten.</p>
+              <details className="text-xs text-muted-foreground">
+                <summary className="cursor-pointer">How versions work</summary>
+                <p className="mt-2 max-w-xl">Generating refreshes the current draft or creates a new version after finalisation. Included notes are captured at generation. Draft PDFs are watermarked; final PDFs are frozen. Current calculation: v{MONTHLY_REPORT_PAYLOAD_VERSION}.</p>
+              </details>
+            </div>
+          </section>
+        )}
+
         {openMut.isPending && !preview ? (
-          <p className="mt-6 flex items-center text-sm text-muted-foreground">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the most recent report…
-          </p>
+          <p className="mt-6 flex items-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the most recent report…</p>
         ) : preview ? (
-          <section className="mt-6">
-            {isAdvisor && (
-              <p className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">
-                {preview.source === "generated"
-                  ? "Preview of the draft just generated"
-                  : preview.source === "auto"
-                    ? "Showing the most recent report"
-                    : "Stored report (as generated)"}
-              </p>
-            )}
-
-            {/* Super-admin only: attach or remove the personal video while the
-                shown report is still a draft. The server re-checks. */}
-            {isSuperAdmin && shownRow && shownRow.status === "draft" ? (
-              <ReportVideoEditor
-                report={shownRow}
-                onSaved={() => {
-                  qc.invalidateQueries({ queryKey: ["monthly-reports", clientId] });
-                }}
-              />
-            ) : null}
-            {isSuperAdmin && shownRow && shownRow.status !== "draft" && shownVideo ? (
-              <p className="mb-3 text-xs text-muted-foreground">
-                This report has been finalised, so its video is locked. Generate a new version
-                for the period if the message needs to change.
-              </p>
-            ) : null}
-
-            <MonthlyReportPreview
-              payload={preview.payload}
-              status={preview.status}
-              version={preview.version}
-              showWarnings={isAdvisor}
-              showWorkflowDetails={isAdvisor}
-              video={shownVideo}
-            />
+          <section className="mt-5">
+            {isAdvisor && shownRow && <div aria-label="Report steps" className="mb-4 flex flex-wrap items-center gap-2 border-b border-border pb-3 text-sm">
+              <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-primary" />{shownStatus === "draft" ? "Draft" : shownStatus === "sent" ? "Sent" : "Finalised"} v{shownRow.version}</span>
+              <span aria-hidden="true" className="text-muted-foreground">→</span><span>Check preview</span>
+              <span aria-hidden="true" className="text-muted-foreground">→</span>
+              <Button size="sm" variant={shownStatus === "draft" ? "default" : "outline"} disabled={shownStatus !== "draft"} onClick={() => setToFinalise(shownRow)}><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />Finalise</Button>
+              <span aria-hidden="true" className="text-muted-foreground">→</span>
+              <Button size="sm" variant={shownStatus === "draft" ? "outline" : "default"} disabled={shownStatus === "draft"} onClick={() => setToSend(shownRow)}><Mail className="mr-1.5 h-3.5 w-3.5" />{shownStatus === "sent" ? "Email again" : "Email to client"}</Button>
+              <span aria-hidden="true" className="text-muted-foreground">→</span>
+              <Button size="sm" variant="outline" disabled={pdfBusyId === shownRow.id} onClick={() => { setPdfBusyId(shownRow.id); pdfMut.mutate(shownRow); }}><Download className="mr-1.5 h-3.5 w-3.5" />PDF</Button>
+            </div>}
+            <MonthlyReportPreview payload={preview.payload} status={shownStatus ?? preview.status} version={preview.version}
+              showWarnings={isAdvisor} showWorkflowDetails={isAdvisor} video={shownVideo} />
           </section>
         ) : null}
 
-
-        {/* Generate — preparer-only; the server refuses generation for viewers. */}
-        {isAdvisor && (
-        <section className="mt-6 rounded-2xl border border-border bg-card p-6">
-          <h2 className="font-display text-lg font-semibold">Generate</h2>
-          <div className="mt-4 flex flex-wrap items-end gap-3">
-            <label className="text-sm">
-              <span className="block text-xs uppercase tracking-wider text-muted-foreground">Period</span>
-              <select
-                className="mt-1 rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                value={periodEnd}
-                onChange={(e) => setPeriodEnd(e.target.value)}
-              >
-                {periods.map((p) => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
-                ))}
-              </select>
-            </label>
-            {orgs.length > 1 && (
-              <label className="text-sm">
-                <span className="block text-xs uppercase tracking-wider text-muted-foreground">
-                  Xero organisation
-                </span>
-                <select
-                  className="mt-1 rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                  value={tenantId}
-                  onChange={(e) => setTenantId(e.target.value)}
-                >
-                  <option value="">{orgs[0].tenantName} (default)</option>
-                  {orgs.map((o) => (
-                    <option key={o.tenantId} value={o.tenantId}>{o.tenantName}</option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <Button onClick={() => genMut.mutate(undefined)} disabled={genMut.isPending || !periodEnd}>
-              {genMut.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4" /> Generate draft
-                </>
-              )}
-            </Button>
-          </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Generating writes a draft. A finalised or sent report is never overwritten — regenerating
-            creates a new version. Current calculation: payload v{MONTHLY_REPORT_PAYLOAD_VERSION}. A
-            draft PDF is watermarked DRAFT; finalising renders the PDF once and it is never
-            regenerated.
-          </p>
-        </section>
-        )}
-
-        {/* Notes */}
-        <div className="mt-6">
-          <NotesCard clientId={clientId} canEdit={isAdvisor} />
-        </div>
-
-
         {/* Past reports */}
-        <section className="mt-6 rounded-2xl border border-border bg-card p-6">
-          <h2 className="font-display text-lg font-semibold">Past reports</h2>
+        <details className="mt-6 border-t border-border py-4">
+          <summary className="cursor-pointer font-display text-base font-semibold">Past reports <span className="ml-2 text-xs font-normal text-muted-foreground">{reports.length}</span></summary>
           {listQ.isLoading ? (
             <p className="mt-4 flex items-center text-sm text-muted-foreground">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
@@ -399,19 +352,9 @@ function ReportsPage() {
                           </Button>
                           {isAdvisor && (
                             <>
-                              {r.status === "draft" ? (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setToFinalise(r)}
-                                >
-                                  <CheckCircle2 className="mr-1 h-3 w-3" /> Finalise
-                                </Button>
-                              ) : (
-                                <Button size="sm" variant="outline" onClick={() => setToSend(r)}>
-                                  <Mail className="mr-1 h-3 w-3" /> Email
-                                </Button>
-                              )}
+                              <Button size="sm" variant="outline" disabled={r.status === "draft"} onClick={() => setToSend(r)}>
+                                <Mail className="mr-1 h-3 w-3" /> Email
+                              </Button>
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -430,7 +373,7 @@ function ReportsPage() {
               </table>
             </div>
           )}
-        </section>
+        </details>
 
         <FinaliseReportDialog
           report={toFinalise}

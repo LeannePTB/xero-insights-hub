@@ -9,6 +9,9 @@
  * Keys are `schema.name` — overloads share one purpose.
  */
 export const DEFINER_PURPOSES: Record<string, string> = {
+  "public.get_pending_report_video": "AAL2 caller-scoped manage-client read of pending period video, falling back to the latest stored version; no viewer or support access.",
+  "public.save_report_video": "AAL2 manage-client video save, exact report/client/period validation, row lock and draft-only update; pending video and metadata-only audit saved atomically.",
+  "public.attach_pending_report_video": "Trigger-only attachment of pending video to generated drafts and immutable final/sent video enforcement. No direct authenticated EXECUTE grant; no new access path.",
   "public.upgrade_enquiry_context": "AAL2 Organisation Owner or canonical System Administrator enquiry eligibility, verified email and authorised client options; no client access granted.",
   "public.client_locked_modules": "AAL2 practice-only upsell signal: catalogue module keys a readable client lacks, for Organisation Owner or System Administrator (me_can_manage_cards) only; empty for everyone else; no figures, no grant.",
   "public.submit_upgrade_enquiry": "AAL2 caller-scoped eligibility, catalogue/client validation, atomic three-per-hour and duplicate guard, identity stamping and metadata-only audit.",

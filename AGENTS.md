@@ -31,3 +31,5 @@
 - Report sections come from `card_catalogue.report_sections` via `client_report_sections`, frozen into new drafts' `includedSections`: one list, final/sent untouched.
 - Subdirectories have their own `AGENTS.md`; read it before changing files there.
 - WIP early access (`org_early_access`) resolves only inside `client_cards_v2` for active org members, keeping one visibility path.
+
+- Report preparation stores period video separately, saves through caller-scoped audited RPCs and attaches via a draft-only trigger; note generation remains in the unchanged report builder, preserving frozen snapshots.
