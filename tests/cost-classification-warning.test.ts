@@ -8,6 +8,6 @@ describe('cost classification readiness', () => {
   });
   it('a cost-of-sales account with no stored tag is Variable, not untagged', () => {
     const r = buildClassificationResolver({ stored: [], accounts: [{ name: 'Purchases', type: 'DIRECTCOSTS' } as any] });
-    expect(r.resolve('Purchases')).toMatchObject({ unclassified: false, classification: 'variable' });
+    expect(r.resolve('Purchases')).toMatchObject({ unclassified: false, effective: 'variable' });
   });
 });
