@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'bun:test';
-import { dashboardCardMeta, orderedCardIds, smallCardRowSizes } from './dashboard-card-layout';
-import type { CardCatalogue } from '@/lib/cards/catalogue';
+import { describe, expect, it } from 'vitest';
+import { dashboardCardMeta, orderedCardIds, smallCardRowSizes } from '../src/components/dashboard/dashboard-card-layout';
+import type { CardCatalogue } from '../src/lib/cards/catalogue';
 
 const catalogue: CardCatalogue = {
   modules: [{ key: 'profit', label: 'Profit', description: '' }],
