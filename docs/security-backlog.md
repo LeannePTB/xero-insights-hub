@@ -1771,3 +1771,10 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - `get_public_website_settings` (existing anon reader) now also returns catalogue labels/descriptions for the website; test pins its keys.
 - Evidence: security:check passed (2,102 proved rows, 253 tests, 18 live checks, no known/unexpected failure); build OK; linter 160 = +4 authenticated SECURITY DEFINER warnings for the four new guarded RPCs (same class as every existing guarded RPC), no new anon or Action finding.
 - OPEN: no System Admin screen to tick modules for a client the System Administrator cannot open (they use the client's Package section where they already have access). OPEN: signed-in visual check of the new screens blocked by two-step sign-in. OPEN: `security_posture()` not read (tool permission).
+
+## 14 Oct 2026 — 13-month retention and month-end history fill
+- Retention: `client_key_figures` and new `client_figure_history` kept ≥13 months; no deletion job; guard test added.
+- New `client_figure_history` (RLS: aal2 restrictive + same read predicate as key figures; select-only to authenticated; writes service role only). `figure_backfill_runs`/`figure_backfill_items`: no authenticated grant, aal2 restrictive, metadata only.
+- New definers: `start_figure_backfill(_firm_id)` and `figure_backfill_status()` — `assert_super_admin()` (aal2) first, audited start (`figure_backfill_started`, metadata only), EXECUTE revoked from PUBLIC/anon.
+- Worker `src/lib/overview/figure-backfill.server.ts` uses `supabaseAdmin` only inside the existing bearer-checked scheduled route (`mode: "backfill"`), own hourly limiter key; Xero calls through `xeroGet` (file ceiling, limiter, one 401/403 refresh). Hourly cron `xero-figure-backfill-tick` (no-op when nothing queued). OPEN: remove that cron once the fill has finished; it could not be self-arming because the agent may not reference stored secrets in a migration.
+- Known limitation: backfilled cash uses the client's current bank settings for every past month.
