@@ -125,7 +125,7 @@ function SupportPanel({ firmId }: { firmId: string }) {
 
   if (!s) return <p className="text-sm text-muted-foreground">Support status is unavailable.</p>;
   return (
-    <section className="space-y-5 rounded-lg border p-6">
+    <section className="space-y-5 rounded-lg border bg-card p-6">
       <div><h2 className="text-lg font-semibold">Support access</h2><p className="mt-1 text-sm text-muted-foreground">Membership and approved support access are separate, audited paths.</p></div>
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant={s.viewerHasClientData ? "success" : "secondary"}>{s.viewerHasClientData ? "Client data available" : "No client data"}</Badge>
@@ -210,7 +210,7 @@ function OverviewFacts({ firm, members, usage, purchase, subscription }: { firm:
   const options = purchase ? organisationOptionDisplay(purchase).filter((option) => option.on).map((option) => `${option.label}${option.trial ? " (trial)" : ""}`) : [];
   const status = firm.is_always_free ? "Always free" : subscription?.status === "past_due" ? "Past due" : subscription?.status === "canceled" ? "Cancelled" : subscription?.status === "paused" ? "Suspended" : subscription?.status === "trialing" ? "Trial" : "Active";
   const limit = usage?.clientLimit >= 9999 ? "∞" : usage?.clientLimit ?? "—";
-  return <section className="rounded-lg border p-6"><h2 className="text-lg font-semibold">Quick facts</h2><dl className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+  return <section className="rounded-lg border bg-card p-6"><h2 className="text-lg font-semibold">Quick facts</h2><dl className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
     <Fact label="Status">{status}</Fact><Fact label="Clients">{usage?.clientsUsed ?? "—"} / {limit}</Fact><Fact label="Looked after by Traction Advisory">{(firm as any).managed_by_traction === false ? "No" : "Yes"}</Fact><Fact label="Created">{new Date(firm.created_at).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}</Fact>
     <Fact label="Owner"><span>{owner?.display_name || owner?.email || "Not assigned"}</span>{owner?.display_name && owner?.email && <span className="block text-xs text-muted-foreground">{owner.email}</span>}</Fact>
     <Fact label="Billing">{purchase?.billingMode === "external" ? "External" : purchase ? "Bookkeeping" : "—"}</Fact><Fact label="Options">{options.length ? options.join(" · ") : "Standard only"}</Fact>
@@ -229,7 +229,7 @@ function MembersSection({
   onChanged: () => void;
 }) {
   return (
-    <section className="rounded-lg border p-6 space-y-4">
+    <section className="rounded-lg border bg-card p-6 space-y-4">
       <div className="flex items-center gap-2">
         <Users className="h-4 w-4" />
         <h2 className="text-lg font-semibold">Members</h2>
@@ -514,7 +514,7 @@ function AuditGroup({ group }: { group: { action: string; rows: any[] } }) {
 function AuditSection({ events, loading }: { events: any[]; loading: boolean }) {
   const groups = groupAuditEvents(events);
   return (
-    <section className="rounded-lg border p-6 space-y-4">
+    <section className="rounded-lg border bg-card p-6 space-y-4">
       <div className="flex items-center gap-2">
         <History className="h-4 w-4" />
         <h2 className="text-lg font-semibold">Audit log</h2>
@@ -560,7 +560,7 @@ function BusinessNameSection({
   });
 
   return (
-    <section className="rounded-lg border p-6">
+    <section className="rounded-lg border bg-card p-6">
       <div className="flex items-center gap-3">
         <Building2 className="h-4 w-4 text-muted-foreground" />
         <Label className="text-xs uppercase tracking-wide text-muted-foreground">

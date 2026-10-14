@@ -99,7 +99,7 @@ export function BillingLifecycleCard({
   });
 
   return (
-    <section className="space-y-4 rounded-lg border p-6">
+    <section className="space-y-4 rounded-lg border bg-card p-6">
       <div className="flex items-center gap-2">
         <ReceiptText className="h-4 w-4" />
         <h2 className="text-lg font-semibold">Billing lifecycle</h2>

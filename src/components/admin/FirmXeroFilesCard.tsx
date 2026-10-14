@@ -93,7 +93,7 @@ export function FirmXeroFilesCard({
     <section
       className={
         variant === "plain"
-          ? "rounded-lg border p-6"
+          ? "rounded-lg border bg-card p-6"
           : "rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]"
       }
     >

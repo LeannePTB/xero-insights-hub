@@ -133,7 +133,7 @@ export function OrgCardDefaultsCard({ firmId }: { firmId: string }) {
 
   if (purchaseQ.isLoading || defaultsQ.isLoading || ctxQ.isLoading) {
     return (
-      <section className="rounded-lg border p-6">
+      <section className="rounded-lg border bg-card p-6">
         <p className="text-sm text-muted-foreground">
           <Loader2 className="mr-2 inline h-3.5 w-3.5 animate-spin" /> Loading default cards…
         </p>
@@ -143,7 +143,7 @@ export function OrgCardDefaultsCard({ firmId }: { firmId: string }) {
   const error = (purchaseQ.error ?? defaultsQ.error) as Error | null;
   if (error || !purchase) {
     return (
-      <section className="rounded-lg border p-6">
+      <section className="rounded-lg border bg-card p-6">
         <p className="text-sm text-destructive">{error?.message ?? "Not available"}</p>
       </section>
     );
@@ -171,7 +171,7 @@ export function OrgCardDefaultsCard({ firmId }: { firmId: string }) {
       : current.length !== saved.length || !saved.every((c) => current.includes(c));
 
   return (
-    <section className="space-y-4 rounded-lg border p-6">
+    <section className="space-y-4 rounded-lg border bg-card p-6">
       <div className="flex flex-wrap items-center gap-2">
         <LayoutTemplate className="h-4 w-4" />
         <h2 className="text-lg font-semibold">Default modules for new clients</h2>

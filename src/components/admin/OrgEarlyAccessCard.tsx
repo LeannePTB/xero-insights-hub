@@ -19,7 +19,7 @@ export function OrgEarlyAccessCard({ firmId }: { firmId: string }) {
   const q = useQuery({ queryKey: ["org-early-access", firmId], queryFn: () => fetchRows({ data: { firmId } }), retry: false });
 
   return (
-    <section className="space-y-4 rounded-lg border p-6">
+    <section className="space-y-4 rounded-lg border bg-card p-6">
       <div className="flex items-center gap-2">
         <FlaskConical className="h-4 w-4" />
         <h2 className="text-lg font-semibold">Early access</h2>

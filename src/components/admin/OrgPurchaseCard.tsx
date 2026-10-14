@@ -105,7 +105,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
 
   if (q.isLoading) {
     return (
-      <section className="rounded-lg border p-6">
+      <section className="rounded-lg border bg-card p-6">
         <p className="text-sm text-muted-foreground">
           <Loader2 className="mr-2 inline h-3.5 w-3.5 animate-spin" /> Loading purchase…
         </p>
@@ -114,7 +114,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
   }
   if (q.error || !purchase) {
     return (
-      <section className="rounded-lg border p-6">
+      <section className="rounded-lg border bg-card p-6">
         <p className="text-sm text-destructive">{(q.error as Error)?.message ?? "Not available"}</p>
       </section>
     );
@@ -133,7 +133,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
     : null;
 
   return (
-    <section className="space-y-4 rounded-lg border p-6">
+    <section className="space-y-4 rounded-lg border bg-card p-6">
       <div className="flex flex-wrap items-center gap-2">
         <ShoppingCart className="h-4 w-4" />
         <h2 className="text-lg font-semibold">What this organisation has bought</h2>
