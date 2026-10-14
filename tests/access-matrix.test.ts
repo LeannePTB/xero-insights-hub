@@ -1059,6 +1059,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     try {
       if (r.includes("admin_set_org_early_access")) {
         const p = await probe(`select public.admin_set_org_early_access('${ORG_A}'::uuid, 'cashflow', true, null)`);
+        if (!p.ok && process.env.MATRIX_DEBUG) console.log("EA-SET", row.role, p.error);
         return p.ok ? "allow" : "deny";
       }
       if (r.includes("select org_early_access")) {
