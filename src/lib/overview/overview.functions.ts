@@ -37,6 +37,10 @@ export type OverviewRow = {
   protectedTooltip: string | null;
   netProfitMtd: number | null;
   debtorsOverduePct: number | null;
+  /** Receivables more than 60 days past due (stored snapshot); null when unknown. */
+  debtorsOver60?: number | null;
+  /** A linked Xero file is not connected. */
+  xeroNeedsAttention?: boolean;
   lastReportSentAt: string | null;
   freshAsAt: string | null;
   /** Presentation only: caller may manage (and so re-sync) this client. Server re-checks. */
@@ -59,7 +63,7 @@ export const getClientOverview = createServerFn({ method: "POST" })
     async ({
       data,
       context,
-    }): Promise<{ rows: OverviewRow[]; feed: FeedEvent[]; cleared: FeedEvent[]; feedNotes: string[]; charts?: import("./charts.server").OverviewCharts; latestReport?: { clientId: string; clientName: string; periodEnd: string; sentAt: string } | null }> => {
+    }): Promise<{ rows: OverviewRow[]; feed: FeedEvent[]; cleared: FeedEvent[]; feedNotes: string[]}> => {
     try {
       const { buildOverview } = await import("./overview.server");
       // firmId is a FILTER inside overview_clients(); access stays caller-scoped.

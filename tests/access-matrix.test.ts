@@ -1033,6 +1033,54 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       return "deny";
     }
   }
+  if (r.startsWith("wip:")) {
+    // Work-in-progress cards (card_catalogue.status = 'wip') are not offered through
+    // the single rule client_cards_v2; ticks stay dormant. System Administrators see
+    // them only on a client they can already read.
+    await seedThenActAs(row.role, `
+      create or replace function app_private.setting_bool(_key text) returns boolean
+        language sql stable as $f$ select _key = 'card_model_v2' $f$;
+      create unique index if not exists org_subscription_options_firm_key
+        on public.org_subscription_options (firm_id);
+      delete from public.org_subscription_options where firm_id = '${ORG_A}'::uuid;
+      insert into public.org_subscription_options
+        (firm_id, client_limit, advisory_enabled, consolidation_enabled, billing_mode)
+      values ('${ORG_A}'::uuid, 10, true, false, 'bookkeeping');
+      update public.card_catalogue set status = case when card_key = 'cashflow' then 'wip' else 'available' end;
+      delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
+      insert into public.client_cards (client_id, cards)
+      select '${CLIENT_A}'::uuid, array_agg(card_key) from public.card_catalogue;
+    `);
+    try {
+      if (r.includes("ticks survive")) {
+        // Switch back to Available as the platform would, then read as the same caller.
+        await db.query(`reset role`);
+        await db.query(`update public.card_catalogue set status = 'available' where card_key = 'cashflow'`);
+        await seedThenActAs(row.role, ``);
+        const back = await db.query<{ c: string[] }>(`select public.client_visible_cards('${CLIENT_A}'::uuid) as c`);
+        return (back.rows[0]?.c ?? []).includes("cashflow") ? "allow" : "deny";
+      }
+      if (r.includes("assert_widget_access")) {
+        const p = await probe(`select public.assert_widget_access('${TENANT_A}', 'cashflow')`);
+        return p.ok ? "allow" : "deny";
+      }
+      if (r.includes("report sections")) {
+        await db.query(`reset role`);
+        await db.query(`update public.card_catalogue set report_sections = array['wip_section'] where card_key = 'cashflow'`);
+        await seedThenActAs(row.role, ``);
+        const res = await db.query<{ s: string[] }>(`select public.client_report_sections('${CLIENT_A}'::uuid) as s`);
+        return (res.rows[0]?.s ?? []).includes("wip_section") ? "allow" : "deny";
+      }
+      const res = await db.query<{ c: string[] }>(`select public.client_visible_cards('${CLIENT_A}'::uuid) as c`);
+      return (res.rows[0]?.c ?? []).includes("cashflow") ? "allow" : "deny";
+    } catch (e) {
+      if (process.env.MATRIX_DEBUG) console.log("WIP", row.role, r, (e as Error).message);
+      return "deny";
+    } finally {
+      await db.query(`reset role`).catch(() => {});
+      await db.query(`update public.card_catalogue set status = 'available', report_sections = case when card_key = 'cashflow' then '{}'::text[] else report_sections end`).catch(() => {});
+    }
+  }
   if (r.startsWith("client_report_sections(")) {
     // Report sections follow the client's visible cards via card_catalogue.report_sections.
     const notesOff = r.includes("Notes unticked");
@@ -1799,7 +1847,7 @@ beforeAll(async () => {
     for (const m of snap.matchAll(/when\s+'([a-z_]+)'\s+then\s+array\[([^\]]*)\]/gi)) {
       for (const c of m[2]!.matchAll(/'([a-z_]+)'/g)) {
         const mod = m[1] === "advisory" ? (c[1] === "cashflow" ? "'cash_flow'" : "'matrix_module'") : "null";
-        await db.exec(`insert into public.card_catalogue (card_key, package, module_key, label, sort_order) values ('${c[1]}', '${m[1]}', ${mod}, '${c[1]}', ${i++});`);
+        await db.exec(`insert into public.card_catalogue (card_key, package, module_key, label, sort_order, status) values ('${c[1]}', '${m[1]}', ${mod}, '${c[1]}', ${i++}, 'available');`);
       }
     }
   }
@@ -2229,6 +2277,33 @@ describe("overview organisation hide and restore", () => {
       const result = await asRole(role, () => probe(`select public.set_firm_overview_hidden('${ORG_A}'::uuid, true)`));
       expect(result.ok).toBe(false);
       expect(result.error).toMatch(/FORBIDDEN|MFA_REQUIRED/);
+    });
+  }
+});
+
+describe("hidden organisation still lists its own clients (DRTABT regression, 14 Oct 2026)", () => {
+  it("an organisation hidden from the all-organisations view still lists every client on its own overview", async () => {
+    await asRole("org_owner", async () => {
+      await db.exec(`set local role postgres`);
+      await db.exec(`update public.firms set overview_hidden = true where id = '${ORG_A}'::uuid`);
+      await db.query(`select set_config('request.jwt.claims', $1, true)`, [claims(CONTEXT.org_owner)]);
+      await db.exec(`set local role authenticated`);
+      const all = await db.query(`select client_id from public.overview_clients() where client_id = '${CLIENT_A}'::uuid`);
+      const own = await db.query(`select client_id from public.overview_clients('${ORG_A}'::uuid) where client_id = '${CLIENT_A}'::uuid`);
+      expect(all.rows.length).toBe(0);
+      expect(own.rows.length).toBe(1);
+    });
+  });
+  for (const role of ["other_org_member", "business_owner", "super_admin_no_membership"] as const) {
+    it(`${role} gets nothing from another organisation's overview, hidden or not`, async () => {
+      await asRole(role, async () => {
+        await db.exec(`set local role postgres`);
+        await db.exec(`update public.firms set overview_hidden = true where id = '${ORG_A}'::uuid`);
+        await db.query(`select set_config('request.jwt.claims', $1, true)`, [claims(CONTEXT[role])]);
+        await db.exec(`set local role authenticated`);
+        const own = await db.query(`select client_id from public.overview_clients('${ORG_A}'::uuid) where client_id = '${CLIENT_A}'::uuid`);
+        expect(own.rows.length).toBe(0);
+      });
     });
   }
 });

@@ -70,7 +70,7 @@ create table public.audit_findings (id uuid, run_id uuid, tenant_id text, rule_i
 create table public.audit_log (id uuid, actor_user_id uuid, firm_id uuid, action text, target_type text, target_id text, ip text, user_agent text, meta jsonb, at timestamp with time zone);
 create table public.audit_runs (id uuid, tenant_id text, run_at timestamp with time zone, run_by uuid, summary jsonb, duration_ms integer, error text);
 create table public.billing_events (id uuid, firm_id uuid, stripe_event_id text, type text, payload jsonb, occurred_at timestamp with time zone, client_id uuid);
-create table public.card_catalogue (card_key text, package text, module_key text, label text, description text, sort_order integer, updated_at timestamp with time zone, updated_by uuid, report_sections text[]);
+create table public.card_catalogue (card_key text, package text, module_key text, label text, description text, sort_order integer, updated_at timestamp with time zone, updated_by uuid, report_sections text[], status text);
 create table public.card_modules (module_key text, label text, description text, sort_order integer, updated_at timestamp with time zone, updated_by uuid);
 create table public.client_access (id uuid, client_id uuid, user_id uuid, tier text, created_at timestamp with time zone, updated_at timestamp with time zone, relationship client_access_relationship, inviter_label text);
 create table public.client_bank_account_classifications (client_id uuid, tenant_id text, account_id uuid, classification text, updated_by uuid, updated_at timestamp with time zone);
@@ -2104,45 +2104,14 @@ CREATE OR REPLACE FUNCTION app_private.card_group_cards(_group text)
  LANGUAGE sql
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
-AS $function$
-  select coalesce(array(
-    select c.card_key from public.card_catalogue c
-     where c.package = _group order by c.sort_order, c.card_key
-  ), '{}'::text[])
-$function$
+AS $function$ select app_private.card_group_cards(_group, false) $function$
 ;
 CREATE OR REPLACE FUNCTION app_private.client_available_cards(_client_id uuid)
  RETURNS text[]
  LANGUAGE sql
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
-AS $function$
-  with c as (
-    select cl.firm_id from public.clients cl where cl.id = _client_id
-  ),
-  o as (
-    select e.advisory, e.consolidation
-      from app_private.org_effective_options((select firm_id from c)) e
-  ),
-  siblings as (
-    select count(*) as n from public.clients cl where cl.firm_id = (select firm_id from c)
-  ),
-  lapsed as (
-    select app_private.firm_subscription_lapsed((select firm_id from c)) as v
-  )
-  select coalesce(array(
-    select distinct x from unnest(
-      app_private.card_group_cards('standard')
-      || case when coalesce((select advisory from o), false) and not (select v from lapsed)
-              then app_private.card_group_cards('advisory') else '{}'::text[] end
-      || case when coalesce((select consolidation from o), false)
-                   and not (select v from lapsed)
-                   and (select n from siblings) > 1
-              then app_private.card_group_cards('consolidation') else '{}'::text[] end
-    ) as x
-    order by x
-  ), '{}'::text[])
-$function$
+AS $function$ select app_private.client_purchasable_cards(_client_id, false) $function$
 ;
 CREATE OR REPLACE FUNCTION public.client_visible_cards(_client_id uuid)
  RETURNS text[]
@@ -2207,21 +2176,29 @@ AS $function$
 declare
   available text[];
   ticked text[];
+  result text[];
 begin
   available := app_private.client_available_cards(_client_id);
   select cc.cards into ticked from public.client_cards cc where cc.client_id = _client_id;
 
-  -- No stored list is treated as "all available": a fault shows a staff member
-  -- too much rather than a blank dashboard, and never more than the purchase.
   if ticked is null then
-    return available;
+    result := available;
+  else
+    result := coalesce(array(
+      select distinct x from unnest(available) as x where x = any(ticked) order by x
+    ), '{}'::text[]);
   end if;
 
-  return coalesce(array(
-    select distinct x from unnest(available) as x
-    where x = any(ticked)
-    order by x
-  ), '{}'::text[]);
+  -- Testing exception: a System Administrator sees purchased Work-in-progress
+  -- cards only on a client they can already read. Never anyone else.
+  if auth.uid() is not null
+     and app_private.me_is_super_admin()
+     and app_private.user_can_read_client(auth.uid(), _client_id) then
+    result := coalesce(array(
+      select distinct x from unnest(result || app_private.client_purchasable_cards(_client_id, true)) x order by x
+    ), '{}'::text[]);
+  end if;
+  return result;
 end;
 $function$
 ;
@@ -2955,6 +2932,8 @@ AS $function$
 begin
   perform app_private.assert_aal2();
   if auth.uid() is null then return; end if;
+  -- "Hide from overview" tidies the all-organisations view only; an organisation's
+  -- own view (_firm_id given) always lists every client the caller can read.
   return query
     select c.id, c.name, f.id, f.name
       from public.clients c
@@ -2963,8 +2942,7 @@ begin
                     where fm.firm_id = c.firm_id and fm.user_id = auth.uid() and fm.status = 'active')
        and app_private.user_can_read_client(auth.uid(), c.id)
        and (_firm_id is null or c.firm_id = _firm_id)
-       and not c.overview_hidden
-       and not f.overview_hidden
+       and (_firm_id is not null or (not c.overview_hidden and not f.overview_hidden))
      order by f.name, c.name
      limit 1000;
 end;
@@ -3299,8 +3277,9 @@ AS $function$
   ), '{}'::jsonb)
   || jsonb_build_object(
     'packages', jsonb_build_object(
-      'modules', coalesce((select jsonb_agg(jsonb_build_object('key', m.module_key, 'label', m.label, 'description', m.description) order by m.sort_order, m.module_key) from public.card_modules m), '[]'::jsonb),
-      'cards', coalesce((select jsonb_agg(jsonb_build_object('package', c.package, 'module', c.module_key, 'label', c.label, 'description', c.description) order by c.sort_order, c.card_key) from public.card_catalogue c), '[]'::jsonb)
+      'modules', coalesce((select jsonb_agg(jsonb_build_object('key', m.module_key, 'label', m.label, 'description', m.description) order by m.sort_order, m.module_key) from public.card_modules m
+                            where exists (select 1 from public.card_catalogue c where c.module_key = m.module_key and c.status = 'available')), '[]'::jsonb),
+      'cards', coalesce((select jsonb_agg(jsonb_build_object('package', c.package, 'module', c.module_key, 'label', c.label, 'description', c.description) order by c.sort_order, c.card_key) from public.card_catalogue c where c.status = 'available'), '[]'::jsonb)
     )
   )
 $function$
@@ -3569,9 +3548,10 @@ declare _cards text[];
 begin
   perform app_private.assert_aal2();
   _cards := public.client_visible_cards(_client_id);
+  -- Work-in-progress cards never add report sections, even for a System Administrator.
   return coalesce(array(
     select distinct s from public.card_catalogue cc, unnest(cc.report_sections) s
-    where cc.card_key = any(_cards) order by s
+    where cc.card_key = any(_cards) and cc.status = 'available' order by s
   ), '{}'::text[]);
 end;
 $function$
@@ -3635,11 +3615,7 @@ CREATE OR REPLACE FUNCTION public.client_locked_modules(_client_id uuid)
  SET search_path TO 'public'
 AS $function$
 declare
-  _firm uuid;
-  _cards text[];
-  _consolidation boolean;
-  _client_count int;
-  _out text[] := '{}';
+  _firm uuid; _cards text[]; _consolidation boolean; _client_count int; _out text[] := '{}';
 begin
   perform app_private.assert_aal2();
   if auth.uid() is null then return '{}'; end if;
@@ -3652,17 +3628,54 @@ begin
   _cards := coalesce(app_private.client_cards_v2(_client_id), '{}');
   select coalesce(array_agg(m.module_key order by m.sort_order, m.module_key), '{}') into _out
     from public.card_modules m
-   where exists (select 1 from public.card_catalogue c where c.module_key = m.module_key and c.package = 'advisory')
+   where exists (select 1 from public.card_catalogue c where c.module_key = m.module_key and c.package = 'advisory' and c.status = 'available')
      and not exists (select 1 from public.card_catalogue c
-                      where c.module_key = m.module_key and c.package = 'advisory' and c.card_key = any(_cards));
+                      where c.module_key = m.module_key and c.package = 'advisory' and c.status = 'available' and c.card_key = any(_cards));
   select o.consolidation into _consolidation from app_private.org_effective_options(_firm) o;
   select count(*) into _client_count from public.clients where firm_id = _firm;
   if not coalesce(_consolidation, false) and _client_count > 1
-     and not exists (select 1 from public.card_catalogue c where c.package = 'consolidation' and c.card_key = any(_cards)) then
+     and exists (select 1 from public.card_catalogue c where c.package = 'consolidation' and c.status = 'available')
+     and not exists (select 1 from public.card_catalogue c where c.package = 'consolidation' and c.status = 'available' and c.card_key = any(_cards)) then
     _out := array_append(_out, 'consolidation'::text);
   end if;
   return _out;
 end;
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.card_group_cards(_group text, _include_wip boolean)
+ RETURNS text[]
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select coalesce(array(
+    select c.card_key from public.card_catalogue c
+     where c.package = _group and (_include_wip or c.status = 'available')
+     order by c.sort_order, c.card_key
+  ), '{}'::text[])
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.client_purchasable_cards(_client_id uuid, _include_wip boolean)
+ RETURNS text[]
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  with c as (select cl.firm_id from public.clients cl where cl.id = _client_id),
+  o as (select e.advisory, e.consolidation from app_private.org_effective_options((select firm_id from c)) e),
+  siblings as (select count(*) as n from public.clients cl where cl.firm_id = (select firm_id from c)),
+  lapsed as (select app_private.firm_subscription_lapsed((select firm_id from c)) as v)
+  select coalesce(array(
+    select distinct x from unnest(
+      app_private.card_group_cards('standard', _include_wip)
+      || case when coalesce((select advisory from o), false) and not (select v from lapsed)
+              then app_private.card_group_cards('advisory', _include_wip) else '{}'::text[] end
+      || case when coalesce((select consolidation from o), false)
+                   and not (select v from lapsed)
+                   and (select n from siblings) > 1
+              then app_private.card_group_cards('consolidation', _include_wip) else '{}'::text[] end
+    ) as x order by x
+  ), '{}'::text[])
 $function$
 ;
 CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
@@ -4622,6 +4635,7 @@ grant SELECT (label) on table public.card_catalogue to authenticated;
 grant SELECT (module_key) on table public.card_catalogue to authenticated;
 grant SELECT (package) on table public.card_catalogue to authenticated;
 grant SELECT (sort_order) on table public.card_catalogue to authenticated;
+grant SELECT (status) on table public.card_catalogue to authenticated;
 grant SELECT (description) on table public.card_modules to authenticated;
 grant SELECT (label) on table public.card_modules to authenticated;
 grant SELECT (module_key) on table public.card_modules to authenticated;
@@ -4674,7 +4688,7 @@ create policy mfa_aal2_required on public.audit_runs as restrictive for all to a
 create policy "firm members read own billing events" on public.billing_events as permissive for select to authenticated using (((firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), firm_id)));
 create policy mfa_aal2_required on public.billing_events as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "super_admin reads billing events" on public.billing_events as permissive for select to authenticated using (app_private.is_super_admin(auth.uid()));
-create policy "card catalogue readable by signed-in users" on public.card_catalogue as permissive for select to authenticated using ((auth.uid() IS NOT NULL));
+create policy "card catalogue readable by signed-in users" on public.card_catalogue as permissive for select to authenticated using (((auth.uid() IS NOT NULL) AND ((status = 'available'::text) OR app_private.me_is_super_admin())));
 create policy mfa_aal2_required on public.card_catalogue as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "card modules readable by signed-in users" on public.card_modules as permissive for select to authenticated using ((auth.uid() IS NOT NULL));
 create policy mfa_aal2_required on public.card_modules as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
@@ -5094,4 +5108,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: 774805fce6d144850d84652e381fdb65d931bb309367b533cbdc8e4c8f4217c6
+-- catalogue-fingerprint: 863b181fd18598ab07e942b67dfbc6bdd99a36e68db070fd6ed85711ae4a3be2

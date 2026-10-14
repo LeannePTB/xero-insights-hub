@@ -23,9 +23,9 @@ export function AddClientsPanel({ firmId }: { firmId: string }) {
         <AddClientFromXeroButton firmId={firmId} disabled={full} />
         <Button variant="outline" asChild={!full} disabled={full}>
           {full ? (
-            <span><Plus className="mr-2 h-4 w-4" /> New client</span>
+            <span className="inline-flex items-center"><Plus className="mr-2 h-4 w-4" /> New client</span>
           ) : (
-            <Link to="/clients/new" search={{ firmId } as any}>
+            <Link to="/clients/new" search={{ firmId } as any} className="inline-flex items-center">
               <Plus className="mr-2 h-4 w-4" /> New client
             </Link>
           )}

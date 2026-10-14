@@ -10,9 +10,13 @@ describe('rent report is work in progress (14 Oct 2026)', () => {
     expect(handlers).toBeGreaterThan(0);
     expect(src.match(/await assertRentWip\(context\.supabase\);/g)?.length).toBe(handlers);
   });
-  it('the rent widget is not rendered anywhere in the app', () => {
-    const hits = execSync("rg -l 'RentReportWidget' src || true").toString().trim().split('\n').filter(Boolean);
-    expect(hits).toEqual(['src/components/dashboard/RentReportWidget.tsx']);
+  it('the rent widget renders only on the dashboard, behind its own catalogue card', () => {
+    const hits = execSync("rg -l 'RentReportWidget' src || true").toString().trim().split('\n').filter(Boolean).sort();
+    expect(hits).toEqual(['src/components/dashboard/RentReportWidget.tsx', 'src/routes/_authenticated/clients.$clientId.index.tsx']);
+    const dash = readFileSync('src/routes/_authenticated/clients.$clientId.index.tsx', 'utf8');
+    expect(dash).toContain('widgets.includes("rental_properties")');
+    const src = readFileSync('src/lib/rent.functions.ts', 'utf8');
+    expect(src).not.toContain('"tax_obligations"');
   });
 });
 

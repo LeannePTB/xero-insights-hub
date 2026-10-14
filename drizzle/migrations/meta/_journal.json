@@ -351,6 +351,20 @@
       "when": 1791963183319,
       "tag": "0049_client_locked_modules_append_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1791968431852,
+      "tag": "0050_overview_hidden_only_cross_org",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1791968767728,
+      "tag": "0051_card_catalogue_status_wip",
+      "breakpoints": true
     }
   ]
 }

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getCardCatalogue, saveCardEntry, saveCardModule } from "@/lib/card-model.functions";
+import { getCardCatalogue, saveCardEntry, saveCardModule, saveCardStatus } from "@/lib/card-model.functions";
 import { PACKAGE_LABEL, type CardPackage, type CatalogueCard, type CatalogueModule } from "@/lib/cards/catalogue";
 
 export const Route = createFileRoute("/_authenticated/system/packages")({
@@ -28,11 +28,11 @@ export const Route = createFileRoute("/_authenticated/system/packages")({
   component: PackagesPage,
 });
 
-const KEY = ["card-catalogue"];
+const KEY = ["card-catalogue", "with-wip"];
 
 function PackagesPage() {
   const fetchCatalogue = useServerFn(getCardCatalogue);
-  const q = useQuery({ queryKey: KEY, queryFn: () => fetchCatalogue(), retry: false });
+  const q = useQuery({ queryKey: KEY, queryFn: () => fetchCatalogue({ data: { includeWip: true } }), retry: false });
   const catalogue = q.data?.catalogue;
   return (
     <PageContainer className="space-y-6">
@@ -57,7 +57,7 @@ function PackagesPage() {
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
-                  <tr><th className="p-3">Card</th><th className="p-3">Package</th><th className="p-3">Module</th><th className="p-3">What the client sees</th><th className="p-3" /></tr>
+                  <tr><th className="p-3">Card</th><th className="p-3">Status</th><th className="p-3">Package</th><th className="p-3">Module</th><th className="p-3">What the client sees</th><th className="p-3" /></tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {catalogue.cards.map((c) => <CardRow key={c.key} card={c} modules={catalogue.modules} />)}
@@ -65,7 +65,7 @@ function PackagesPage() {
               </table>
             </div>
             <p className="text-xs text-muted-foreground">
-              Not a separate card: the Rent report shows inside Tax obligations (Tax &amp; compliance). Xero file activity is its own card in Bookkeeping checks.
+              Work in progress: not offered anywhere — hidden from dashboards, menus, reports, Trixie, upgrade offers and the website, and not tickable. Existing client ticks are kept and come back when it is switched to Available. System Administrators see it, labelled, on clients they can already open.
             </p>
           </section>
         </>
@@ -95,6 +95,22 @@ function ModuleRow({ module }: { module: CatalogueModule }) {
   );
 }
 
+function StatusSelect({ card }: { card: CatalogueCard }) {
+  const qc = useQueryClient();
+  const save = useServerFn(saveCardStatus);
+  const [busy, setBusy] = useState(false);
+  return (
+    <Select value={card.status ?? "available"} disabled={busy} onValueChange={async (v) => {
+      setBusy(true);
+      try { await save({ data: { cardKey: card.key, status: v as "available" | "wip" } }); toast.success(`${card.label}: ${v === "wip" ? "Work in progress" : "Available"}`); await qc.invalidateQueries({ queryKey: ["card-catalogue"] }); }
+      catch (e: any) { toast.error(e?.message ?? "Could not save"); } finally { setBusy(false); }
+    }}>
+      <SelectTrigger className="w-40" aria-label={`${card.label} status`}><SelectValue /></SelectTrigger>
+      <SelectContent><SelectItem value="available">Available</SelectItem><SelectItem value="wip">Work in progress</SelectItem></SelectContent>
+    </Select>
+  );
+}
+
 function CardRow({ card, modules }: { card: CatalogueCard; modules: CatalogueModule[] }) {
   const qc = useQueryClient();
   const save = useServerFn(saveCardEntry);
@@ -108,6 +124,7 @@ function CardRow({ card, modules }: { card: CatalogueCard; modules: CatalogueMod
   return (
     <tr className="align-top">
       <td className="p-3 font-medium">{card.label}</td>
+      <td className="p-3"><StatusSelect card={card} /></td>
       <td className="p-3">
         <Select value={pkg} onValueChange={(v) => { setPkg(v as CardPackage); if (v !== "advisory") setMod(null); }}>
           <SelectTrigger className="w-36" aria-label={`${card.label} package`}><SelectValue /></SelectTrigger>

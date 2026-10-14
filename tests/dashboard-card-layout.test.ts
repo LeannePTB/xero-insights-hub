@@ -18,7 +18,7 @@ describe('dashboard catalogue ordering', () => {
       const saved = permutation.flatMap(group => [`${group}:b`, `${group}:a`]);
       const ordered = groupedCardIds(cards, saved);
       const headings = ordered.map(id => cards.find(c => c.id === id)?.group).filter((group, i, all) => i === 0 || group !== all[i - 1]);
-      expect(headings).toEqual(['standard', 'cash_flow', 'profit', 'tax_compliance', 'bookkeeping_checks', 'consolidation']);
+      expect(headings).toEqual(['standard', 'cash_flow', 'profit', 'tax_compliance', 'bookkeeping_checks', 'rental_properties', 'consolidation']);
       expect(ordered).toEqual(GROUP_ORDER.flatMap(group => [`${group}:b`, `${group}:a`]));
       expect(saved).toEqual(permutation.flatMap(group => [`${group}:b`, `${group}:a`]));
     }

@@ -15,7 +15,9 @@ import {
 } from "@/lib/rent";
 
 /**
- * Work in progress (14 Oct 2026): the rent report is not offered to any
+ * The Rent report is its own catalogue card ("rental_properties"), currently
+ * Work in progress, so the single card rule refuses it for everyone else.
+ * Defence in depth (kept from 14 Oct 2026): the rent report is not offered to any
  * organisation. Every function first requires a System Administrator, then
  * still applies its normal client checks — System Administrator alone grants
  * no client data, so this only narrows access.
@@ -128,7 +130,7 @@ export const getRentReport = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<RentReport> => {
     await assertRentWip(context.supabase);
     const { assertWidgetAccess } = await import("@/lib/xero/access.server");
-    await assertWidgetAccess(context.supabase, data.tenantId, "tax_obligations");
+    await assertWidgetAccess(context.supabase, data.tenantId, "rental_properties");
     const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
     await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
     const [report, { data: canEdit }, { data: member }] = await Promise.all([
@@ -165,7 +167,7 @@ export const getRentPickers = createServerFn({ method: "POST" })
     });
     if (canEdit !== true) throw new Error("You can't change rental properties for this client.");
     const { assertWidgetAccess } = await import("@/lib/xero/access.server");
-    await assertWidgetAccess(context.supabase, data.tenantId, "tax_obligations");
+    await assertWidgetAccess(context.supabase, data.tenantId, "rental_properties");
     const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
     await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
 
@@ -270,7 +272,7 @@ export const getRentConsolidation = createServerFn({ method: "POST" })
     const rows: RentConsolidationRow[] = [];
     for (const f of files.values()) {
       try {
-        await assertWidgetAccess(context.supabase, f.tenantId, "tax_obligations");
+        await assertWidgetAccess(context.supabase, f.tenantId, "rental_properties");
       } catch {
         continue;
       }

@@ -54,6 +54,7 @@ import { Route as AuthenticatedClientsClientIdLoansAccountsRouteImport } from '.
 import { Route as AuthenticatedClientsClientIdReportsRouteImport } from './routes/_authenticated/clients.$clientId.reports'
 import { Route as AuthenticatedClientsClientIdSettingsRouteImport } from './routes/_authenticated/clients.$clientId.settings'
 import { Route as AuthenticatedFirmsFirmIdIndexRouteImport } from './routes/_authenticated/firms.$firmId.index'
+import { Route as AuthenticatedFirmsFirmIdAddClientRouteImport } from './routes/_authenticated/firms.$firmId.add-client'
 import { Route as AuthenticatedFirmsFirmIdConsolidationsRouteImport } from './routes/_authenticated/firms.$firmId.consolidations'
 import { Route as AuthenticatedFirmsFirmIdLoansRouteImport } from './routes/_authenticated/firms.$firmId.loans'
 import { Route as AuthenticatedFirmsFirmIdOverviewRouteImport } from './routes/_authenticated/firms.$firmId.overview'
@@ -341,6 +342,12 @@ const AuthenticatedFirmsFirmIdIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
   } as any)
+const AuthenticatedFirmsFirmIdAddClientRoute =
+  AuthenticatedFirmsFirmIdAddClientRouteImport.update({
+    id: '/add-client',
+    path: '/add-client',
+    getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
+  } as any)
 const AuthenticatedFirmsFirmIdConsolidationsRoute =
   AuthenticatedFirmsFirmIdConsolidationsRouteImport.update({
     id: '/consolidations',
@@ -619,6 +626,7 @@ export interface FileRoutesByFullPath {
   '/clients/$clientId/loans-accounts': typeof AuthenticatedClientsClientIdLoansAccountsRoute
   '/clients/$clientId/reports': typeof AuthenticatedClientsClientIdReportsRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRouteWithChildren
+  '/firms/$firmId/add-client': typeof AuthenticatedFirmsFirmIdAddClientRoute
   '/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   '/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
   '/firms/$firmId/overview': typeof AuthenticatedFirmsFirmIdOverviewRoute
@@ -702,6 +710,7 @@ export interface FileRoutesByTo {
   '/clients/$clientId/loans-accounts': typeof AuthenticatedClientsClientIdLoansAccountsRoute
   '/clients/$clientId/reports': typeof AuthenticatedClientsClientIdReportsRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRouteWithChildren
+  '/firms/$firmId/add-client': typeof AuthenticatedFirmsFirmIdAddClientRoute
   '/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   '/firms/$firmId/overview': typeof AuthenticatedFirmsFirmIdOverviewRoute
   '/firms/$firmId/people': typeof AuthenticatedFirmsFirmIdPeopleRoute
@@ -788,6 +797,7 @@ export interface FileRoutesById {
   '/_authenticated/clients/$clientId/loans-accounts': typeof AuthenticatedClientsClientIdLoansAccountsRoute
   '/_authenticated/clients/$clientId/reports': typeof AuthenticatedClientsClientIdReportsRoute
   '/_authenticated/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRouteWithChildren
+  '/_authenticated/firms/$firmId/add-client': typeof AuthenticatedFirmsFirmIdAddClientRoute
   '/_authenticated/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   '/_authenticated/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
   '/_authenticated/firms/$firmId/overview': typeof AuthenticatedFirmsFirmIdOverviewRoute
@@ -876,6 +886,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/loans-accounts'
     | '/clients/$clientId/reports'
     | '/clients/$clientId/settings'
+    | '/firms/$firmId/add-client'
     | '/firms/$firmId/consolidations'
     | '/firms/$firmId/loans'
     | '/firms/$firmId/overview'
@@ -959,6 +970,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/loans-accounts'
     | '/clients/$clientId/reports'
     | '/clients/$clientId/settings'
+    | '/firms/$firmId/add-client'
     | '/firms/$firmId/consolidations'
     | '/firms/$firmId/overview'
     | '/firms/$firmId/people'
@@ -1044,6 +1056,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clients/$clientId/loans-accounts'
     | '/_authenticated/clients/$clientId/reports'
     | '/_authenticated/clients/$clientId/settings'
+    | '/_authenticated/firms/$firmId/add-client'
     | '/_authenticated/firms/$firmId/consolidations'
     | '/_authenticated/firms/$firmId/loans'
     | '/_authenticated/firms/$firmId/overview'
@@ -1436,6 +1449,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFirmsFirmIdIndexRouteImport
       parentRoute: typeof AuthenticatedFirmsFirmIdRoute
     }
+    '/_authenticated/firms/$firmId/add-client': {
+      id: '/_authenticated/firms/$firmId/add-client'
+      path: '/add-client'
+      fullPath: '/firms/$firmId/add-client'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdAddClientRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdRoute
+    }
     '/_authenticated/firms/$firmId/consolidations': {
       id: '/_authenticated/firms/$firmId/consolidations'
       path: '/consolidations'
@@ -1814,6 +1834,7 @@ const AuthenticatedFirmsFirmIdSettingsRouteWithChildren =
   )
 
 interface AuthenticatedFirmsFirmIdRouteChildren {
+  AuthenticatedFirmsFirmIdAddClientRoute: typeof AuthenticatedFirmsFirmIdAddClientRoute
   AuthenticatedFirmsFirmIdConsolidationsRoute: typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   AuthenticatedFirmsFirmIdLoansRoute: typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
   AuthenticatedFirmsFirmIdOverviewRoute: typeof AuthenticatedFirmsFirmIdOverviewRoute
@@ -1826,6 +1847,8 @@ interface AuthenticatedFirmsFirmIdRouteChildren {
 
 const AuthenticatedFirmsFirmIdRouteChildren: AuthenticatedFirmsFirmIdRouteChildren =
   {
+    AuthenticatedFirmsFirmIdAddClientRoute:
+      AuthenticatedFirmsFirmIdAddClientRoute,
     AuthenticatedFirmsFirmIdConsolidationsRoute:
       AuthenticatedFirmsFirmIdConsolidationsRoute,
     AuthenticatedFirmsFirmIdLoansRoute:

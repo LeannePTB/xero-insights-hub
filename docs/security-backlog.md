@@ -1823,3 +1823,12 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - Real-client visual readback blocked by server-held session inactivity; no bypass used. Regression/security checks recorded after completion.
 
 - Verification this turn: automatic typecheck/build OK (ES2023 Intl type definitions restored for existing signDisplay usage); 219 app tests, 296 security tests, 2,274 matrix proofs, 18 live checks pass, known failures unchanged at zero, catalogue/fingerprint match. Linter reports 175 findings (1 info, 174 warnings); no DDL/grant/policy change in this task, no before-run baseline to assert count unchanged. security_posture() remains tooling-permission denied. Synthetic saved-order desktop/mobile grid checked without overflow; real Positive Traction route ends at /auth with session-ended notice.
+
+## 14 Oct 2026 (16:45) — DRTABT missing, overview counts, organisation landing, Work-in-progress cards
+- CLOSED: DRTABT's 9 clients missing. Cause: on 8 Oct 04:33 UTC the organisation was set "Hide from overview"; `overview_clients()` applied that flag even on the organisation's own view. Fix: the flag now applies to the all-organisations view only; DRTABT un-hidden on the owner's request (audited). Regression test in tests/access-matrix.test.ts.
+- Client overview: cross-client totals and combined cash history chart removed; replaced with per-client attention counts (no sums).
+- Organisation landing (/firms/:id) now renders the same caller-scoped overview; Add client moved to /firms/:id/add-client using existing guards.
+- card_catalogue.status (available | wip) via audited AAL2 `admin_set_card_status`; WIP removed in `app_private.card_group_cards` so every reader through `client_cards_v2` refuses it; System Administrator exception only on clients they can read; WIP never adds report sections. Rent report added as WIP card `rental_properties`; rent server functions now check that card plus the System Administrator check.
+- OPEN: "Apply defaults to all clients" overwrites ticks, so dormant WIP ticks not in the default are lost by that action (existing behaviour of the button).
+- OPEN: Business Owners and Viewers do not reach organisation overviews (overview needs active membership, unchanged); Business Owners still go straight to their client.
+- Hourly history-fill cron `xero-figure-backfill-tick` removed; manual System Admin button kept.

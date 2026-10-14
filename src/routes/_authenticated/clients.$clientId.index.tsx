@@ -50,6 +50,7 @@ import { ClientTrialNotice } from "@/components/dashboard/ClientTrialNotice";
 import { PageContainer } from "@/components/PageContainer";
 import { NotesCard } from "@/components/dashboard/NotesCard";
 import { EMPTY_CATALOGUE } from "@/lib/cards/catalogue";
+import { RentReportWidget } from "@/components/dashboard/RentReportWidget";
 import { standardFallbackCards } from "@/components/dashboard/dashboard-card-layout";
 import { dashboardCardMeta, dashboardPackageSummary } from "@/components/dashboard/dashboard-card-layout";
 import { LockedModuleTiles } from '@/components/billing/LockedModuleTiles';
@@ -82,7 +83,9 @@ function ClientDashboard() {
   const fetchCtx = useServerFn(getMyContext);
   const fetchWidgets = useServerFn(getClientWidgets);
   const catalogueFn = useServerFn(getCardCatalogue);
-  const catalogueQ = useQuery({ queryKey: ["card-catalogue"], queryFn: () => catalogueFn() });
+  // includeWip: the database returns Work-in-progress rows to System Administrators only,
+  // and their cards reach `widgets` only on clients they can already read.
+  const catalogueQ = useQuery({ queryKey: ["card-catalogue", "with-wip"], queryFn: () => catalogueFn({ data: { includeWip: true } }) });
   const catalogue = catalogueQ.data?.catalogue ?? EMPTY_CATALOGUE;
   const fetchLoansAccess = useServerFn(getMyLoansAccess);
   // Loan card follows the owner-or-team Loans rule (public.me_can_open_client_loans).
@@ -318,6 +321,9 @@ function ClientDashboard() {
         block.payg = <PaygWithholdingWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} />;
 
 
+      if (widgets.includes("rental_properties"))
+        advanced.push({ id: `${o.id}:rental_properties`, node: <RentReportWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
+
       if (widgets.includes("loan_consolidation") && canOpenLoans)
         advanced.push({ id: `${o.id}:loan_consolidation`, node: <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
 
@@ -373,7 +379,14 @@ function ClientDashboard() {
   }
   const groupedCards = dashboardCards.map(card => {
     const meta = dashboardCardMeta(card.id, catalogue);
-    return { ...card, fullWidth: meta.fullWidth, group: meta.group, groupLabel: meta.label };
+    const wip = catalogue.cards.find((c) => c.key === card.id.split(":").pop())?.status === "wip";
+    const node = wip ? (
+      <div className="space-y-2">
+        <span className="inline-flex rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Work in progress</span>
+        {card.node}
+      </div>
+    ) : card.node;
+    return { ...card, node, fullWidth: meta.fullWidth, group: meta.group, groupLabel: meta.label };
   }).sort((a, b) => {
     const left = dashboardCardMeta(a.id, catalogue); const right = dashboardCardMeta(b.id, catalogue);
     return left.groupRank - right.groupRank || left.rank - right.rank || a.id.localeCompare(b.id);
