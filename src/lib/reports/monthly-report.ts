@@ -13,7 +13,7 @@ export const MONTHLY_REPORT_KEY = "monthly_management";
 // cap on large files and reported the ageing sections as failed.
 // v4: the rendered disclaimer text is frozen into the payload at generation
 // time, so an old report always shows the wording that was actually sent.
-export const MONTHLY_REPORT_PAYLOAD_VERSION = 11;
+export const MONTHLY_REPORT_PAYLOAD_VERSION = 12;
 // v10: only notes marked "Include in management report" are carried into the payload.
 // v11: page one carries the verdict — the ranked finding, how often it has been
 // raised in prior finalised reports, the coverage sentence and the optional
@@ -146,6 +146,8 @@ export type MonthlyReportPayload = {
    * incomplete — the figures still tie — so they must not block finalising.
    */
   warnings?: string[];
+  /** v12: frozen caller-scoped chart history; old reports remain chart-less. */
+  charts?: import("@/lib/charts/report-history").ReportCharts;
   meta: {
     organisationName: string;
     clientName: string;

@@ -841,7 +841,15 @@ export async function computeMonthlyReport(opts: {
     return true;
   });
 
+  const { loadReportCharts } = await import('./chart-history.server');
+  let charts: import('@/lib/charts/report-history').ReportCharts;
+  try {
+    charts = await loadReportCharts(opts.supabase, opts.clientId, opts.tenantId, periodEnd, opts.currency, profitAndLoss?.totals.netProfit ?? null);
+  } catch {
+    charts = {cash:[],profit:[],note:'Stored chart history could not be read; no history has been substituted.'};
+  }
   return {
+    charts,
     payloadVersion: MONTHLY_REPORT_PAYLOAD_VERSION,
     complete: failedSections.length === 0,
     failedSections,
