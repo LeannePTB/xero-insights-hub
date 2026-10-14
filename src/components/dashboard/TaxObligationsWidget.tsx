@@ -95,7 +95,7 @@ export function TaxObligationsWidget({
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
-      <DashboardCardHeader label={tenantName} title="Tax obligations" icon={<Calculator className="h-4 w-4"/>} description="Latest completed periods and the ATO-set instalment" source={gstQuery.data?.source} isFetching={gstQuery.isFetching || paygQuery.isFetching} actions={instalmentsQuery.data?.canEdit && !editing ? <Button variant="outline" size="sm" onClick={() => setEditing(true)}><Pencil className="h-4 w-4"/> Add instalment</Button> : undefined}/>
+      <DashboardCardHeader label={tenantName} title="Tax obligations" icon={<Calculator className="h-4 w-4"/>} description="Latest completed periods and the ATO-set instalment" source={paygQuery.data?.source} isFetching={gstQuery.isFetching || paygQuery.isFetching} actions={instalmentsQuery.data?.canEdit && !editing ? <Button variant="outline" size="sm" onClick={() => setEditing(true)}><Pencil className="h-4 w-4"/> Add instalment</Button> : undefined}/>
 
       {busy ? (
         <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>

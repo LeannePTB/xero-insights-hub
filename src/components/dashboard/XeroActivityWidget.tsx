@@ -26,6 +26,10 @@ export function XeroActivityWidget({
 
   const data = query.data;
 
+  if (!query.isLoading && !query.isError && (!data?.available || !data.users.length)) {
+    return <CompactCardState label={tenantName} title="Xero file activity" icon={<UserCheck className="h-4 w-4"/>} summary="No sign-in activity reported yet" explanation="Xero has not supplied sign-in activity for this file. Other accounting figures are unaffected."/>;
+  }
+
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
       <DashboardCardHeader label={tenantName} title="Xero file activity" icon={<UserCheck className="h-4 w-4"/>} description="Sign-in activity reported by Xero, updated overnight" status={<p className="mt-1.5 text-xs text-muted-foreground">{data?.fetchedAt ? `Figures pulled ${format(new Date(data.fetchedAt), "d MMM yyyy, h:mm a")}` : "Figures not available yet"}</p>}/>

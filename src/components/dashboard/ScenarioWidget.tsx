@@ -64,7 +64,7 @@ export function ScenarioWidget({
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
-      <DashboardCardHeader label={tenantName} title="Cash flow scenario" icon={<SlidersHorizontal className="h-4 w-4"/>} description={`Invoices and expenses for ${monthLabelOf(month)}`} source={data?.source} isFetching={isFetching} actions={<><Button variant="ghost" size="icon-sm" onClick={() => { setShouldLoad(true); refetch(); }} disabled={isFetching} title="Refresh" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}/></Button><Button variant="outline" size="sm" asChild><Link to="/clients/$clientId/cashflow-scenario" params={{clientId}} search={{tenantId}}>Open <ArrowRight className="h-3.5 w-3.5"/></Link></Button></>}/>
+      <DashboardCardHeader label={tenantName} title="Cash flow scenario" icon={<SlidersHorizontal className="h-4 w-4"/>} description={`Invoices and expenses for ${monthLabelOf(month)}`} status={<p className="mt-1.5 text-xs text-muted-foreground">Figures for the selected period</p>} isFetching={isFetching} actions={<><Button variant="ghost" size="icon-sm" onClick={() => { setShouldLoad(true); refetch(); }} disabled={isFetching} title="Refresh" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}/></Button><Button variant="outline" size="sm" asChild><Link to="/clients/$clientId/cashflow-scenario" params={{clientId}} search={{tenantId}}>Open <ArrowRight className="h-3.5 w-3.5"/></Link></Button></>}/>
 
       <div className="mt-4">
         <MonthPicker value={month} onChange={setMonth} />

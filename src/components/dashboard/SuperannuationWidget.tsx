@@ -59,6 +59,15 @@ export function SuperannuationWidget({
   const ageDays = oldest ? businessDaysSince(oldest) : null;
   const mayBeOverdue = !isPaidUp && ageDays !== null && ageDays > 7;
 
+  if (!isLoading && !error && data && data.status !== 'available') {
+    const explanation = data.status === 'no_super_accounts'
+      ? 'This Xero file has no superannuation account on its balance sheet.'
+      : data.status === 'payroll_not_registered'
+        ? 'This client is not registered for PAYG withholding, so payroll figures are not requested.'
+        : 'Set how often this client lodges PAYG withholding before payroll figures can be shown.';
+    return <CompactCardState label={tenantName} title="Superannuation not yet paid" icon={<PiggyBank className="h-4 w-4"/>} summary={data.status === 'no_super_accounts' ? 'No superannuation account' : 'Payroll figures unavailable'} explanation={explanation} source={data.source} isFetching={isFetching}/>;
+  }
+
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
       <DashboardCardHeader label={tenantName} title="Superannuation not yet paid" icon={<PiggyBank className="h-4 w-4"/>} description="The balance on this Xero file’s superannuation account" source={data?.source} isFetching={isFetching} actions={<Button variant="ghost" size="icon-sm" onClick={() => refetch()} disabled={isFetching} title="Refresh" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}/></Button>}/>

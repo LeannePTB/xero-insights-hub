@@ -51,6 +51,16 @@ export function PaygWithholdingWidget({
     data?.status === "available" || data?.status === "no_payroll" ? data.outstanding : 0;
   const isPaidUp = !!data && data.status !== "no_payg_accounts" && outstanding <= 0.005;
 
+  if (!isLoading && !error && data && (data.status === 'no_payg_accounts' || data.status === 'no_payroll')) {
+    const explanation = data.status === 'no_payg_accounts' ? 'No PAYG withholding account exists on this Xero file’s balance sheet.'
+      : data.reason === 'not_registered' ? 'This client is not registered for PAYG withholding.'
+      : data.reason === 'setting_required' ? 'Set how often this client lodges PAYG withholding before payroll figures can be shown.'
+      : data.reason === 'not_authorised' ? 'Xero has not authorised payroll access for this file.'
+      : data.reason === 'no_payroll' ? 'No wages have been paid through payroll in this Xero file.'
+      : 'Pay runs could not be read, so monthly withholding is unavailable.';
+    return <CompactCardState label={tenantName} title="PAYG withholding by month" icon={<Receipt className="h-4 w-4"/>} summary={data.status === 'no_payg_accounts' ? 'No PAYG withholding account' : `Monthly figures unavailable${outstanding > 0.005 ? ` · ${fmt(outstanding)} still owing` : ''}`} explanation={explanation} source={data.source} isFetching={isFetching}/>;
+  }
+
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
       <DashboardCardHeader label={tenantName} title="PAYG withholding by month" icon={<Receipt className="h-4 w-4"/>} description="Monthly wage withholding and what is still owing" source={data?.source} isFetching={isFetching} actions={<Button variant="ghost" size="icon-sm" onClick={() => refetch()} disabled={isFetching} title="Refresh" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}/></Button>}/>

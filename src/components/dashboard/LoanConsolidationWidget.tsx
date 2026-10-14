@@ -46,7 +46,7 @@ export function LoanConsolidationWidget({
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
-      <DashboardCardHeader label={tenantName} title="Loan consolidation" icon={<Building2 className="h-4 w-4"/>} description={`Inter-company loan accounts as at ${asAt}`} source={data?.source} isFetching={isFetching} actions={<Button variant="ghost" size="icon-sm" onClick={() => { setShouldLoad(true); refetch(); }} disabled={isFetching} title="Refresh" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}/></Button>}/>
+      <DashboardCardHeader label={tenantName} title="Loan consolidation" icon={<Building2 className="h-4 w-4"/>} description={`Inter-company loan accounts as at ${asAt}`} status={<p className="mt-1.5 text-xs text-muted-foreground">Figures for the selected period</p>} isFetching={isFetching} actions={<Button variant="ghost" size="icon-sm" onClick={() => { setShouldLoad(true); refetch(); }} disabled={isFetching} title="Refresh" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}/></Button>}/>
 
       {!shouldLoad ? (
         <XeroLoadPrompt

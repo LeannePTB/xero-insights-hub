@@ -1,3 +1,4 @@
+import { DashboardCardHeader } from "./DashboardCardHeader";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -85,13 +86,8 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
   });
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <div className="mb-4 flex items-center gap-2">
-        <div className="grid h-8 w-8 place-items-center rounded-lg bg-accent/15 text-emphasis">
-          <StickyNote className="h-4 w-4" />
-        </div>
-        <h2 className="font-display text-lg font-semibold">Notes</h2>
-      </div>
+    <section className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
+      <DashboardCardHeader label="Client notes" title="Notes" icon={<StickyNote className="h-4 w-4"/>} description="Notes and commentary for this client" status={<p className="mt-1.5 text-xs text-muted-foreground">{notes.length} saved note{notes.length === 1 ? '' : 's'}</p>}/>
 
       {canEdit && (
         <div className="mb-4">
