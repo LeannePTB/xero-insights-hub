@@ -789,6 +789,48 @@ AS $function$
   ) end
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.org_addon_widgets()
+ RETURNS text[]
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO 'public'
+AS $function$
+  select array['loan_consolidation']
+$function$
+;
+CREATE OR REPLACE FUNCTION public.firm_has_consolidation(_firm_id uuid)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+
+  if auth.uid() is not null
+     and not public.user_can_access_firm(auth.uid(), _firm_id)
+     and not app_private.is_super_admin(auth.uid()) then
+    return false;
+  end if;
+
+  if app_private.firm_subscription_lapsed(_firm_id) then
+    return false;
+  end if;
+
+  if app_private.setting_bool('card_model_v2') then
+    return exists (
+      select 1 from public.org_subscription_options o
+      where o.firm_id = _firm_id and o.consolidation_enabled
+    );
+  end if;
+
+  return exists (
+    select 1 from public.subscriptions s
+    where s.firm_id = _firm_id and s.consolidation_enabled
+  );
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.set_all_client_tiers(_firm_id uuid, _tier dashboard_tier, _include_billed boolean DEFAULT false, _reason text DEFAULT NULL::text)
  RETURNS TABLE(changed integer, skipped_billed integer, unchanged integer)
  LANGUAGE plpgsql
