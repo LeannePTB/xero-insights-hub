@@ -1,6 +1,6 @@
 - Overview uses stored snapshots, `evaluateClient` status and caller-scoped `overview_clients()`; never duplicate access rules in TypeScript.
 - Bank/card extraction is shared in `tax-lines.ts`; the ID-keyed bank-classification overlay applies explicit client/file/account overrides before Xero BankAccountType, never name guesses, so stored and live figures agree without rewriting Xero metadata.
-- Sidebar spacer never shrinks; inset uses flex-1 min-w-0, never w-full (clipping).
+- Sidebar spacer never shrinks; inset: flex-1 min-w-0, not w-full (clipping).
 - AppShell owns the sole menu header; AppHeader registers actions there and renders standalone only outside, avoiding duplicate branding/lost actions.
 - Client income tax instalments use one period-history table and audited caller-scoped save; history and organisation-team-only editing stay explicit.
 - AppShell navigation uses `src/lib/nav/sidebar-nav.ts`, URL-selected (/system, /firms/:id, /clients/:id) and gated only by getMyContext signals; it stays presentation-only and database-movable.
@@ -21,7 +21,7 @@
 - Bank-reconciliation warnings use only per-account dates, the cash account overlay and the recent-line window in `src/lib/overview/bank-reconciliation.ts`, never file-wide oldest dates. Missing data shows nothing.
 - Protected money is compared with cash at bank only through `src/lib/health/protected-money-share.ts`, because the health rule, Overview, reports and Trixie must agree on one definition.
 - Viewer is one read-only login type whose scope (All clients via firm_viewer_access, Selected via client_access external_adviser rows) is changed only through `set_viewer_scope`, because the two storage paths must switch atomically without a new predicate.
-- Login labels use `LOGIN_TYPE_LABEL`; database keys stay unchanged to preserve access rules.
+- Login labels use `LOGIN_TYPE_LABEL`; DB keys stay unchanged, preserving access.
 - Auth/public logos share display-only rendering and official fallback; auth logic stays route-owned.
 
 - Charts share pure vector geometry between accessible SVG and jsPDF; history is caller-scoped and frozen only into new report drafts, so charts never widen access or refresh final/sent documents.
