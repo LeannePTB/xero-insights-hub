@@ -2059,3 +2059,33 @@ describe("overview organisation hide and restore", () => {
     });
   }
 });
+
+describe('public website security boundary',()=>{
+ it('anonymous projection exposes only approved display fields',async()=>{
+  await asRole('super_admin_no_membership',async()=>{
+   await db.exec(`set local role postgres`);
+   await db.query(`insert into public.platform_branding(id,website_settings,updated_by) values(true,$1::jsonb,$2::uuid)`,[JSON.stringify({standardPrice:'Demo',calendlyUrl:'https://calendly.com/demo',privateToken:'must-not-leak',clientId:CLIENT_A}),U.superAdmin]);
+   await db.exec('set local role anon');
+   const result=await db.query<{settings:Record<string,unknown>}>(`select public.get_public_website_settings() settings`);
+   expect(Object.keys(result.rows[0]!.settings).sort()).toEqual(['calendlyUrl','heroVideoPath','heroPosterPath','walkthroughUrl','standardPrice','advisoryPrice','consolidationPrice','whiteLabelPrice'].sort());
+   expect(JSON.stringify(result.rows)).not.toContain('must-not-leak');expect(JSON.stringify(result.rows)).not.toContain(CLIENT_A);
+  });
+ });
+ it('admin saves audit field names, never values, and rejects unknown keys and unsafe URLs',async()=>{
+  await asRole('super_admin_no_membership',async()=>{
+   await db.query(`select public.save_public_website_settings($1::jsonb)`,[JSON.stringify({calendlyUrl:'https://calendly.com/demo',standardPrice:'PRIVATE-AUDIT-VALUE'})]);
+   await db.exec('set local role postgres');const audit=await db.query<{meta:unknown;actor_user_id:string}>(`select meta,actor_user_id from public.audit_log where action='public_website_settings_saved'`);expect(audit.rows.length).toBe(1);expect(audit.rows[0]!.actor_user_id).toBe(U.superAdmin);expect(JSON.stringify(audit.rows[0]!.meta)).not.toContain('PRIVATE-AUDIT-VALUE');expect(JSON.stringify(audit.rows[0]!.meta)).toContain('standardPrice');
+  });
+  for(const settings of [{private:'value'},{calendlyUrl:'https://calendly.com.evil.test/demo'},{walkthroughUrl:'https://evil.test/demo'},{heroVideoPath:'../private.mp4'},{standardPrice:123}]){
+   const outcome=await asRole('super_admin_no_membership',()=>probe(`select public.save_public_website_settings('${JSON.stringify(settings)}'::jsonb)`));expect(outcome.ok).toBe(false);
+  }
+ });
+ it('AAL1 System Administrator and support-only caller cannot save',async()=>{
+  await asRole('super_admin_no_membership',async()=>{
+   const c=JSON.parse(claims(CONTEXT.super_admin_no_membership));c.aal='aal1';await db.query(`select set_config('request.jwt.claims',$1,true)`,[JSON.stringify(c)]);expect((await probe(`select public.save_public_website_settings('{}')`)).ok).toBe(false);
+  });
+  await asRole('support_grant_active',async()=>{
+   await db.exec('set local role postgres');await db.query(`delete from public.user_roles where user_id=$1::uuid`,[U.supportActive]);await db.exec('set local role authenticated');expect((await probe(`select public.save_public_website_settings('{}')`)).ok).toBe(false);
+  });
+ });
+});
