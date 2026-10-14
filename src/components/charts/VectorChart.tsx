@@ -20,6 +20,7 @@ export function VectorChart({ title, points, series, currency = 'AUD', table = t
             const prev = s.points[i - 1];
             const label = `${p.label} · ${s.label}: ${fmt(p.value)}`;
             return <g key={i}>
+              {s.kind === 'line' && prev && series.length === 1 && <polygon points={`${prev.x},${g.zero} ${prev.x},${prev.y} ${p.x},${p.y} ${p.x},${g.zero}`} fill="currentColor" opacity=".1"/>}
               {s.kind === 'line' && prev && <line x1={prev.x} y1={prev.y} x2={p.x} y2={p.y} stroke="currentColor" strokeWidth="2" strokeDasharray={si > 1 ? '5 3' : undefined}/>}
               <g role="button" tabIndex={0} aria-label={label} onFocus={() => setSelected(label)} onClick={() => setSelected(label)} onKeyDown={e => { if(e.key === 'Enter' || e.key === ' ') {e.preventDefault();setSelected(label);} }} className="cursor-pointer outline-none focus:stroke-foreground" strokeWidth="2">
                 <title>{label}</title>

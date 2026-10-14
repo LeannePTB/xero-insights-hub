@@ -373,11 +373,11 @@ export async function buildOverview(
   const feed = buildFeed(ctx);
   const { buildOverviewCharts } = await import('./charts.server');
   const charts = await buildOverviewCharts(sb, ctx, out);
-  const latestClient = out.filter(r => r.lastReportSentAt).sort((a,b) => (b.lastReportSentAt ?? '').localeCompare(a.lastReportSentAt ?? ''))[0];
   let latestReport = null;
-  if (latestClient) {
-    const { data } = await sb.from('client_reports').select('period_end, sent_at').eq('client_id', latestClient.clientId).eq('report_key', 'monthly_management').eq('status','sent').order('sent_at',{ascending:false}).limit(1).maybeSingle();
-    if (data?.sent_at) latestReport = {clientId:latestClient.clientId,clientName:latestClient.clientName,periodEnd:String(data.period_end),sentAt:String(data.sent_at)};
+  if (ctx.clients.length) {
+    const { data } = await sb.from('client_reports').select('client_id, period_end, sent_at').in('client_id', ctx.clients.map(c => c.client_id)).eq('report_key', 'monthly_management').eq('status','sent').order('sent_at',{ascending:false}).limit(1).maybeSingle();
+    const client = ctx.clients.find(c => c.client_id === data?.client_id);
+    if (data?.sent_at && client) latestReport = {clientId:client.client_id,clientName:client.client_name,periodEnd:String(data.period_end),sentAt:String(data.sent_at)};
   }
   return { rows: out, feed: feed.events, cleared: feed.cleared, feedNotes: feed.notes, charts, latestReport };
 }
