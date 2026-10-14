@@ -1,0 +1,3 @@
+- Trixie chats live per person in `trixie_threads`/`trixie_messages` (owner-only RLS re-checking read access; visible text and source labels only), written as the caller, so history never widens current access.
+- Trixie alerting runs as one scheduled public route calling service-role-only database functions, because alert evaluation needs every organisation's usage and no signed-in caller exists.
+- Trixie spend is priced in TypeScript from recorded token counts (`src/lib/trixie/trixie-cost.ts`), so the per-question cost guard and the spend reports use one rate table.
