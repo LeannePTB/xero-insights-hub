@@ -38,7 +38,7 @@ export const Route = createFileRoute("/api/public/xero/snapshot-refresh")({
         const { GLOBAL_RUN_MAX, GLOBAL_RUN_WINDOW_SECONDS } = await import("@/lib/xero/snapshot-keys");
         const { enforceRateLimit } = await import("@/lib/rate-limit.server");
 
-        // Backfill tick (every 10 minutes): only processes items a System
+        // Backfill tick (hourly): only processes items a System
         // Administrator queued through start_figure_backfill(); no queue, no work.
         let mode: unknown = null;
         try { mode = ((await request.clone().json()) as { mode?: unknown })?.mode; } catch { mode = null; }

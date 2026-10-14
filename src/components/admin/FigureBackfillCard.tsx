@@ -19,7 +19,7 @@ export function FigureBackfillCard() {
   });
   const m = useMutation({
     mutationFn: () => start({ data: {} }),
-    onSuccess: () => { toast.success("History fill queued. It runs in the background every 10 minutes."); qc.invalidateQueries({ queryKey: ["figure-backfill-status"] }); },
+    onSuccess: () => { toast.success("History fill queued. It runs in the background, five Xero files an hour."); qc.invalidateQueries({ queryKey: ["figure-backfill-status"] }); },
     onError: (e: Error) => toast.error(e.message),
   });
   const run = q.data?.run;

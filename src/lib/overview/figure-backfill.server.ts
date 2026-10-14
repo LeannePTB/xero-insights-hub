@@ -12,7 +12,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sydneyDate } from "@/lib/sydney-time";
 import { completedMonthEnds, nextAttempt } from "./figure-backfill";
 
-const FILES_PER_TICK = 3;
+const FILES_PER_TICK = 5;
 
 type Item = { id: string; client_id: string; firm_id: string; tenant_id: string; attempts: number };
 
