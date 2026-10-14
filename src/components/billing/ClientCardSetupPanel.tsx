@@ -18,17 +18,25 @@ import {
   getClientCardSetup,
   setClientCardTick,
   copyClientCardSetup,
+  setClientModuleTick,
 } from "@/lib/card-model.functions";
+import {
+  activeModules,
+  EMPTY_CATALOGUE,
+  moduleCards,
+  moduleState,
+  packageCards,
+  type CardCatalogue,
+} from "@/lib/cards/catalogue";
 import { listClients } from "@/lib/clients.functions";
-import { cardLabel, cardNotBuilt, CARD_GROUP_LABEL } from "@/lib/card-labels";
+import { cardLabel } from "@/lib/card-labels";
 
 /**
- * Per-client card ticks under the purchase + ticked-list model.
- *
- * Only cards the organisation has bought are listed, grouped Standard /
- * Advisory / Consolidation from public.card_group_list(). Every write goes
- * through public.set_client_card_enabled, which checks the second factor and
- * write access to the client and records an audit row. Nothing is decided here.
+ * Client "Package": Standard (included), Advisory modules and Consolidation,
+ * from the database card catalogue. Module ticks write the same client_cards
+ * list through public.set_client_module; per-card overrides through
+ * public.set_client_card_enabled. Both re-check aal2 and Organisation Owner or
+ * System Administrator, and audit. canManage is a presentation signal only.
  */
 export function ClientCardSetupPanel({
   clientId,
@@ -40,6 +48,7 @@ export function ClientCardSetupPanel({
   const qc = useQueryClient();
   const fetchSetup = useServerFn(getClientCardSetup);
   const tick = useServerFn(setClientCardTick);
+  const tickModule = useServerFn(setClientModuleTick);
   const [busy, setBusy] = useState<string | null>(null);
   const [copyOpen, setCopyOpen] = useState(false);
 
@@ -54,17 +63,20 @@ export function ClientCardSetupPanel({
     [(q.data as any)?.visible],
   );
 
+  const refresh = () =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: ["client-card-setup", clientId] }),
+      qc.invalidateQueries({ queryKey: ["client-widgets", clientId] }),
+      qc.invalidateQueries({ queryKey: ["effective-widgets", clientId] }),
+      qc.invalidateQueries({ queryKey: ["client-widget-matrix", clientId] }),
+    ]);
+
   async function onToggle(card: string, next: boolean) {
     if (busy) return;
     setBusy(card);
     try {
       await tick({ data: { clientId, card, enabled: next } });
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: ["client-card-setup", clientId] }),
-        qc.invalidateQueries({ queryKey: ["client-widgets", clientId] }),
-        qc.invalidateQueries({ queryKey: ["effective-widgets", clientId] }),
-        qc.invalidateQueries({ queryKey: ["client-widget-matrix", clientId] }),
-      ]);
+      await refresh();
       toast.success(`${cardLabel(card)} switched ${next ? "on" : "off"} for this client.`);
     } catch (e: any) {
       toast.error(e?.message ?? "Could not change this card");
@@ -73,83 +85,172 @@ export function ClientCardSetupPanel({
     }
   }
 
+  async function onModule(moduleKey: string, label: string, next: boolean) {
+    if (busy) return;
+    setBusy(`module:${moduleKey}`);
+    try {
+      await tickModule({ data: { clientId, moduleKey, enabled: next } });
+      await refresh();
+      toast.success(`${label} switched ${next ? "on" : "off"} for this client.`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not change this module");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   if (q.isLoading) {
     return (
       <p className="text-xs text-muted-foreground">
-        <Loader2 className="mr-2 inline h-3 w-3 animate-spin" /> Loading cards…
+        <Loader2 className="mr-2 inline h-3 w-3 animate-spin" /> Loading package…
       </p>
     );
   }
   if (q.error || !q.data || (q.data as any).modelActive !== true) {
     return (
       <p className="text-xs text-muted-foreground">
-        {(q.error as Error)?.message ?? "Card list not available for this client."}
+        {(q.error as Error)?.message ?? "Package not available for this client."}
       </p>
     );
   }
 
-  const groups = ((q.data as any).groups ?? []) as { group: string; cards: string[] }[];
-  const available = new Set(((q.data as any).available ?? []) as string[]);
+  const d = q.data as any;
+  const catalogue = (d.catalogue ?? EMPTY_CATALOGUE) as CardCatalogue;
+  const canManage = d.canManage === true;
+  const available = new Set((d.available ?? []) as string[]);
+  const standard = catalogue.cards.filter((c) => c.package === "standard");
+  const modules = activeModules(catalogue)
+    .map((m) => ({ ...m, cards: moduleCards(catalogue, m.key).filter((c) => available.has(c)) }))
+    .filter((m) => m.cards.length > 0);
+  const consolidation = packageCards(catalogue, "consolidation").filter((c) => available.has(c));
+  const advancedCards = catalogue.cards.filter((c) => available.has(c.key));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-xl text-xs text-muted-foreground">
-          The cards this client's dashboard shows. Only cards the organisation has bought are listed
-          — Advisory and Consolidation appear here once they are switched on for the organisation.
+          What this client's dashboard includes. Only what the organisation has bought is shown.
+          {canManage
+            ? " Ticking a module switches on all its cards for this client."
+            : " Only the Organisation Owner can change this."}
         </p>
-        <Button variant="outline" size="sm" onClick={() => setCopyOpen(true)}>
-          <Copy className="mr-2 h-3.5 w-3.5" />
-          Copy to other clients
-        </Button>
+        {canManage && (
+          <Button variant="outline" size="sm" onClick={() => setCopyOpen(true)}>
+            <Copy className="mr-2 h-3.5 w-3.5" />
+            Copy to other clients
+          </Button>
+        )}
       </div>
 
-      {groups
-        .filter((g) => g.cards.some((c) => available.has(c)))
-        .map((g) => (
-          <div key={g.group}>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {CARD_GROUP_LABEL[g.group] ?? g.group}
-            </p>
-            <ul className="divide-y divide-border rounded-xl border border-border">
-              {g.cards
-                .filter((c) => available.has(c))
-                .map((card) => (
-                  <li key={card} className="flex items-center justify-between gap-4 px-4 py-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{cardLabel(card)}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {visible.has(card) ? "On" : "Off for this client"}
-                        {cardNotBuilt(card) && " · not built yet"}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {busy === card && (
-                        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                      )}
-                      <Switch
-                        checked={visible.has(card)}
-                        disabled={busy !== null}
-                        onCheckedChange={(v) => onToggle(card, v)}
-                        aria-label={`${cardLabel(card)} for this client`}
-                      />
-                    </div>
-                  </li>
-                ))}
-            </ul>
-          </div>
-        ))}
+      <div>
+        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Standard — included</p>
+        <ul className="space-y-1 rounded-xl border border-border px-4 py-3">
+          {standard.map((c) => (
+            <li key={c.key} className="text-sm">
+              <span className="font-medium">{c.label}</span>
+              <span className="text-muted-foreground"> — {c.description}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
 
-      <CopyToClientsDialog
-        open={copyOpen}
-        onOpenChange={setCopyOpen}
-        clientId={clientId}
-        firmId={firmId}
-        onCopied={() => {
-          qc.invalidateQueries({ queryKey: ["client-card-setup"] });
-          qc.invalidateQueries({ queryKey: ["client-widgets"] });
-        }}
-      />
+      {modules.length > 0 && (
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Advisory modules</p>
+          <ul className="divide-y divide-border rounded-xl border border-border">
+            {modules.map((m) => {
+              const state = moduleState(m.cards, visible);
+              return (
+                <li key={m.key} className="flex items-start gap-3 px-4 py-3">
+                  <Checkbox
+                    id={`module-${m.key}`}
+                    className="mt-0.5"
+                    checked={state === "on" ? true : state === "partial" ? "indeterminate" : false}
+                    disabled={!canManage || busy !== null}
+                    onCheckedChange={() => onModule(m.key, m.label, state !== "on")}
+                    aria-label={`${m.label} module for this client`}
+                  />
+                  <label htmlFor={`module-${m.key}`} className="min-w-0 flex-1 cursor-pointer">
+                    <span className="block text-sm font-medium">
+                      {m.label}
+                      {state === "partial" && <span className="ml-2 text-xs font-normal text-muted-foreground">Some cards on</span>}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">{m.description}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {m.cards.map((c) => catalogue.cards.find((x) => x.key === c)?.label ?? cardLabel(c)).join(" · ")}
+                    </span>
+                  </label>
+                  {busy === `module:${m.key}` && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {consolidation.length > 0 && (
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Consolidation</p>
+          <ul className="divide-y divide-border rounded-xl border border-border">
+            {consolidation.map((card) => {
+              const entry = catalogue.cards.find((c) => c.key === card);
+              return (
+                <li key={card} className="flex items-start gap-3 px-4 py-3">
+                  <Checkbox
+                    id={`cons-${card}`}
+                    className="mt-0.5"
+                    checked={visible.has(card)}
+                    disabled={!canManage || busy !== null}
+                    onCheckedChange={(v) => onToggle(card, v === true)}
+                  />
+                  <label htmlFor={`cons-${card}`} className="min-w-0 flex-1 cursor-pointer">
+                    <span className="block text-sm font-medium">{entry?.label ?? cardLabel(card)}</span>
+                    <span className="block text-xs text-muted-foreground">{entry?.description}</span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {canManage && (
+        <details className="rounded-xl border border-border">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-medium">Advanced — individual cards</summary>
+          <ul className="divide-y divide-border border-t border-border">
+            {advancedCards.map((c) => (
+              <li key={c.key} className="flex items-center justify-between gap-4 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{c.label}</p>
+                  <p className="text-xs text-muted-foreground">{visible.has(c.key) ? "On" : "Off for this client"}</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {busy === c.key && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                  <Switch
+                    checked={visible.has(c.key)}
+                    disabled={busy !== null}
+                    onCheckedChange={(v) => onToggle(c.key, v)}
+                    aria-label={`${c.label} for this client`}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      {canManage && (
+        <CopyToClientsDialog
+          open={copyOpen}
+          onOpenChange={setCopyOpen}
+          clientId={clientId}
+          firmId={firmId}
+          onCopied={() => {
+            qc.invalidateQueries({ queryKey: ["client-card-setup"] });
+            qc.invalidateQueries({ queryKey: ["client-widgets"] });
+          }}
+        />
+      )}
     </div>
   );
 }

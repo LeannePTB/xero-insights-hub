@@ -340,8 +340,8 @@ export function ClientSettingsPage({ clientId, section }: { clientId: string; se
           <ClientSetupSection clientId={clientId} />
         </Section>
 
-        {/* Cards — per-client switches within the organisation's available cards */}
-        <Section title="Cards" id="cards" collapsible>
+        {/* Package — Standard, Advisory modules and Consolidation for this client */}
+        <Section title="Package" id="cards" collapsible>
           <ClientCardsPanel clientId={clientId} firmId={client.firm_id ?? null} />
         </Section>
 
@@ -766,7 +766,7 @@ export function ClientSettingsPage({ clientId, section }: { clientId: string; se
 const SETTINGS_SECTION_BY_TITLE: Record<string, ClientSettingsSection> = {
   "Client name": "general",
   "Setup": "general",
-  "Cards": "cards",
+  "Package": "cards",
   "Report branding": "cards",
   "People access": "people",
   "Xero organisations": "xero",
