@@ -29,8 +29,8 @@ export async function loadStandardHistory(db: any, clientId: string, tenantId: s
     if(basis==='accrual') for(const r of filled.data??[]) months.set(r.month_end.slice(0,7),{date:r.month_end,income:null,expenses:null,profit:r.net_profit===null?null:Number(r.net_profit),partial:false,source:'Xero month-end backfill',basis});
     for(const r of reports.data??[]) {
       const totals=r.payload?.profitAndLoss?.totals;
-      // Legacy reports do not freeze basis. They cannot safely supply basis-sensitive bars.
-      if(!totals || r.payload?.basis!==basis || months.get(r.period_end.slice(0,7))?.income!==null && months.get(r.period_end.slice(0,7))?.income!==undefined) continue;
+      // This report generator historically requests accrual; explicit future basis wins.
+      if(!totals || (r.payload?.basis??'accrual')!==basis || months.get(r.period_end.slice(0,7))?.income!==null && months.get(r.period_end.slice(0,7))?.income!==undefined) continue;
       months.set(r.period_end.slice(0,7),{date:r.period_end,income:totals.revenue+totals.otherIncome,expenses:totals.costOfSales+totals.expenses,profit:totals.netProfit,partial:false,source:'Stored monthly report',basis});
     }
     for(const r of snapshots.data??[]) {

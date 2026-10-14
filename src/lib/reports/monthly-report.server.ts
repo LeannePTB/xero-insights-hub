@@ -860,12 +860,13 @@ export async function computeMonthlyReport(opts: {
     charts = {cash:[],profit:[],note:'Stored chart history could not be read; no history has been substituted.'};
   }
   // Freeze available current-period bars; missing historical breakdowns stay gaps.
-  charts.pnl = charts.profit.map(p => ({label:p.label,values:[
-    p.date===periodEnd && profitAndLoss ? profitAndLoss.totals.revenue+profitAndLoss.totals.otherIncome : null,
-    p.date===periodEnd && profitAndLoss ? profitAndLoss.totals.costOfSales+profitAndLoss.totals.expenses : null,
+  charts.pnl = charts.profit.map((p,i) => ({label:p.label,values:[
+    p.date===periodEnd && profitAndLoss ? profitAndLoss.totals.revenue+profitAndLoss.totals.otherIncome : charts.pnl?.[i]?.values[0]??null,
+    p.date===periodEnd && profitAndLoss ? profitAndLoss.totals.costOfSales+profitAndLoss.totals.expenses : charts.pnl?.[i]?.values[1]??null,
     p.value,
   ]}));
   return {
+    basis: 'accrual',
     includedSections,
     charts: inc("charts") ? charts : undefined,
     payloadVersion: MONTHLY_REPORT_PAYLOAD_VERSION,

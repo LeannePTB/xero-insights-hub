@@ -12,5 +12,11 @@ export async function loadReportCharts(sb: any, clientId: string, tenantId: stri
     if((data ?? []).length < 1000) break;
     if(offset===4000) throw new Error('Report history exceeds the bounded window.');
   }
-  return freezeReportCharts(rows,reports,{periodEnd,currency,profit},monthEnd);
+  const charts=freezeReportCharts(rows,reports,{periodEnd,currency,profit},monthEnd);
+  charts.pnl=charts.profit.map(p=>{
+    const report=reports.filter(r=>r.period_end===p.date && r.payload?.meta?.currency===currency && (r.payload?.basis??'accrual')==='accrual').sort((a,b)=>b.version-a.version)[0];
+    const totals=report?.payload?.profitAndLoss?.totals;
+    return {label:p.label,values:[totals?totals.revenue+totals.otherIncome:null,totals?totals.costOfSales+totals.expenses:null,p.value]};
+  });
+  return charts;
 }

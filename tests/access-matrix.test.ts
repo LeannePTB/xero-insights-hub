@@ -2051,6 +2051,30 @@ describe("access matrix — PGlite layer", () => {
 });
 
 describe("meta: the suite can actually detect a regression", () => {
+  it('enquiries hard-stop after three per person per hour',async()=>{
+    await asRole('org_owner',async()=>{
+      // The seeded enquiry consumes one slot, so exactly two more are allowed.
+      for(let i=0;i<2;i++) expect((await probe(EXEC['public.submit_upgrade_enquiry()'])).ok).toBe(true);
+      const fourth=await probe(EXEC['public.submit_upgrade_enquiry()']);
+      expect(fourth.ok).toBe(false);
+      expect(fourth.error).toContain('ENQUIRY_LIMIT');
+    });
+  });
+  it('enquiry retries return the same ID without a second row',async()=>{
+    await asRole('org_owner',async()=>{
+      const sql=`select public.submit_upgrade_enquiry('${ORG_A}','Name','{}','{}','Message','f0000000-1111-4111-8111-111111111111') as id`;
+      const first=await db.query<{id:string}>(sql),second=await db.query<{id:string}>(sql);
+      expect(second.rows[0]?.id).toBe(first.rows[0]?.id);
+      const count=await db.query<{n:number}>(`select count(*)::int as n from public.upgrade_enquiries where submission_key='f0000000-1111-4111-8111-111111111111'`);
+      expect(count.rows[0]?.n).toBe(1);
+    });
+  });
+  it('Staff, Viewer and Business Owner receive no enquiry context',async()=>{
+    for(const role of ['org_staff','client_viewer','standing_viewer','business_owner'] as Role[]) await asRole(role,async()=>{
+      const r=await db.query<{context:null}>(`select public.upgrade_enquiry_context('${ORG_A}') as context`);
+      expect(r.rows[0]?.context).toBeNull();
+    });
+  });
   it("sources organisation limits from org_subscription_options, not legacy plans", async () => {
     const migration = fs.readFileSync(
       path.join(
