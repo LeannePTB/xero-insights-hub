@@ -880,6 +880,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
         ? `select public.set_client_card_enabled('${CLIENT_A}'::uuid, 'health', false)`
         : `select public.admin_set_card_entry('cashflow', 'advisory', 'cash_flow', 'matrix probe')`;
     const p = await probe(sql);
+    if (process.env.MATRIX_DEBUG && !p.ok) console.log('PROBE', row.role, r, p.error);
     return p.ok ? "allow" : "deny";
   }
   if (r.startsWith("set_org_card_defaults(")) {
