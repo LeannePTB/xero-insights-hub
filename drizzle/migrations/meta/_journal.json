@@ -337,6 +337,13 @@
       "when": 1791962647446,
       "tag": "0047_card_catalogue_select_grant",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1791962790638,
+      "tag": "0048_client_locked_advisory_modules",
+      "breakpoints": true
     }
   ]
 }

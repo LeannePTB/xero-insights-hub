@@ -4286,6 +4286,7 @@ export type Database = {
       }
       client_for_access: { Args: { _id: string }; Returns: string }
       client_for_tenant: { Args: { _tenant_id: string }; Returns: string }
+      client_locked_modules: { Args: { _client_id: string }; Returns: string[] }
       client_org_trial: {
         Args: { _client_id: string }
         Returns: {
