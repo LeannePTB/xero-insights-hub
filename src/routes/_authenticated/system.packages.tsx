@@ -92,15 +92,17 @@ function ModuleRow({ module }: { module: CatalogueModule }) {
   useEffect(() => { setLabel(module.label); setDesc(module.description); }, [module.label, module.description]);
   const dirty = label !== module.label || desc !== module.description;
   return (
-    <div className="space-y-2 rounded-lg border border-border p-4">
-      <Input value={label} maxLength={60} onChange={(e) => setLabel(e.target.value)} aria-label="Module name" />
-      <Textarea value={desc} maxLength={300} rows={2} onChange={(e) => setDesc(e.target.value)} aria-label={`${module.label} description`} />
-      <Button size="sm" disabled={!dirty || busy || !label.trim()} onClick={async () => {
-        setBusy(true);
-        try { await save({ data: { moduleKey: module.key, label, description: desc } }); toast.success("Module saved"); await qc.invalidateQueries({ queryKey: KEY }); }
-        catch (e: any) { toast.error(e?.message ?? "Could not save"); } finally { setBusy(false); }
-      }}>Save</Button>
-    </div>
+    <tr className="align-top">
+      <td className="p-3"><Input value={label} maxLength={60} className="w-44" onChange={(e) => setLabel(e.target.value)} aria-label="Module name" /></td>
+      <td className="p-3"><Textarea value={desc} maxLength={300} rows={1} className="min-w-64" onChange={(e) => setDesc(e.target.value)} aria-label={`${module.label} description`} /></td>
+      <td className="p-3">
+        <Button size="sm" disabled={!dirty || busy || !label.trim()} onClick={async () => {
+          setBusy(true);
+          try { await save({ data: { moduleKey: module.key, label, description: desc } }); toast.success("Module saved"); await qc.invalidateQueries({ queryKey: KEY }); }
+          catch (e: any) { toast.error(e?.message ?? "Could not save"); } finally { setBusy(false); }
+        }}>Save</Button>
+      </td>
+    </tr>
   );
 }
 
