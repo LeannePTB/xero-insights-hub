@@ -146,7 +146,7 @@ export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; cleared:
     if (kAnchor && conns.some((x) => x.status === "connected")) {
       const w = bankReconWarning(kf.get(kAnchor)?.bank_reconciliation, kAnchor);
       if (w) {
-        events.push({ ...base, eventKey: "data:bank_not_reconciled", kind: "data", severity: 1, headline: "Bank not reconciled recently", before: null, after: w.text, date: kAnchor, href: `/clients/${c.client_id}/settings/tax-reporting` });
+        events.push({ ...base, eventKey: "data:bank_not_reconciled", kind: "data", severity: 1, headline: "Bank not reconciled recently", before: null, after: w.text, date: kAnchor, href: `/clients/${c.client_id}/settings/banks` });
       }
     }
 
