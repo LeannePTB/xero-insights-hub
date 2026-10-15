@@ -49,8 +49,15 @@ function PackagesPage() {
         <>
           <section className="space-y-3">
             <h2 className="text-base font-semibold">Advisory modules</h2>
-            <div className="grid gap-3 md:grid-cols-2">
-              {catalogue.modules.map((m) => <ModuleRow key={m.key} module={m} />)}
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
+                  <tr><th className="p-3">Module</th><th className="p-3">Description</th><th className="p-3" /></tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {catalogue.modules.map((m) => <ModuleRow key={m.key} module={m} />)}
+                </tbody>
+              </table>
             </div>
           </section>
           <section className="space-y-3">
