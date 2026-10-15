@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ComingSoonAdmin } from "@/components/admin/ComingSoonAdmin";
 import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
 import { PageContainer } from "@/components/PageContainer";
@@ -11,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getCardCatalogue, saveCardEntry, saveCardModule, saveCardStatus } from "@/lib/card-model.functions";
+import { getCardCatalogue, saveCardComingSoon, saveCardEntry, saveCardModule, saveCardStatus } from "@/lib/card-model.functions";
 import { PACKAGE_LABEL, type CardPackage, type CatalogueCard, type CatalogueModule } from "@/lib/cards/catalogue";
 
 export const Route = createFileRoute("/_authenticated/system/packages")({
@@ -65,7 +66,7 @@ function PackagesPage() {
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
-                  <tr><th className="p-3">Card</th><th className="p-3">Status</th><th className="p-3">Package</th><th className="p-3">Module</th><th className="p-3">What the client sees</th><th className="p-3" /></tr>
+                  <tr><th className="p-3">Card</th><th className="p-3">Status</th><th className="p-3">Coming soon</th><th className="p-3">Package</th><th className="p-3">Module</th><th className="p-3">What the client sees</th><th className="p-3" /></tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {catalogue.cards.map((c) => <CardRow key={c.key} card={c} modules={catalogue.modules} />)}
@@ -106,6 +107,30 @@ function ModuleRow({ module }: { module: CatalogueModule }) {
   );
 }
 
+function ComingSoonTick({ card }: { card: CatalogueCard }) {
+  const qc = useQueryClient();
+  const save = useServerFn(saveCardComingSoon);
+  const [busy, setBusy] = useState(false);
+  return (
+    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+      <Checkbox
+        checked={!card.comingSoonHidden}
+        disabled={busy}
+        aria-label={`${card.label} listed in Coming soon`}
+        onCheckedChange={async (v) => {
+          setBusy(true);
+          try {
+            await save({ data: { cardKey: card.key, hidden: v !== true } });
+            toast.success(`${card.label}: ${v === true ? "left out of Coming soon" : "listed in Coming soon"}`);
+            await qc.invalidateQueries({ queryKey: KEY });
+          } catch (e: any) { toast.error(e?.message ?? "Could not save"); } finally { setBusy(false); }
+        }}
+      />
+      Listed
+    </label>
+  );
+}
+
 function StatusSelect({ card }: { card: CatalogueCard }) {
   const qc = useQueryClient();
   const save = useServerFn(saveCardStatus);
@@ -136,6 +161,7 @@ function CardRow({ card, modules }: { card: CatalogueCard; modules: CatalogueMod
     <tr className="align-top">
       <td className="p-3 font-medium">{card.label}</td>
       <td className="p-3"><StatusSelect card={card} /></td>
+      <td className="p-3">{card.status === "wip" ? <ComingSoonTick card={card} /> : <span className="text-muted-foreground">—</span>}</td>
       <td className="p-3">
         <Select value={pkg} onValueChange={(v) => { setPkg(v as CardPackage); if (v !== "advisory") setMod(null); }}>
           <SelectTrigger className="w-36" aria-label={`${card.label} package`}><SelectValue /></SelectTrigger>

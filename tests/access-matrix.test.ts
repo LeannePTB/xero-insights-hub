@@ -1102,6 +1102,78 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       await db.query(`update public.card_catalogue set status = 'available'`).catch(() => {});
     }
   }
+  if (r.startsWith("ca:")) {
+    // Automatic Coming soon teasers: every Work-in-progress card is a teaser,
+    // with a per-card opt-out. Same display-only rule as the manual entries.
+    await seedThenActAs(row.role, `
+      create or replace function app_private.setting_bool(_key text) returns boolean
+        language sql stable as $f$ select _key = 'card_model_v2' $f$;
+      create unique index if not exists org_subscription_options_firm_key on public.org_subscription_options (firm_id);
+      create unique index if not exists coming_soon_entries_key on public.coming_soon_entries (entry_key);
+      create unique index if not exists upgrade_enquiries_sub_key on public.upgrade_enquiries (submitter_id, submission_key);
+      delete from public.org_subscription_options where firm_id = '${ORG_A}'::uuid;
+      insert into public.org_subscription_options (firm_id, client_limit, advisory_enabled, consolidation_enabled, billing_mode)
+      values ('${ORG_A}'::uuid, 10, true, false, 'bookkeeping');
+      update public.card_catalogue set status = case when card_key = 'cashflow' then 'wip' else 'available' end, hide_from_coming_soon = false;
+      delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
+      insert into public.client_cards (client_id, cards) select '${CLIENT_A}'::uuid, array_agg(card_key) from public.card_catalogue;
+      delete from public.coming_soon_entries;
+      delete from public.upgrade_enquiries;
+    `);
+    const autoKeys = async () =>
+      (
+        await db.query<{ k: string }>(`select entry_key as k from public.coming_soon_for_client('${CLIENT_A}'::uuid)`)
+      ).rows.map((x) => x.k);
+    // Mid-proof catalogued changes run as the bootstrap superuser; only the
+    // function call itself runs as the caller's role.
+    const asPostgres = async (sql: string) => {
+      await db.exec("set local role postgres");
+      await db.query(sql);
+      await db.exec(`set local role ${CONTEXT[row.role].dbRole}`);
+    };
+    try {
+      if (r.includes("admin_set_card_coming_soon")) {
+        const p = await probe(`select public.admin_set_card_coming_soon('cashflow', true)`);
+        if (!p.ok && process.env.MATRIX_DEBUG) console.log("CA probe", row.role, r, p.error);
+        return p.ok ? "allow" : "deny";
+      }
+      if (r.includes("interest on the auto teaser")) {
+        const p = await probe(`select public.register_coming_soon_interest('${CLIENT_A}'::uuid, 'auto_cashflow', gen_random_uuid())`);
+        if (!p.ok && process.env.MATRIX_DEBUG) console.log("CA probe", row.role, r, p.error);
+        return p.ok ? "allow" : "deny";
+      }
+      if (r.includes("auto teaser never makes the card visible")) {
+        const keys = await autoKeys();
+        const v = await db.query<{ c: string[] }>(`select public.client_visible_cards('${CLIENT_A}'::uuid) as c`);
+        return keys.includes("auto_cashflow") && !(v.rows[0]?.c ?? []).includes("cashflow") ? "allow" : "deny";
+      }
+      if (r.includes("opted-out card stays hidden")) {
+        await asPostgres(`update public.card_catalogue set hide_from_coming_soon = true where card_key = 'cashflow'`);
+        return (await autoKeys()).includes("auto_cashflow") ? "deny" : "allow";
+      }
+      if (r.includes("Available card has no auto teaser")) {
+        await asPostgres(`update public.card_catalogue set status = 'available' where card_key = 'cashflow'`);
+        return (await autoKeys()).includes("auto_cashflow") ? "deny" : "allow";
+      }
+      if (r.includes("manual entry overrides")) {
+        await asPostgres(
+          `insert into public.coming_soon_entries (entry_key, name, description, sort_order, is_shown, card_key)
+           values ('cash_teaser', 'Cash teaser', 'x', 1, true, 'cashflow')`,
+        );
+        const keys = await autoKeys();
+        return !keys.includes("auto_cashflow") && keys.includes("cash_teaser") ? "allow" : "deny";
+      }
+      // "auto teaser lists the Work-in-progress card"
+      return (await autoKeys()).includes("auto_cashflow") ? "allow" : "deny";
+    } catch (e) {
+      if (process.env.MATRIX_DEBUG) console.log("CA", row.role, r, (e as Error).message);
+      return "deny";
+    } finally {
+      await db.query(`reset role`).catch(() => {});
+      await db.query(`delete from public.coming_soon_entries; delete from public.upgrade_enquiries`).catch(() => {});
+      await db.query(`update public.card_catalogue set status = 'available', hide_from_coming_soon = false`).catch(() => {});
+    }
+  }
   if (r.startsWith("ea:")) {
     // Early access (org_early_access): a Work-in-progress card behaves as Available
     // for practice members of the granted organisation only, through client_cards_v2.

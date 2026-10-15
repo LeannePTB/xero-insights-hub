@@ -1369,6 +1369,47 @@ export const MATRIX: MatrixRow[] = [
     "Nobody else edits Coming soon entries",
     ["pglite"],
   ),
+  // ------------------- Automatic Coming soon teasers for WIP cards (15 Oct 2026)
+  ...rows(
+    ["org_owner", "org_staff"],
+    ["ca: auto teaser lists the Work-in-progress card", "ca: interest on the auto teaser"],
+    ["execute"],
+    "allow",
+    "Every Work-in-progress card is automatically a Coming soon teaser for practice users, and accepts interest through the same guarded recorder",
+    ["pglite"],
+  ),
+  ...rows(
+    ["client_viewer", "standing_viewer", "business_owner", "other_org_member", "aal1_member", "anonymous"],
+    ["ca: auto teaser lists the Work-in-progress card", "ca: interest on the auto teaser"],
+    ["execute"],
+    "deny",
+    "Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers",
+    ["pglite"],
+  ),
+  ...rows(
+    ["org_owner"],
+    ["ca: opted-out card stays hidden", "ca: Available card has no auto teaser", "ca: shown manual entry overrides the auto teaser", "ca: auto teaser never makes the card visible"],
+    ["execute"],
+    "allow",
+    "The per-card opt-out, Available status and a shown manual entry each remove the automatic teaser; listing never grants the card",
+    ["pglite"],
+  ),
+  ...rows(
+    ["super_admin_no_membership"],
+    ["ca: admin_set_card_coming_soon"],
+    ["execute"],
+    "allow",
+    "Only a System Administrator (aal2, audited) changes the per-card Coming soon opt-out",
+    ["pglite"],
+  ),
+  ...rows(
+    ["org_owner", "org_staff", "client_viewer", "business_owner", "other_org_member"],
+    ["ca: admin_set_card_coming_soon"],
+    ["execute"],
+    "deny",
+    "Nobody else changes the per-card Coming soon opt-out",
+    ["pglite"],
+  ),
   // ------------------------- Early access to Work-in-progress cards (14 Oct 2026)
   ...rows(
     ["org_owner", "org_staff", "client_viewer", "business_owner", "other_org_member", "super_admin_no_membership"],

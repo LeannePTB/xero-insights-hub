@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **2694**. Known failures: **0**.
+Rows: **2720**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -202,6 +202,13 @@ None.
 | cs: shown Coming soon entry leaves the WIP card refused | execute | DENY | pglite | Coming soon never grants the card (client_cards_v2 unchanged); interest shares the 3/hour enquiry limit |  |
 | cs: fourth interest within an hour | execute | DENY | pglite | Coming soon never grants the card (client_cards_v2 unchanged); interest shares the 3/hour enquiry limit |  |
 | cs: admin_save_coming_soon | execute | DENY | pglite | Nobody else edits Coming soon entries |  |
+| ca: auto teaser lists the Work-in-progress card | execute | ALLOW | pglite | Every Work-in-progress card is automatically a Coming soon teaser for practice users, and accepts interest through the same guarded recorder |  |
+| ca: interest on the auto teaser | execute | ALLOW | pglite | Every Work-in-progress card is automatically a Coming soon teaser for practice users, and accepts interest through the same guarded recorder |  |
+| ca: opted-out card stays hidden | execute | ALLOW | pglite | The per-card opt-out, Available status and a shown manual entry each remove the automatic teaser; listing never grants the card |  |
+| ca: Available card has no auto teaser | execute | ALLOW | pglite | The per-card opt-out, Available status and a shown manual entry each remove the automatic teaser; listing never grants the card |  |
+| ca: shown manual entry overrides the auto teaser | execute | ALLOW | pglite | The per-card opt-out, Available status and a shown manual entry each remove the automatic teaser; listing never grants the card |  |
+| ca: auto teaser never makes the card visible | execute | ALLOW | pglite | The per-card opt-out, Available status and a shown manual entry each remove the automatic teaser; listing never grants the card |  |
+| ca: admin_set_card_coming_soon | execute | DENY | pglite | Nobody else changes the per-card Coming soon opt-out |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — assert_widget_access(WIP card) | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — catalogue row | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -471,6 +478,7 @@ None.
 | wip: client_visible_cards shows a ticked Work-in-progress card | execute | DENY | pglite | card_catalogue.status = 'wip' removes the card from app_private.client_available_cards, so client_cards_v2 (and every reader through assert_widget_access) refuses it; a System Administrator without access to the client still gets nothing |  |
 | wip: assert_widget_access(Work-in-progress card) | execute | DENY | pglite | card_catalogue.status = 'wip' removes the card from app_private.client_available_cards, so client_cards_v2 (and every reader through assert_widget_access) refuses it; a System Administrator without access to the client still gets nothing |  |
 | cs: admin_save_coming_soon | execute | ALLOW | pglite | Only a System Administrator (aal2, audited) edits Coming soon entries |  |
+| ca: admin_set_card_coming_soon | execute | ALLOW | pglite | Only a System Administrator (aal2, audited) changes the per-card Coming soon opt-out |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — assert_widget_access(WIP card) | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — catalogue row | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -1162,6 +1170,8 @@ None.
 | client_report_sections(all Standard cards ticked) | execute | DENY | pglite | Caller-scoped through client_visible_cards: another organisation, aal1 and signed-out callers get nothing |  |
 | cs: coming_soon_for_client lists the shown entry | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | cs: register_coming_soon_interest | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| ca: auto teaser lists the Work-in-progress card | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| ca: interest on the auto teaser | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ea: granted — client_visible_cards shows the WIP card | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
 | ea: granted — assert_widget_access(WIP card) | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
 | ea: granted — catalogue row | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
@@ -1357,6 +1367,8 @@ None.
 | client_report_sections(all Standard cards ticked) | execute | DENY | pglite | Caller-scoped through client_visible_cards: another organisation, aal1 and signed-out callers get nothing |  |
 | cs: coming_soon_for_client lists the shown entry | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | cs: register_coming_soon_interest | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| ca: auto teaser lists the Work-in-progress card | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| ca: interest on the auto teaser | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ea: granted — client_visible_cards shows the WIP card | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
 | ea: granted — assert_widget_access(WIP card) | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
 | ea: granted — catalogue row | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
@@ -1593,6 +1605,9 @@ None.
 | cs: shown Coming soon entry leaves the WIP card refused | execute | DENY | pglite | Coming soon never grants the card (client_cards_v2 unchanged); interest shares the 3/hour enquiry limit |  |
 | cs: fourth interest within an hour | execute | DENY | pglite | Coming soon never grants the card (client_cards_v2 unchanged); interest shares the 3/hour enquiry limit |  |
 | cs: admin_save_coming_soon | execute | DENY | pglite | Nobody else edits Coming soon entries |  |
+| ca: auto teaser lists the Work-in-progress card | execute | ALLOW | pglite | Every Work-in-progress card is automatically a Coming soon teaser for practice users, and accepts interest through the same guarded recorder |  |
+| ca: interest on the auto teaser | execute | ALLOW | pglite | Every Work-in-progress card is automatically a Coming soon teaser for practice users, and accepts interest through the same guarded recorder |  |
+| ca: admin_set_card_coming_soon | execute | DENY | pglite | Nobody else changes the per-card Coming soon opt-out |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — assert_widget_access(WIP card) | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — catalogue row | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -1815,6 +1830,9 @@ None.
 | cs: coming_soon_for_client lists the shown entry | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | cs: register_coming_soon_interest | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | cs: admin_save_coming_soon | execute | DENY | pglite | Nobody else edits Coming soon entries |  |
+| ca: auto teaser lists the Work-in-progress card | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| ca: interest on the auto teaser | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| ca: admin_set_card_coming_soon | execute | DENY | pglite | Nobody else changes the per-card Coming soon opt-out |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — assert_widget_access(WIP card) | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — catalogue row | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -2089,6 +2107,9 @@ None.
 | cs: coming_soon_for_client lists the shown entry | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | cs: register_coming_soon_interest | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | cs: admin_save_coming_soon | execute | DENY | pglite | Nobody else edits Coming soon entries |  |
+| ca: auto teaser lists the Work-in-progress card | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| ca: interest on the auto teaser | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| ca: admin_set_card_coming_soon | execute | DENY | pglite | Nobody else changes the per-card Coming soon opt-out |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — assert_widget_access(WIP card) | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — catalogue row | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -2188,6 +2209,8 @@ None.
 | loans: me_can_open_client_loans(grouped client, Consolidation ticked) | execute | DENY | pglite | Staff, Viewers, Business Owners, support passes, another organisation, a System Administrator with no membership, aal1 and signed-out callers are refused Loans and Consolidations at the server (PK 3, PK 5) |  |
 | cs: coming_soon_for_client lists the shown entry | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | cs: register_coming_soon_interest | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| ca: auto teaser lists the Work-in-progress card | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| ca: interest on the auto teaser | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | set_client_module(a client) | execute | DENY | pglite | app_private.assert_card_manager: Staff, Viewers, Business Owners, support grants, other organisations and aal1 sessions cannot change a client's modules or cards |  |
 | set_client_card_enabled(a client) | execute | DENY | pglite | app_private.assert_card_manager: Staff, Viewers, Business Owners, support grants, other organisations and aal1 sessions cannot change a client's modules or cards |  |
 | start_figure_backfill(the history fill) | execute | DENY | pglite | History fill: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
@@ -2351,6 +2374,9 @@ None.
 | cs: coming_soon_for_client lists the shown entry | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | cs: register_coming_soon_interest | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | cs: admin_save_coming_soon | execute | DENY | pglite | Nobody else edits Coming soon entries |  |
+| ca: auto teaser lists the Work-in-progress card | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| ca: interest on the auto teaser | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| ca: admin_set_card_coming_soon | execute | DENY | pglite | Nobody else changes the per-card Coming soon opt-out |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — assert_widget_access(WIP card) | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — catalogue row | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |

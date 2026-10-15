@@ -414,8 +414,8 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Pure product check: true while a Coming soon entry's linked card/module has no Available card. Execute revoked from PUBLIC, anon and authenticated.",
   "app_private.me_is_practice_for_firm":
     "Caller-scoped boolean: auth.uid() is an active firm_members row of the organisation or a System Administrator. Used only to gate Coming soon teasers and interest; grants no data. Execute revoked from PUBLIC, anon and authenticated.",
-  "app_private.coming_soon_rows":
-    "Shown, still-coming Coming soon entries with an early-access flag for one organisation. Product copy only. Execute revoked from PUBLIC, anon and authenticated; reached through the two practice-gated readers.",
+"app_private.coming_soon_rows":
+    "Shown, still-coming Coming soon entries plus an automatic teaser for every Work-in-progress card without the per-card opt-out (card_catalogue.hide_from_coming_soon) and without a shown manual entry of its own, each with an early-access flag for one organisation. Product copy only. Execute revoked from PUBLIC, anon and authenticated; reached through the two practice-gated readers.",
   "public.coming_soon_for_client":
     "aal2; returns nothing unless the caller can read the client and is a practice user of its organisation (never Business Owners or Viewers). Teaser copy only; never touches client_cards_v2.",
   "public.coming_soon_for_firm":
@@ -428,8 +428,10 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "System Administrator only (aal2 + assert_super_admin): creates or edits a Coming soon entry, audited. Never changes card status, ticks or access.",
   "public.admin_delete_coming_soon":
     "System Administrator only (aal2 + assert_super_admin): removes a Coming soon entry, audited.",
-  "public.register_coming_soon_interest":
-    "aal2; practice users of the client's organisation only, verified email from auth.users, shared 3/hour enquiry limit under an advisory lock, idempotent submission key, audited. Inserts one upgrade_enquiries row of kind interest; returns only the alert fields.",
+"public.register_coming_soon_interest":
+    "aal2; practice users of the client's organisation only, verified email from auth.users, shared 3/hour enquiry limit under an advisory lock, idempotent submission key, audited. Accepts manual entry keys and automatic teaser keys (auto_<card_key>, resolved against the live Work-in-progress set). Inserts one upgrade_enquiries row of kind interest; returns only the alert fields.",
+  "public.admin_set_card_coming_soon":
+    "System Administrator only (aal2 + assert_super_admin): sets the per-card Coming soon opt-out (card_catalogue.hide_from_coming_soon) and audits the change. Product configuration only; never touches card status, client ticks or client data.",
   "public.admin_set_card_status":
     "System Administrator only (aal2 + assert_super_admin): marks a catalogue card Available or Work in progress and audits the change. Changes product configuration only; never touches client ticks or client data.",
   "public.admin_set_card_entry":

@@ -70,7 +70,7 @@ create table public.audit_findings (id uuid, run_id uuid, tenant_id text, rule_i
 create table public.audit_log (id uuid, actor_user_id uuid, firm_id uuid, action text, target_type text, target_id text, ip text, user_agent text, meta jsonb, at timestamp with time zone);
 create table public.audit_runs (id uuid, tenant_id text, run_at timestamp with time zone, run_by uuid, summary jsonb, duration_ms integer, error text);
 create table public.billing_events (id uuid, firm_id uuid, stripe_event_id text, type text, payload jsonb, occurred_at timestamp with time zone, client_id uuid);
-create table public.card_catalogue (card_key text, package text, module_key text, label text, description text, sort_order integer, updated_at timestamp with time zone, updated_by uuid, report_sections text[], status text);
+create table public.card_catalogue (card_key text, package text, module_key text, label text, description text, sort_order integer, updated_at timestamp with time zone, updated_by uuid, report_sections text[], status text, hide_from_coming_soon boolean);
 create table public.card_modules (module_key text, label text, description text, sort_order integer, updated_at timestamp with time zone, updated_by uuid);
 create table public.client_access (id uuid, client_id uuid, user_id uuid, tier text, created_at timestamp with time zone, updated_at timestamp with time zone, relationship client_access_relationship, inviter_label text);
 create table public.client_bank_account_classifications (client_id uuid, tenant_id text, account_id uuid, classification text, updated_by uuid, updated_at timestamp with time zone);
@@ -3827,13 +3827,23 @@ CREATE OR REPLACE FUNCTION app_private.coming_soon_rows(_firm_id uuid)
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-  select e.entry_key, e.name, e.description, e.timing,
-         exists (select 1 from unnest(app_private.firm_early_access_cards(_firm_id)) k
-                  join public.card_catalogue c on c.card_key = k
-                 where k = e.card_key or (e.module_key is not null and c.module_key = e.module_key))
-    from public.coming_soon_entries e
-   where e.is_shown and app_private.coming_soon_still_coming(e.module_key, e.card_key)
-   order by e.sort_order, e.name
+  select * from (
+    select e.entry_key, e.name, e.description, e.timing,
+           exists (select 1 from unnest(app_private.firm_early_access_cards(_firm_id)) k
+                    join public.card_catalogue c on c.card_key = k
+                   where k = e.card_key or (e.module_key is not null and c.module_key = e.module_key))
+      from public.coming_soon_entries e
+     where e.is_shown and app_private.coming_soon_still_coming(e.module_key, e.card_key)
+    union all
+    select 'auto_' || c.card_key, c.label, c.description, null::text,
+           exists (select 1 from unnest(app_private.firm_early_access_cards(_firm_id)) k where k = c.card_key)
+      from public.card_catalogue c
+     where c.status = 'wip'
+       and not c.hide_from_coming_soon
+       and not exists (select 1 from public.coming_soon_entries e
+                        where e.is_shown and e.card_key = c.card_key)
+  ) r
+  order by r.entry_key like 'auto_%', r.name
 $function$
 ;
 CREATE OR REPLACE FUNCTION public.coming_soon_for_client(_client_id uuid)
@@ -3936,8 +3946,15 @@ begin
      or not app_private.me_is_practice_for_firm(_firm) then
     raise exception 'NO_ACCESS' using errcode = '42501';
   end if;
-  select * into _entry from public.coming_soon_entries e
-   where e.entry_key = _entry_key and e.is_shown and app_private.coming_soon_still_coming(e.module_key, e.card_key);
+  if left(_entry_key, 5) = 'auto_' then
+    select c.module_key, c.card_key, c.label as name into _entry
+      from public.card_catalogue c
+     where 'auto_' || c.card_key = _entry_key
+       and c.status = 'wip' and not c.hide_from_coming_soon;
+  else
+    select * into _entry from public.coming_soon_entries e
+     where e.entry_key = _entry_key and e.is_shown and app_private.coming_soon_still_coming(e.module_key, e.card_key);
+  end if;
   if not found or _submission_key is null then raise exception 'INVALID_INPUT'; end if;
   select email into _email from auth.users where id = auth.uid() and email_confirmed_at is not null;
   if _email is null then raise exception 'NO_ACCESS' using errcode = '42501'; end if;
@@ -3999,6 +4016,28 @@ BEGIN
  IF _report_id IS NOT NULL THEN UPDATE public.client_reports SET video_url=u,video_heading=h,video_message=m,video_set_by=CASE WHEN u IS NULL THEN NULL ELSE auth.uid() END,video_set_at=CASE WHEN u IS NULL THEN NULL ELSE now() END WHERE id=r.id AND status='draft'; END IF;
  INSERT INTO public.audit_log(id,actor_user_id,firm_id,action,target_type,target_id,meta) VALUES(gen_random_uuid(),auth.uid(),f,CASE WHEN u IS NULL THEN 'client_report_video_cleared' ELSE 'client_report_video_set' END,'client',_client_id,jsonb_build_object('period_end',_period_end,'report_id',_report_id));
 END $function$
+;
+CREATE OR REPLACE FUNCTION public.admin_set_card_coming_soon(_card_key text, _hidden boolean)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _old boolean;
+begin
+  perform app_private.assert_aal2();
+  perform public.assert_super_admin();
+  if _hidden is null then raise exception 'INVALID_INPUT' using errcode = 'check_violation'; end if;
+  select hide_from_coming_soon into _old from public.card_catalogue where card_key = _card_key for update;
+  if not found then raise exception 'NO_SUCH_CARD' using errcode = 'no_data_found'; end if;
+  update public.card_catalogue
+     set hide_from_coming_soon = _hidden, updated_at = now(), updated_by = auth.uid()
+   where card_key = _card_key;
+  insert into public.audit_log (actor_user_id, action, target_type, target_id, meta)
+  values (auth.uid(), 'card_catalogue_changed', 'card', _card_key,
+          jsonb_build_object('field', 'hide_from_coming_soon', 'from', coalesce(_old, false), 'to', _hidden));
+end;
+$function$
 ;
 CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
  RETURNS trigger
@@ -5477,4 +5516,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: a4fc6056eaf6a0bf089fe64e04783c81cffb56e0cc685824417f50ac225010fb
+-- catalogue-fingerprint: 3b05a7221f8061c627ea3d9225b8f89752ffb6df71f112b607d24e422786cd38

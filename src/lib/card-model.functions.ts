@@ -465,7 +465,7 @@ export const applyOrgCardDefaults = createServerFn({ method: "POST" })
 async function readCatalogue(db: any, includeWip = false): Promise<CardCatalogue> {
   const [m, c] = await Promise.all([
     db.from("card_modules").select("module_key, label, description, sort_order").order("sort_order"),
-    db.from("card_catalogue").select("card_key, package, module_key, label, description, sort_order, report_sections, status").order("sort_order"),
+    db.from("card_catalogue").select("card_key, package, module_key, label, description, sort_order, report_sections, status, hide_from_coming_soon").order("sort_order"),
   ]);
   if (m.error || c.error) throw rpcError("The card catalogue is unavailable.");
   // RLS returns Work-in-progress rows to System Administrators only; offer
@@ -565,6 +565,19 @@ export const saveCardStatus = createServerFn({ method: "POST" })
     if (error) {
       if (/Forbidden|NO_ACCESS|insufficient|super/i.test(error.message)) throw new Error("Forbidden");
       throw new Error("The status could not be saved.");
+    }
+    return { ok: true };
+  });
+
+/** System Administrator opt-out for the automatic Coming soon teaser (audited in the database). */
+export const saveCardComingSoon = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) => z.object({ cardKey: z.string().regex(/^[a-z][a-z_]{1,39}$/), hidden: z.boolean() }).strict().parse(i))
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase as any).rpc("admin_set_card_coming_soon", { _card_key: data.cardKey, _hidden: data.hidden });
+    if (error) {
+      if (/Forbidden|NO_ACCESS|insufficient|super/i.test(error.message)) throw new Error("Forbidden");
+      throw new Error("The Coming soon setting could not be saved.");
     }
     return { ok: true };
   });

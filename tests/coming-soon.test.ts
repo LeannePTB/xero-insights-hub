@@ -31,3 +31,34 @@ describe('Notes card retired from the dashboard (owner 14 Oct)', () => {
     expect(readFileSync('src/routes/_authenticated/clients.$clientId.reports.tsx', 'utf8')).toContain('<NotesCard');
   });
 });
+
+describe('Automatic Coming soon teasers for Work-in-progress cards (owner 15 Oct)', () => {
+  const fixture = readFileSync('tests/fixtures/rls-schema.sql', 'utf8');
+  it('the teaser builder unions an automatic row for every Work-in-progress card', () => {
+    const fn = fixture.slice(fixture.indexOf('app_private.coming_soon_rows'));
+    expect(fn).toContain("'auto_' || c.card_key");
+    expect(fn).toContain("c.status = 'wip'");
+    expect(fn).toContain('not c.hide_from_coming_soon');
+  });
+  it('a shown manual entry suppresses the automatic teaser (no duplicate wording)', () => {
+    const fn = fixture.slice(fixture.indexOf('app_private.coming_soon_rows'));
+    expect(fn).toMatch(/not exists \(select 1 from public\.coming_soon_entries e\s+where e\.is_shown and e\.card_key = c\.card_key\)/);
+  });
+  it('the public website reader stays manual-only', () => {
+    expect(fixture).toContain('show_on_website and app_private.coming_soon_still_coming');
+  });
+  it('interest can be recorded on an automatic teaser through the same guarded recorder', () => {
+    expect(readFileSync('tests/fixtures/rls-schema.sql', 'utf8')).toMatch(/left\(_entry_key, 5\) = 'auto_'/);
+  });
+  it('the opt-out tick is saved through the audited super-admin function', () => {
+    expect(readFileSync('src/lib/card-model.functions.ts', 'utf8')).toContain('rpc("admin_set_card_coming_soon"');
+  });
+  it('mapCatalogue carries the per-card opt-out and drops retired cards', () => {
+    const cat = mapCatalogue([], [
+      { card_key: 'cashflow', package: 'advisory', label: 'Cash Flow', status: 'wip', hide_from_coming_soon: true },
+      { card_key: 'health', package: 'standard', label: 'Business health', status: 'retired' },
+    ]);
+    expect(cat.cards.map((c) => c.key)).toEqual(['cashflow']);
+    expect(cat.cards[0]!.comingSoonHidden).toBe(true);
+  });
+});

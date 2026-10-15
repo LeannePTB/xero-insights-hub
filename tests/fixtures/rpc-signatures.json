@@ -129,6 +129,14 @@
     {
         "args": [
             "_card_key",
+            "_hidden"
+        ],
+        "name": "admin_set_card_coming_soon",
+        "required": 2
+    },
+    {
+        "args": [
+            "_card_key",
             "_package",
             "_module_key",
             "_description"

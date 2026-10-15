@@ -21,14 +21,21 @@ export function ComingSoonAdmin({ catalogue }: { catalogue: CardCatalogue }) {
   const list = useServerFn(listComingSoonAdmin);
   const q = useQuery({ queryKey: KEY, queryFn: () => list(), retry: false });
   const [adding, setAdding] = useState(false);
+  // Automatic teasers: every Work-in-progress card without the opt-out and
+  // without a shown manual entry of its own — the same rule the database uses.
+  const rows = q.data?.rows ?? [];
+  const autoEntries = catalogue.cards.filter(
+    (c) => c.status === "wip" && !c.comingSoonHidden && !rows.some((r) => r.shown && r.cardKey === c.key),
+  );
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-base font-semibold">Coming soon</h2>
           <p className="text-sm text-muted-foreground">
-            Teasers shown to practice users under "More with Advisory" and on the Upgrade page. An entry linked to a module or card
-            is hidden automatically once that module or card is Available.
+            Teasers shown to practice users under "More with Advisory" and on the Upgrade page. Every Work in progress card is
+            listed automatically — the entries below are extra, hand-written teasers. An entry linked to a module or card is
+            hidden automatically once that module or card is Available.
           </p>
         </div>
         <Button size="sm" variant="outline" onClick={() => setAdding(true)} disabled={adding}><Plus className="mr-1 h-3.5 w-3.5" />Add entry</Button>
@@ -39,9 +46,16 @@ export function ComingSoonAdmin({ catalogue }: { catalogue: CardCatalogue }) {
         <p className="text-sm text-destructive">{(q.error as Error).message}</p>
       ) : (
         <ul className="space-y-2">
+          {autoEntries.map((c) => (
+            <li key={`auto-${c.key}`} className="space-y-1 rounded-md border border-dashed p-3 text-sm">
+              <p className="font-medium">{c.label}</p>
+              <p className="text-muted-foreground">{c.description}</p>
+              <p className="text-xs text-muted-foreground">Automatic — untick "Coming soon · Listed" on the card above to hide.</p>
+            </li>
+          ))}
           {adding && <EntryRow catalogue={catalogue} isNew onDone={() => setAdding(false)} />}
-          {(q.data?.rows ?? []).map((r) => <EntryRow key={r.key} catalogue={catalogue} row={r} />)}
-          {!adding && (q.data?.rows ?? []).length === 0 && <p className="text-sm text-muted-foreground">No entries.</p>}
+          {rows.map((r) => <EntryRow key={r.key} catalogue={catalogue} row={r} />)}
+          {!adding && rows.length === 0 && autoEntries.length === 0 && <p className="text-sm text-muted-foreground">No entries.</p>}
         </ul>
       )}
     </section>
