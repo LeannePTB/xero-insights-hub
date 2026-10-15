@@ -311,12 +311,8 @@ export const getScenarioData = createServerFn({ method: "POST" })
     // Revenue-class accounts are never expenses: drop them from the expense
     // lines and never count them as untagged, whatever P&L section Xero put
     // them in.
-    const { normaliseAccountKey } = await import("@/lib/cost-classification");
-    const revenueKeys = new Set<string>(
-      xeroAccounts
-        .filter((a) => String(a.class ?? "").toUpperCase() === "REVENUE")
-        .map((a) => normaliseAccountKey(a.name)),
-    );
+    const { normaliseAccountKey, revenueAccountKeys } = await import("@/lib/cost-classification");
+    const revenueKeys = revenueAccountKeys(xeroAccounts);
     const isRevenueLine = (name: string) => revenueKeys.has(normaliseAccountKey(name));
 
     const customerNames = new Set<string>();
