@@ -3947,7 +3947,7 @@ begin
     raise exception 'NO_ACCESS' using errcode = '42501';
   end if;
   if left(_entry_key, 5) = 'auto_' then
-    select c.module_key, c.card_key, c.label into _entry
+    select c.module_key, c.card_key, c.label as name into _entry
       from public.card_catalogue c
      where 'auto_' || c.card_key = _entry_key
        and c.status = 'wip' and not c.hide_from_coming_soon;
@@ -4016,6 +4016,28 @@ BEGIN
  IF _report_id IS NOT NULL THEN UPDATE public.client_reports SET video_url=u,video_heading=h,video_message=m,video_set_by=CASE WHEN u IS NULL THEN NULL ELSE auth.uid() END,video_set_at=CASE WHEN u IS NULL THEN NULL ELSE now() END WHERE id=r.id AND status='draft'; END IF;
  INSERT INTO public.audit_log(id,actor_user_id,firm_id,action,target_type,target_id,meta) VALUES(gen_random_uuid(),auth.uid(),f,CASE WHEN u IS NULL THEN 'client_report_video_cleared' ELSE 'client_report_video_set' END,'client',_client_id,jsonb_build_object('period_end',_period_end,'report_id',_report_id));
 END $function$
+;
+CREATE OR REPLACE FUNCTION public.admin_set_card_coming_soon(_card_key text, _hidden boolean)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _old boolean;
+begin
+  perform app_private.assert_aal2();
+  perform public.assert_super_admin();
+  if _hidden is null then raise exception 'INVALID_INPUT' using errcode = 'check_violation'; end if;
+  select hide_from_coming_soon into _old from public.card_catalogue where card_key = _card_key for update;
+  if not found then raise exception 'NO_SUCH_CARD' using errcode = 'no_data_found'; end if;
+  update public.card_catalogue
+     set hide_from_coming_soon = _hidden, updated_at = now(), updated_by = auth.uid()
+   where card_key = _card_key;
+  insert into public.audit_log (actor_user_id, action, target_type, target_id, meta)
+  values (auth.uid(), 'card_catalogue_changed', 'card', _card_key,
+          jsonb_build_object('field', 'hide_from_coming_soon', 'from', coalesce(_old, false), 'to', _hidden));
+end;
+$function$
 ;
 CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
  RETURNS trigger
@@ -5494,4 +5516,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: 6d769b34a7582ad0bfd878f42078c1c58100900c3223fc7ef62b6a233b88371c
+-- catalogue-fingerprint: 3b05a7221f8061c627ea3d9225b8f89752ffb6df71f112b607d24e422786cd38
