@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 const ITEMS = [
   ["general", "General"], ["cards", "Cards & report branding"], ["people", "People"],
-  ["xero", "Xero connections"], ["tax-reporting", "Tax & reporting"],
+  ["xero", "Xero connections"], ["tax-reporting", "Tax & reporting"], ["banks", "Banks & accounts"],
   ["cost-classification", "Cost classification"], ["costs", "Cost & cash commitments"], ["danger", "Danger zone"],
 ] as const;
 

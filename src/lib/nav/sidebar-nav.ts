@@ -134,6 +134,7 @@ export const CLIENT_NAV: NavGroup[] = [
           { id: "client-people", label: "People", icon: "users", to: "/clients/$clientId/settings/people" },
           { id: "client-xero", label: "Xero connections", icon: "link", to: "/clients/$clientId/settings/xero" },
           { id: "client-tax", label: "Tax & reporting", icon: "file", to: "/clients/$clientId/settings/tax-reporting" },
+          { id: "client-banks", label: "Banks & accounts", icon: "file", to: "/clients/$clientId/settings/banks" },
           { id: "client-costs", label: "Cost & cash commitments", icon: "trending", to: "/clients/$clientId/settings/costs" },
           { id: "client-danger", label: "Danger zone", icon: "shield", to: "/clients/$clientId/settings/danger" },
         ],
