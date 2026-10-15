@@ -125,6 +125,7 @@ export const listMyFirms = createServerFn({ method: "GET" })
           status: null,
           clientCount: countByFirm.get(f.id) ?? 0,
           clientLimit: option?.client_limit ?? 0,
+          isAlwaysFree,
           isDemo: f.isDemo,
           trialEndsAt: null,
           currentPeriodEnd: null,
