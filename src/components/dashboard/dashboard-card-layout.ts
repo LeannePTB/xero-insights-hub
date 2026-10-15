@@ -22,7 +22,7 @@ export function dashboardCardMeta(id: string, catalogue: CardCatalogue) {
   };
 }
 
-export function dashboardPackageSummary(catalogue: CardCatalogue, visible: readonly string[], fileCount: number) {
+export function dashboardPackageSummary(catalogue: CardCatalogue, visible: readonly string[]) {
   const advisory = catalogue.cards.filter(c => c.package === 'advisory' && visible.includes(c.key));
   const modules = MODULE_ORDER.flatMap(key => {
     const m = catalogue.modules.find(m => m.key === key);
