@@ -30,6 +30,17 @@ describe("cash at bank and net cash", () => {
     assert.equal(Math.round(analyseBalanceSheet(report, accounts).cashAtBank.total * 100), 89053);
     assert.equal(balanceSheetBankBalances(report).get('card'), -3554.32);
   });
+  it('an overdrawn overdraft counts as nil cash and as debt; in credit it counts as cash', () => {
+    const accounts = { Accounts: ['main', 'od'].map(AccountID => ({ AccountID, Type: 'BANK', BankAccountType: 'BANK', Class: 'ASSET', Status: 'ACTIVE' })) };
+    const report = (od: string) => ({ Rows: [{ RowType: 'Section', Rows: [['main', '10000'], ['od', od]].map(([id, value]) => ({ RowType: 'Row', Cells: [{ Value: id, Attributes: [{ Id: 'account', Value: id }] }, { Value: value }] })) }] });
+    const rows = [{ account_id: 'od', classification: 'overdraft' as const }];
+    const overdrawn = analyseBalanceSheet(report('-4000'), accounts, undefined, rows);
+    assert.equal(overdrawn.cashAtBank.total, 10000);
+    assert.equal(overdrawn.creditCardDebt.total, 4000);
+    const inCredit = analyseBalanceSheet(report('1500'), accounts, undefined, rows);
+    assert.equal(inCredit.cashAtBank.total, 11500);
+    assert.equal(inCredit.creditCardDebt.total, 0);
+  });
   it('excluded accounts are left out of both cash at bank and credit-card debt', () => {
     const accounts = { Accounts: ['astro', 'gst', 'card'].map(AccountID => ({ AccountID, Type: 'BANK', BankAccountType: 'BANK', Class: 'ASSET', Status: 'ACTIVE' })) };
     const report = { Rows: [{ RowType: 'Section', Rows: [

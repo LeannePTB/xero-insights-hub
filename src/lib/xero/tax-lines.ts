@@ -415,6 +415,9 @@ function extractCashAtBankFromReport(
     const account = accountsById.get(accountId);
     if (!isActiveBankAccount(account)) return;
     const amount = parseTaxAmount(r.Cells[1]?.Value);
+    // An overdrawn overdraft is debt, not negative cash: it counts as nil here
+    // and is taken off net cash through the debt figure instead.
+    if ((account as { Overdraft?: boolean }).Overdraft && amount < 0) return;
     total += amount;
     accounts.push({ name, balance: amount });
   });
@@ -458,8 +461,12 @@ function extractCreditCardDebtFromReport(
       const accountId = accountIdFromCells(r.Cells);
       if (!accountId) return;
       const account = accountsById.get(accountId);
-      if (!isActiveCreditCardAccount(account)) return;
       const amount = parseTaxAmount(r.Cells[1]?.Value);
+      if (isActiveBankAccount(account) && (account as { Overdraft?: boolean }).Overdraft) {
+        if (amount < 0) { total += -amount; accounts.push({ name, balance: amount }); }
+        return;
+      }
+      if (!isActiveCreditCardAccount(account)) return;
       const owedSigned = inLiabilities ? amount : -amount;
       total += owedSigned > 0 ? owedSigned : 0;
       accounts.push({ name, balance: amount });
