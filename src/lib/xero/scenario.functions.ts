@@ -341,6 +341,7 @@ export const getScenarioData = createServerFn({ method: "POST" })
     const expenses: ScenarioExpense[] = [];
     const unclassifiedNames = new Set<string>();
     for (const line of expenseLines) {
+      if (isRevenueLine(line.name)) continue;
       const r = resolver.resolve(line.name);
       if (r.effective === "excluded") continue;
       const isCogs = line.section === "cogs";
@@ -379,6 +380,7 @@ export const getScenarioData = createServerFn({ method: "POST" })
       let fixed = 0;
       let variable = 0;
       for (const l of avgLines) {
+        if (isRevenueLine(l.name)) continue;
         const r = resolver.resolve(l.name);
         if (r.effective === "excluded") continue;
         // Classification first, then section: a cost-of-sales line tagged Fixed
