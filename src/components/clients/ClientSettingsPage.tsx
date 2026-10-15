@@ -1280,7 +1280,21 @@ function CashCommitmentsSection({
     onError: (e: any) => toast.error(e.message),
   });
 
-  if (!allowed.has("true_breakeven")) return null;
+  const activeSection = useContext(ActiveSettingsSection);
+  if (!allowed.has("true_breakeven")) {
+    // The tab must never be blank: explain what lives here and why it is empty.
+    if (activeSection !== "costs" || widgetsQ.isLoading) return null;
+    return (
+      <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+        <h2 className="mb-2 font-display text-lg font-semibold">Cost &amp; cash commitments</h2>
+        <p className="text-sm text-muted-foreground">
+          Nothing to set here yet. This page holds the monthly cash commitments — loan repayments,
+          tax set aside, drawings — that the Break-Even card adds to the profit-and-loss costs.
+          It opens once the Break-Even card is part of this client's package.
+        </p>
+      </section>
+    );
+  }
 
   const total = COMMITMENT_FIELDS.reduce((a, f) => a + (Number(values[f.key]) || 0), 0);
 

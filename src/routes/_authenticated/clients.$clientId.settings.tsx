@@ -25,5 +25,5 @@ function ClientSettingsLayout() {
   const caps = useCanManageClient(clientId);
   if (caps.isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>;
   if (!caps.canManage) return <div className="p-8 text-sm text-destructive">Client settings are available to organisation members only.</div>;
-  return <div className="min-h-screen bg-background"><ClientPageHeader clientId={clientId} title="Client settings" /><ClientSettingsNav clientId={clientId} /><Outlet /></div>;
+  return <div className="min-h-screen bg-background"><div className="mx-auto max-w-4xl px-6 pt-6"><ClientPageHeader clientId={clientId} title="Client settings" /></div><ClientSettingsNav clientId={clientId} /><Outlet /></div>;
 }
