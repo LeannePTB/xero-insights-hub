@@ -1148,15 +1148,15 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
         return keys.includes("auto_cashflow") && !(v.rows[0]?.c ?? []).includes("cashflow") ? "allow" : "deny";
       }
       if (r.includes("opted-out card stays hidden")) {
-        await db.query(`update public.card_catalogue set hide_from_coming_soon = true where card_key = 'cashflow'`);
+        await asPostgres(`update public.card_catalogue set hide_from_coming_soon = true where card_key = 'cashflow'`);
         return (await autoKeys()).includes("auto_cashflow") ? "deny" : "allow";
       }
       if (r.includes("Available card has no auto teaser")) {
-        await db.query(`update public.card_catalogue set status = 'available' where card_key = 'cashflow'`);
+        await asPostgres(`update public.card_catalogue set status = 'available' where card_key = 'cashflow'`);
         return (await autoKeys()).includes("auto_cashflow") ? "deny" : "allow";
       }
       if (r.includes("manual entry overrides")) {
-        await db.query(
+        await asPostgres(
           `insert into public.coming_soon_entries (entry_key, name, description, sort_order, is_shown, card_key)
            values ('cash_teaser', 'Cash teaser', 'x', 1, true, 'cashflow')`,
         );
