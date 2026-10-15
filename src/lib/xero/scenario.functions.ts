@@ -404,7 +404,10 @@ export const getScenarioData = createServerFn({ method: "POST" })
       customers: [...customerNames].sort().map((n) => ({ id: n, name: n })),
       invoices,
       expenses,
-      pnl: summarisePnl(pnlLines, months),
+      pnl: summarisePnl(
+        pnlLines.filter((l) => l.section === "income" || !isRevenueLine(l.name)),
+        months,
+      ),
       avg3,
       unclassifiedCount: unclassifiedNames.size,
       unclassifiedNames: [...unclassifiedNames].sort(),
