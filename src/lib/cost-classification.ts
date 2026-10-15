@@ -168,3 +168,16 @@ export function xeroTypeLabel(type?: string | null): string {
   if (t === "EXPENSE") return "expense";
   return t.toLowerCase() || "unknown";
 }
+
+/**
+ * Normalised names of every revenue-class account. A revenue line that turns
+ * up in a non-income P&L section (e.g. Interest Income) is recognised through
+ * here so it is never treated — or counted — as an untagged expense.
+ */
+export function revenueAccountKeys(accounts: AccountRef[]): Set<string> {
+  return new Set(
+    accounts
+      .filter((a) => String(a.class ?? "").trim().toUpperCase() === "REVENUE")
+      .map((a) => normaliseAccountKey(a.name)),
+  );
+}
