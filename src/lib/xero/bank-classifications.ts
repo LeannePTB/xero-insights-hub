@@ -1,6 +1,6 @@
 import type { XeroAccountRef } from './tax-lines';
 
-export type BankClassification = 'bank' | 'credit_card' | 'excluded';
+export type BankClassification = 'bank' | 'credit_card' | 'overdraft' | 'excluded';
 export type BankClassificationRow = { account_id: string; classification: BankClassification };
 
 /** Account-row balances only; summary rows never have an account ID. */
@@ -30,6 +30,8 @@ export function applyBankClassifications<T extends XeroAccountRef>(accounts: T[]
     const choice = byId.get(String(account.AccountID ?? '').toLowerCase());
     if (!choice || account.Type?.toUpperCase() !== 'BANK' || account.Status?.toUpperCase() !== 'ACTIVE') return [account];
     if (choice === 'excluded') return [];
+    // Overdraft: a bank account whose overdrawn balance is counted as debt.
+    if (choice === 'overdraft') return [{ ...account, BankAccountType: 'BANK', Class: 'ASSET', Overdraft: true }];
     return [{ ...account, BankAccountType: choice === 'credit_card' ? 'CREDITCARD' : 'BANK', Class: 'ASSET' }];
   });
 }

@@ -421,6 +421,13 @@
       "when": 1792051052129,
       "tag": "0059_firm_is_demo",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1792052185486,
+      "tag": "0060_bank_classification_overdraft",
+      "breakpoints": true
     }
   ]
 }
