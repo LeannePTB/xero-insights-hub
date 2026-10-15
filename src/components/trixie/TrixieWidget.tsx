@@ -125,9 +125,14 @@ export function TrixieWidget() {
   return (
     <>
       {!open && (
-        <Button aria-label="Ask Trixie" title="Ask Trixie" size="icon" className="fixed bottom-5 right-5 z-40 h-14 w-14 rounded-full shadow-lg" onClick={() => setOpen(true)}>
-          <img src={trixieIcon} alt="" className="h-10 w-10" />
-        </Button>
+        <>
+          {/* Scroll room so the fixed launcher never sits over the last
+              controls (table actions, selects) at the bottom of a page. */}
+          <div aria-hidden className="h-24 shrink-0" />
+          <Button aria-label="Ask Trixie" title="Ask Trixie" size="icon" className="fixed bottom-5 right-5 z-40 h-14 w-14 rounded-full shadow-lg" onClick={() => setOpen(true)}>
+            <img src={trixieIcon} alt="" className="h-10 w-10" />
+          </Button>
+        </>
       )}
       {open && (
         <div role="dialog" aria-label="Trixie" className="fixed inset-0 z-50 flex flex-col overflow-hidden border border-border bg-background shadow-2xl sm:inset-auto sm:bottom-5 sm:right-5 sm:h-[640px] sm:max-h-[calc(100vh-2.5rem)] sm:w-[400px] sm:rounded-2xl">
