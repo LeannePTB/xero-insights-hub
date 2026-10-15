@@ -280,13 +280,17 @@ export const getScenarioData = createServerFn({ method: "POST" })
     const { data: clientRow } = await sb.from("clients").select("cost_classification_enabled").eq("id", data.clientId).maybeSingle();
     const classificationEnabled = clientRow?.cost_classification_enabled !== false;
     try {
+      // Revenue accounts are read too: a revenue line sitting in a non-income
+      // P&L section (e.g. Interest Income) must be recognised as revenue, not
+      // flagged as an untagged expense.
       const accRes = await xeroGet<{ Accounts?: any[] }>(conn, "Accounts", {
-        where: 'Class=="EXPENSE"',
+        where: 'Class=="REVENUE"||Class=="EXPENSE"',
       });
       xeroAccounts = (accRes.Accounts ?? []).map((a: any) => ({
         code: a.Code ?? null,
         name: a.Name as string,
         type: a.Type ?? null,
+        class: a.Class ?? null,
       }));
     } catch {
       xeroAccounts = [];
@@ -303,6 +307,13 @@ export const getScenarioData = createServerFn({ method: "POST" })
     const excluded = new Set<string>(
       ((exclRes.data ?? []) as any[]).map((r) => String(r.xero_invoice_id)),
     );
+
+    // Revenue-class accounts are never expenses: drop them from the expense
+    // lines and never count them as untagged, whatever P&L section Xero put
+    // them in.
+    const { normaliseAccountKey, revenueAccountKeys } = await import("@/lib/cost-classification");
+    const revenueKeys = revenueAccountKeys(xeroAccounts);
+    const isRevenueLine = (name: string) => revenueKeys.has(normaliseAccountKey(name));
 
     const customerNames = new Set<string>();
     const invoices: ScenarioInvoice[] = [];
@@ -326,6 +337,7 @@ export const getScenarioData = createServerFn({ method: "POST" })
     const expenses: ScenarioExpense[] = [];
     const unclassifiedNames = new Set<string>();
     for (const line of expenseLines) {
+      if (isRevenueLine(line.name)) continue;
       const r = resolver.resolve(line.name);
       if (r.effective === "excluded") continue;
       const isCogs = line.section === "cogs";
@@ -364,6 +376,7 @@ export const getScenarioData = createServerFn({ method: "POST" })
       let fixed = 0;
       let variable = 0;
       for (const l of avgLines) {
+        if (isRevenueLine(l.name)) continue;
         const r = resolver.resolve(l.name);
         if (r.effective === "excluded") continue;
         // Classification first, then section: a cost-of-sales line tagged Fixed
@@ -387,7 +400,10 @@ export const getScenarioData = createServerFn({ method: "POST" })
       customers: [...customerNames].sort().map((n) => ({ id: n, name: n })),
       invoices,
       expenses,
-      pnl: summarisePnl(pnlLines, months),
+      pnl: summarisePnl(
+        pnlLines.filter((l) => l.section === "income" || !isRevenueLine(l.name)),
+        months,
+      ),
       avg3,
       unclassifiedCount: unclassifiedNames.size,
       unclassifiedNames: [...unclassifiedNames].sort(),
