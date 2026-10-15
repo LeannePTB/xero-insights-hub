@@ -98,7 +98,7 @@ export const listMyFirms = createServerFn({ method: "GET" })
       .select("id, name, is_demo")
       .in("id", myIds);
     if (fErr) throw new Error(fErr.message);
-    const firms = ((firmRows ?? []) as any[]).map((f) => ({ id: f.id as string, name: f.name as string }));
+    const firms = ((firmRows ?? []) as any[]).map((f) => ({ id: f.id as string, name: f.name as string, isDemo: !!f.is_demo }));
     if (firms.length === 0) return { firms: [] };
 
     const firmIds = firms.map((f) => f.id);
@@ -125,8 +125,7 @@ export const listMyFirms = createServerFn({ method: "GET" })
           status: null,
           clientCount: countByFirm.get(f.id) ?? 0,
           clientLimit: option?.client_limit ?? 0,
-          isAlwaysFree,
-          isDemo: !!f.is_demo,
+          isDemo: f.isDemo,
           trialEndsAt: null,
           currentPeriodEnd: null,
           isOwn: true,
