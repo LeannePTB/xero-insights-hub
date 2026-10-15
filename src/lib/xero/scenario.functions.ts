@@ -280,13 +280,17 @@ export const getScenarioData = createServerFn({ method: "POST" })
     const { data: clientRow } = await sb.from("clients").select("cost_classification_enabled").eq("id", data.clientId).maybeSingle();
     const classificationEnabled = clientRow?.cost_classification_enabled !== false;
     try {
+      // Revenue accounts are read too: a revenue line sitting in a non-income
+      // P&L section (e.g. Interest Income) must be recognised as revenue, not
+      // flagged as an untagged expense.
       const accRes = await xeroGet<{ Accounts?: any[] }>(conn, "Accounts", {
-        where: 'Class=="EXPENSE"',
+        where: 'Class=="REVENUE"||Class=="EXPENSE"',
       });
       xeroAccounts = (accRes.Accounts ?? []).map((a: any) => ({
         code: a.Code ?? null,
         name: a.Name as string,
         type: a.Type ?? null,
+        class: a.Class ?? null,
       }));
     } catch {
       xeroAccounts = [];
