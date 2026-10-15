@@ -15,6 +15,8 @@ export type CatalogueCard = {
   reportSections?: string[];
   /** "wip" = Work in progress: not offered. Only System Administrators can read WIP rows. */
   status?: "available" | "wip";
+  /** Opt-out tick: left out of the automatic Coming soon teasers while Work in progress. */
+  comingSoonHidden?: boolean;
   /** Work in progress, shown only because this client's organisation has early access. */
   earlyAccess?: boolean;
 };
@@ -101,6 +103,7 @@ export function mapCatalogue(modules: any[] | null, cards: any[] | null): CardCa
       description: c.description ?? "",
       reportSections: Array.isArray(c.report_sections) ? (c.report_sections as string[]) : [],
       status: c.status === "wip" ? "wip" : "available",
+      comingSoonHidden: !!c.hide_from_coming_soon,
     })),
   };
 }
