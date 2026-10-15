@@ -4039,6 +4039,26 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.admin_set_firm_demo(_firm_id uuid, _is_demo boolean)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _old boolean;
+begin
+  perform app_private.assert_aal2();
+  perform public.assert_super_admin();
+  if _firm_id is null or _is_demo is null then raise exception 'INVALID_INPUT' using errcode = 'check_violation'; end if;
+  select is_demo into _old from public.firms where id = _firm_id for update;
+  if not found then raise exception 'NO_SUCH_FIRM' using errcode = 'no_data_found'; end if;
+  update public.firms set is_demo = _is_demo where id = _firm_id;
+  insert into public.audit_log (actor_user_id, action, target_type, target_id, meta)
+  values (auth.uid(), 'firm_changed_by_admin', 'firm', _firm_id,
+          jsonb_build_object('field', 'is_demo', 'from', coalesce(_old, false), 'to', _is_demo));
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
  RETURNS trigger
  LANGUAGE plpgsql
