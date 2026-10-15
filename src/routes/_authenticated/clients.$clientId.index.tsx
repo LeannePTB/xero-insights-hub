@@ -417,7 +417,7 @@ function ClientDashboard() {
           <div className="min-w-0">
             <h1 className="truncate font-display text-lg font-semibold sm:text-lg">{client.name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {dashboardPackageSummary(catalogue, widgets, orgs.length)}
+              {dashboardPackageSummary(catalogue, widgets)}
             </p>
           </div>
           {isAdvisor && (
