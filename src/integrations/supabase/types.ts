@@ -324,6 +324,7 @@ export type Database = {
         Row: {
           card_key: string
           description: string
+          hide_from_coming_soon: boolean
           label: string
           module_key: string | null
           package: string
@@ -336,6 +337,7 @@ export type Database = {
         Insert: {
           card_key: string
           description?: string
+          hide_from_coming_soon?: boolean
           label: string
           module_key?: string | null
           package: string
@@ -348,6 +350,7 @@ export type Database = {
         Update: {
           card_key?: string
           description?: string
+          hide_from_coming_soon?: boolean
           label?: string
           module_key?: string | null
           package?: string
@@ -4265,6 +4268,10 @@ export type Database = {
           _sort_order: number
           _timing: string
         }
+        Returns: undefined
+      }
+      admin_set_card_coming_soon: {
+        Args: { _card_key: string; _hidden: boolean }
         Returns: undefined
       }
       admin_set_card_entry: {
