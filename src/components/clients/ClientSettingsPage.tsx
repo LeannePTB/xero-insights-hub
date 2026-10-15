@@ -320,7 +320,7 @@ export function ClientSettingsPage({ clientId, section }: { clientId: string; se
   return (
     <div className="min-h-screen bg-background">
       <ActiveSettingsSection.Provider value={section}>
-      <main className="mx-auto max-w-4xl space-y-6 px-6 py-8">
+      <main className="max-w-4xl space-y-6 px-4 py-8 sm:px-6">
 
         {/* Name */}
         <Section title="Client name">
