@@ -101,7 +101,7 @@ create table public.figure_backfill_runs (id uuid, requested_by uuid, requested_
 create table public.firm_members (id uuid, firm_id uuid, user_id uuid, role firm_member_role, created_at timestamp with time zone, updated_at timestamp with time zone, status text);
 create table public.firm_support_access (firm_id uuid, granted boolean, granted_by uuid, granted_at timestamp with time zone, revoked_at timestamp with time zone, note text, created_at timestamp with time zone, updated_at timestamp with time zone, id uuid, grantee_user_id uuid, expires_at timestamp with time zone, requested_by uuid, reason text);
 create table public.firm_viewer_access (id uuid, firm_id uuid, user_id uuid, tier dashboard_tier, granted_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone, inviter_label text);
-create table public.firms (id uuid, name text, owner_user_id uuid, is_always_free boolean, created_at timestamp with time zone, updated_at timestamp with time zone, default_widgets text[], logo_path text, is_test boolean, overview_hidden boolean, managed_by_traction boolean);
+create table public.firms (id uuid, name text, owner_user_id uuid, is_always_free boolean, created_at timestamp with time zone, updated_at timestamp with time zone, default_widgets text[], logo_path text, is_test boolean, overview_hidden boolean, managed_by_traction boolean, is_demo boolean);
 create table public.loan_consolidation_accounts (id uuid, client_id uuid, tenant_id text, account_id text, account_code text, account_name text, account_type text, direction text, counterparty_account_id uuid, sort_order integer, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.loan_consolidation_snapshots (id uuid, group_id uuid, as_at date, label text, payload jsonb, generated_by uuid, generated_at timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.login_events (id uuid, user_id uuid, email text, ip text, user_agent text, occurred_at timestamp with time zone);
@@ -4039,6 +4039,26 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.admin_set_firm_demo(_firm_id uuid, _is_demo boolean)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _old boolean;
+begin
+  perform app_private.assert_aal2();
+  perform public.assert_super_admin();
+  if _firm_id is null or _is_demo is null then raise exception 'INVALID_INPUT' using errcode = 'check_violation'; end if;
+  select is_demo into _old from public.firms where id = _firm_id for update;
+  if not found then raise exception 'NO_SUCH_FIRM' using errcode = 'no_data_found'; end if;
+  update public.firms set is_demo = _is_demo where id = _firm_id;
+  insert into public.audit_log (actor_user_id, action, target_type, target_id, meta)
+  values (auth.uid(), 'firm_changed_by_admin', 'firm', _firm_id,
+          jsonb_build_object('field', 'is_demo', 'from', coalesce(_old, false), 'to', _is_demo));
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5516,4 +5536,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: 3b05a7221f8061c627ea3d9225b8f89752ffb6df71f112b607d24e422786cd38
+-- catalogue-fingerprint: 9bd733b7791cd1c0d84b3a8f581f73d133f6057c3d9c9ddd69810d0ac0a45100

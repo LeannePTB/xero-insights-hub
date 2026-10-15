@@ -14,7 +14,7 @@ import type { Workspace } from "@/lib/nav/sidebar-nav";
 type Props = {
   workspace: Workspace;
   canSeeSystem: boolean;
-  organisations: { id: string; name: string }[];
+  organisations: { id: string; name: string; isDemo?: boolean }[];
   clientName?: string | null;
   clientOrgName?: string | null;
 };
@@ -22,6 +22,9 @@ type Props = {
 /** Moves you to another address; the address decides the menu. Grants nothing. */
 export function WorkspaceSwitcher({ workspace, canSeeSystem, organisations, clientName, clientOrgName }: Props) {
   const navigate = useNavigate();
+  // Demo organisations are listed separately, below the real ones.
+  const regular = organisations.filter((o) => !o.isDemo);
+  const demo = organisations.filter((o) => o.isDemo);
   const current =
     workspace.kind === "system"
       ? "System Admin"
@@ -68,7 +71,7 @@ export function WorkspaceSwitcher({ workspace, canSeeSystem, organisations, clie
                 <LayoutGrid className="mr-2 h-4 w-4" /> All organisations
               </DropdownMenuItem>
             )}
-            {organisations.map((o) => (
+            {regular.map((o) => (
               <DropdownMenuItem
                 key={o.id}
                 onSelect={() => navigate({ to: "/firms/$firmId", params: { firmId: o.id } })}
@@ -77,6 +80,23 @@ export function WorkspaceSwitcher({ workspace, canSeeSystem, organisations, clie
                 <span className="truncate">{o.name}</span>
               </DropdownMenuItem>
             ))}
+            {demo.length > 0 && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Demo
+                </DropdownMenuLabel>
+                {demo.map((o) => (
+                  <DropdownMenuItem
+                    key={o.id}
+                    onSelect={() => navigate({ to: "/firms/$firmId", params: { firmId: o.id } })}
+                  >
+                    <Building2 className="mr-2 h-4 w-4" />
+                    <span className="truncate">{o.name}</span>
+                  </DropdownMenuItem>
+                ))}
+              </>
+            )}
             {organisations.length === 0 && (
               <div className="px-2 py-1.5 text-xs text-muted-foreground">No organisations</div>
             )}

@@ -430,8 +430,10 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "System Administrator only (aal2 + assert_super_admin): removes a Coming soon entry, audited.",
 "public.register_coming_soon_interest":
     "aal2; practice users of the client's organisation only, verified email from auth.users, shared 3/hour enquiry limit under an advisory lock, idempotent submission key, audited. Accepts manual entry keys and automatic teaser keys (auto_<card_key>, resolved against the live Work-in-progress set). Inserts one upgrade_enquiries row of kind interest; returns only the alert fields.",
-  "public.admin_set_card_coming_soon":
+"public.admin_set_card_coming_soon":
     "System Administrator only (aal2 + assert_super_admin): sets the per-card Coming soon opt-out (card_catalogue.hide_from_coming_soon) and audits the change. Product configuration only; never touches card status, client ticks or client data.",
+  "public.admin_set_firm_demo":
+    "System Administrator only (aal2 + assert_super_admin): sets the display-only demo flag (firms.is_demo) and audits the change. Switcher grouping only; never touches membership, billing, access or client data.",
   "public.admin_set_card_status":
     "System Administrator only (aal2 + assert_super_admin): marks a catalogue card Available or Work in progress and audits the change. Changes product configuration only; never touches client ticks or client data.",
   "public.admin_set_card_entry":

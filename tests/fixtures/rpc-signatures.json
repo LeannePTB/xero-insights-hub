@@ -164,6 +164,14 @@
     {
         "args": [
             "_firm_id",
+            "_is_demo"
+        ],
+        "name": "admin_set_firm_demo",
+        "required": 2
+    },
+    {
+        "args": [
+            "_firm_id",
             "_card_key",
             "_enabled",
             "_ends_at"

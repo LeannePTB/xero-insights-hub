@@ -414,6 +414,13 @@
       "when": 1792050791117,
       "tag": "0058_fix_auto_teaser_interest_record",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1792051052129,
+      "tag": "0059_firm_is_demo",
+      "breakpoints": true
     }
   ]
 }

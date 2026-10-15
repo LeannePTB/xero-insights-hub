@@ -1102,6 +1102,12 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       await db.query(`update public.card_catalogue set status = 'available'`).catch(() => {});
     }
   }
+  if (r.startsWith("demo:")) {
+    // Demo flag: only a System Administrator (aal2) may set it; display only.
+    const p = await probe(`select public.admin_set_firm_demo('${ORG_A}'::uuid, true)`);
+    if (!p.ok && process.env.MATRIX_DEBUG) console.log("DEMO probe", row.role, r, p.error);
+    return p.ok ? "allow" : "deny";
+  }
   if (r.startsWith("ca:")) {
     // Automatic Coming soon teasers: every Work-in-progress card is a teaser,
     // with a per-card opt-out. Same display-only rule as the manual entries.

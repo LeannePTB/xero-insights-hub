@@ -1410,6 +1410,23 @@ export const MATRIX: MatrixRow[] = [
     "Nobody else changes the per-card Coming soon opt-out",
     ["pglite"],
   ),
+  // ------------------- Demo organisations separated in the switcher (15 Oct 2026)
+  ...rows(
+    ["super_admin_no_membership"],
+    ["demo: admin_set_firm_demo"],
+    ["execute"],
+    "allow",
+    "Only a System Administrator (aal2, audited) marks an organisation as a demo organisation; the flag is display only and grants no access",
+    ["pglite"],
+  ),
+  ...rows(
+    ["org_owner", "org_staff", "client_viewer", "business_owner", "other_org_member"],
+    ["demo: admin_set_firm_demo"],
+    ["execute"],
+    "deny",
+    "Nobody else marks an organisation as a demo organisation",
+    ["pglite"],
+  ),
   // ------------------------- Early access to Work-in-progress cards (14 Oct 2026)
   ...rows(
     ["org_owner", "org_staff", "client_viewer", "business_owner", "other_org_member", "super_admin_no_membership"],

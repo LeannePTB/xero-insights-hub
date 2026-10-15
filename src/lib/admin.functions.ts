@@ -56,6 +56,20 @@ export const adminRenameFirm = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const adminSetFirmDemo = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: { firmId: string; isDemo: boolean }) => i)
+  .handler(async ({ data, context }) => {
+    await assertSuperAdminDb(context.supabase);
+    // The database function re-checks aal2 + System Administrator and audits.
+    const { error } = await (context.supabase as any).rpc("admin_set_firm_demo", {
+      _firm_id: data.firmId,
+      _is_demo: data.isDemo,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const listFirmsAdmin = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .handler(async ({ context }) => {
@@ -111,7 +125,7 @@ export const getFirmDetailAdmin = createServerFn({ method: "GET" })
 
     const { data: firm, error: fErr } = await supabaseAdmin
       .from("firms")
-      .select("id, name, owner_user_id, is_always_free, managed_by_traction, created_at")
+      .select("id, name, owner_user_id, is_always_free, is_demo, managed_by_traction, created_at")
       .eq("id", data.firmId)
       .maybeSingle();
     if (fErr) throw new Error(fErr.message);
