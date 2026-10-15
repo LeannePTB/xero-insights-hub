@@ -1124,6 +1124,13 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       (
         await db.query<{ k: string }>(`select entry_key as k from public.coming_soon_for_client('${CLIENT_A}'::uuid)`)
       ).rows.map((x) => x.k);
+    // Mid-proof catalogued changes run as the bootstrap superuser; only the
+    // function call itself runs as the caller's role.
+    const asPostgres = async (sql: string) => {
+      await db.exec("set local role postgres");
+      await db.query(sql);
+      await db.exec(`set local role ${CONTEXT[row.role].dbRole}`);
+    };
     try {
       if (r.includes("admin_set_card_coming_soon")) {
         const p = await probe(`select public.admin_set_card_coming_soon('cashflow', true)`);
