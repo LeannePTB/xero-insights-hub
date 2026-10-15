@@ -11,6 +11,24 @@ import { Button } from "@/components/ui/button";
 import { getClientSetupChecklist, acknowledgeSetupItem } from "@/lib/setup-checklist.functions";
 import type { SetupChecklist } from "@/lib/setup-checklist.server";
 
+/** Which settings tab holds each checklist anchor. */
+const TAB_BY_ANCHOR: Record<string, string> = {
+  "xero-organisations": "xero",
+  "lodgement-cycles": "tax-reporting",
+  "report-basis": "tax-reporting",
+  "statutory-accounts": "tax-reporting",
+  "cost-classification": "cost-classification",
+  "bank-accounts": "banks",
+  cards: "cards",
+};
+
+/** Tabs with no automatic check that should still be reviewed once per client. */
+const REVIEW_TABS = [
+  { slug: "cards", title: "Package & report branding", detail: "Confirm the cards and report logo are right for this client." },
+  { slug: "people", title: "People", detail: "Check who can see this client and their access level." },
+  { slug: "banks", title: "Banks & accounts", detail: "Check each bank, card and overdraft is classified correctly." },
+] as const;
+
 export function ClientSetupSection({ clientId }: { clientId: string }) {
   const qc = useQueryClient();
   const fetchFn = useServerFn(getClientSetupChecklist);
@@ -92,8 +110,8 @@ export function ClientSetupSection({ clientId }: { clientId: string }) {
                 <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
                   <Link
-                    to={item.anchor === "cost-classification" ? "/clients/$clientId/settings/cost-classification" : "/clients/$clientId/settings"}
-                    params={{ clientId }}
+                    to={`/clients/$clientId/settings/${TAB_BY_ANCHOR[item.anchor] ?? "general"}` as never}
+                    params={{ clientId } as never}
                     hash={item.anchor}
                     className="text-xs font-medium text-emphasis hover:underline"
                   >
@@ -118,6 +136,26 @@ export function ClientSetupSection({ clientId }: { clientId: string }) {
             </li>
           );
         })}
+      </ul>
+
+      <p className="pt-2 text-xs font-medium text-muted-foreground">Also worth a check</p>
+      <ul className="divide-y divide-border/60 rounded-xl border border-border">
+        {REVIEW_TABS.map((t) => (
+          <li key={t.slug} className="flex items-start gap-3 p-4">
+            <Minus className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0 flex-1">
+              <span className="text-sm font-medium">{t.title}</span>
+              <p className="mt-1 text-xs text-muted-foreground">{t.detail}</p>
+              <Link
+                to={`/clients/$clientId/settings/${t.slug}` as never}
+                params={{ clientId } as never}
+                className="mt-2 inline-block text-xs font-medium text-emphasis hover:underline"
+              >
+                Open {t.title}
+              </Link>
+            </div>
+          </li>
+        ))}
       </ul>
     </div>
   );
