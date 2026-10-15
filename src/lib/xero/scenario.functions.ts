@@ -308,6 +308,17 @@ export const getScenarioData = createServerFn({ method: "POST" })
       ((exclRes.data ?? []) as any[]).map((r) => String(r.xero_invoice_id)),
     );
 
+    // Revenue-class accounts are never expenses: drop them from the expense
+    // lines and never count them as untagged, whatever P&L section Xero put
+    // them in.
+    const { normaliseAccountKey } = await import("@/lib/cost-classification");
+    const revenueKeys = new Set<string>(
+      xeroAccounts
+        .filter((a) => String(a.class ?? "").toUpperCase() === "REVENUE")
+        .map((a) => normaliseAccountKey(a.name)),
+    );
+    const isRevenueLine = (name: string) => revenueKeys.has(normaliseAccountKey(name));
+
     const customerNames = new Set<string>();
     const invoices: ScenarioInvoice[] = [];
     for (const inv of rawInvoices) {
