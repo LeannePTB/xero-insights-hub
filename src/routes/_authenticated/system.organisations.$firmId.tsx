@@ -10,6 +10,7 @@ import {
   adminSetUserPassword,
   adminUpdateUserEmail,
   adminRenameFirm,
+  adminSetFirmDemo,
   adminSetSelfFirmMembership,
 } from "@/lib/admin.functions";
 import { adminInviteFirmMember } from "@/lib/invites.functions";
@@ -186,11 +187,11 @@ function FirmDetailPage() {
   return (
     <div className="min-h-screen bg-background">
       <PageContainer className="space-y-6">
-        <FirmPageHeader title={firm.name} actions={firm.is_always_free ? <Badge variant="secondary">Always free</Badge> : undefined} />
+        <FirmPageHeader title={firm.name} actions={<>{firm.is_demo ? <Badge variant="secondary">Demo</Badge> : null}{firm.is_always_free ? <Badge variant="secondary">Always free</Badge> : null}</>} />
         <Tabs value={tab} onValueChange={(value) => void navigate({ to: "/system/organisations/$firmId", params: { firmId }, search: { tab: value as SystemOrganisationTab }, replace: true })}>
           <SystemOrganisationTabs />
           <TabsContent value="overview" className="space-y-6">
-            <BusinessNameSection firmId={firmId} currentName={firm.name} onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })} />
+            <BusinessNameSection firmId={firmId} currentName={firm.name} isDemo={firm.is_demo} onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })} />
             <OverviewFacts firm={firm} members={members} usage={usageQ.data?.usage?.[0]} purchase={purchaseQ.data?.purchase} subscription={detailQ.data?.subscription ?? null} />
           </TabsContent>
           <TabsContent value="plan" className="space-y-6"><OrgPurchaseCard firmId={firmId} /><OrgEarlyAccessCard firmId={firmId} /></TabsContent>
@@ -539,13 +540,24 @@ function AuditSection({ events, loading }: { events: any[]; loading: boolean }) 
 function BusinessNameSection({
   firmId,
   currentName,
+  isDemo,
   onChanged,
 }: {
   firmId: string;
   currentName: string;
+  isDemo: boolean;
   onChanged: () => void;
 }) {
   const renameFn = useServerFn(adminRenameFirm);
+  const demoFn = useServerFn(adminSetFirmDemo);
+  const demoMut = useMutation({
+    mutationFn: (next: boolean) => demoFn({ data: { firmId, isDemo: next } }),
+    onSuccess: () => {
+      toast.success("Demo organisation updated");
+      onChanged();
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(currentName);
 
@@ -607,6 +619,20 @@ function BusinessNameSection({
             </Button>
           </>
         )}
+      </div>
+      <div className="mt-4 flex items-start gap-3 border-t pt-4">
+        <Switch
+          id="firm-demo"
+          checked={isDemo}
+          disabled={demoMut.isPending}
+          onCheckedChange={(next) => demoMut.mutate(next)}
+        />
+        <div>
+          <Label htmlFor="firm-demo" className="text-sm font-medium">Demo organisation</Label>
+          <p className="text-xs text-muted-foreground">
+            Listed separately at the bottom of the workspace switcher.
+          </p>
+        </div>
       </div>
     </section>
   );
