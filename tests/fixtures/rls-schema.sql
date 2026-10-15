@@ -3061,7 +3061,7 @@ BEGIN
  PERFORM app_private.assert_aal2();
  IF auth.uid() IS NULL OR NOT app_private.user_can_write_client(auth.uid(), _client_id) THEN RAISE EXCEPTION 'Not authorised'; END IF;
  PERFORM public.assert_tenant_belongs_to_client(_client_id, _tenant_id);
- IF _classification IS NOT NULL AND _classification NOT IN ('bank','credit_card','excluded') THEN RAISE EXCEPTION 'Invalid classification'; END IF;
+ IF _classification IS NOT NULL AND _classification NOT IN ('bank','credit_card','overdraft','excluded') THEN RAISE EXCEPTION 'Invalid classification'; END IF;
  IF NOT EXISTS (SELECT 1 FROM public.xero_snapshots s CROSS JOIN LATERAL jsonb_array_elements(s.payload->'Accounts') a WHERE s.client_id = _client_id AND s.tenant_id = _tenant_id AND s.report_key = 'accounts' AND s.complete AND a->>'AccountID' = _account_id::text AND upper(a->>'Type') = 'BANK' AND upper(a->>'Status') = 'ACTIVE') THEN RAISE EXCEPTION 'Account unavailable'; END IF;
  SELECT firm_id INTO v_firm_id FROM public.clients WHERE id = _client_id;
  SELECT classification INTO v_previous FROM public.client_bank_account_classifications WHERE client_id = _client_id AND tenant_id = _tenant_id AND account_id = _account_id FOR UPDATE;
@@ -5536,4 +5536,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: 9bd733b7791cd1c0d84b3a8f581f73d133f6057c3d9c9ddd69810d0ac0a45100
+-- catalogue-fingerprint: fad02df1d3c0a806d308aeb851d288d5004f2b6337bda6a15ac5c9d8dacd6ec0
