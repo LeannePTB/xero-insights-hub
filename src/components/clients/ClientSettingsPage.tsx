@@ -1028,14 +1028,9 @@ function ReportBasisSection({
   const xeroBasis = xeroQ.data?.basis ?? null;
   const xeroRaw = xeroQ.data?.raw ?? null;
 
-  // The control only earns its place where the two can genuinely differ:
-  // Xero says cash, an override is already in force, or Xero's basis could not
-  // be read at all (a file that is not GST registered returns nothing) — an
-  // ambiguous case is better shown than hidden.
-  const unreadable = !xeroQ.isLoading && !xeroBasis;
-  const showControl =
-    xeroBasis === "cash" || (!!xeroBasis && xeroBasis !== clientBasis) || unreadable;
-
+  // The control is always shown: the default comes from the Xero file, but the
+  // preparer can override it whenever the P&L is actually prepared on the other
+  // basis (common where GST is reported on cash but the P&L is on accruals).
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
@@ -1045,7 +1040,7 @@ function ReportBasisSection({
 
       {xeroQ.isLoading ? (
         <p className="text-xs text-muted-foreground">Reading the basis from Xero…</p>
-      ) : showControl ? (
+      ) : (
         <>
           <p className="text-xs text-muted-foreground">
             {xeroBasis
@@ -1058,14 +1053,14 @@ function ReportBasisSection({
             <BasisSelectRow clientId={clientId} current={clientBasis} />
             <p className="text-xs font-medium">
               In force: {basisLabel(clientBasis)}
-              {xeroBasis && xeroBasis !== clientBasis ? " — overrides the Xero basis" : ""}
+              {xeroBasis && xeroBasis !== clientBasis
+                ? " — overrides the Xero basis"
+                : xeroBasis
+                  ? " — matching the Xero file"
+                  : ""}
             </p>
           </div>
         </>
-      ) : (
-        <p className="text-xs font-medium">
-          Profit &amp; Loss is prepared on {basisLabel(clientBasis)}, matching the Xero file.
-        </p>
       )}
     </div>
   );
