@@ -1127,10 +1127,12 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     try {
       if (r.includes("admin_set_card_coming_soon")) {
         const p = await probe(`select public.admin_set_card_coming_soon('cashflow', true)`);
+        if (!p.ok && process.env.MATRIX_DEBUG) console.log("CA probe", row.role, r, p.error);
         return p.ok ? "allow" : "deny";
       }
       if (r.includes("interest on the auto teaser")) {
         const p = await probe(`select public.register_coming_soon_interest('${CLIENT_A}'::uuid, 'auto_cashflow', gen_random_uuid())`);
+        if (!p.ok && process.env.MATRIX_DEBUG) console.log("CA probe", row.role, r, p.error);
         return p.ok ? "allow" : "deny";
       }
       if (r.includes("auto teaser never makes the card visible")) {
