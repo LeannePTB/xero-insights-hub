@@ -21,5 +21,5 @@ export function ClientSettingsNav({ clientId }: { clientId: string }) {
   });
   const allowed = new Set((widgetsQ.data?.widgets ?? []) as string[]);
   const items = ITEMS.filter(([slug]) => slug !== "costs" || allowed.has("true_breakeven"));
-  return <nav aria-label="Client settings" className="border-b border-border px-6"><div className="mx-auto flex max-w-4xl flex-wrap gap-1 py-2">{items.map(([slug,label]) => <Link key={slug} to={`/clients/$clientId/settings/${slug}` as never} params={{clientId} as never} className={cn("whitespace-nowrap rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground", pathname.endsWith(`/${slug}`) && "bg-muted text-foreground")}>{label}</Link>)}</div></nav>;
+  return <nav aria-label="Client settings" className="border-b border-border px-4 sm:px-3"><div className="flex max-w-4xl flex-wrap gap-1 py-2">{items.map(([slug,label]) => <Link key={slug} to={`/clients/$clientId/settings/${slug}` as never} params={{clientId} as never} className={cn("whitespace-nowrap rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground", pathname.endsWith(`/${slug}`) && "bg-muted text-foreground")}>{label}</Link>)}</div></nav>;
 }
