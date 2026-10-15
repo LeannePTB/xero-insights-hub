@@ -165,7 +165,7 @@ export const getMyFirm = createServerFn({ method: "POST" })
       db = (await import("@/integrations/supabase/client.server")).supabaseAdmin;
     }
     const [{ data: firm, error }, { data: option }, { count: clientCount }] = await Promise.all([
-      db.from("firms").select("id, name, is_always_free").eq("id", data.firmId).maybeSingle(),
+      db.from("firms").select("id, name, is_always_free, is_demo").eq("id", data.firmId).maybeSingle(),
       db.from("org_subscription_options").select("client_limit").eq("firm_id", data.firmId).maybeSingle(),
       db.from("clients").select("id", { count: "exact", head: true }).eq("firm_id", data.firmId),
     ]);
@@ -180,6 +180,7 @@ export const getMyFirm = createServerFn({ method: "POST" })
       clientCount: clientCount ?? 0,
       clientLimit: (option as any)?.client_limit ?? 0,
       isAlwaysFree,
+      isDemo: !!(firm as any).is_demo,
       trialEndsAt: null,
       currentPeriodEnd: null,
       isOwn: true,
