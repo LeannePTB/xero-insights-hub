@@ -1815,6 +1815,7 @@ export type Database = {
           default_widgets: string[] | null
           id: string
           is_always_free: boolean
+          is_demo: boolean
           is_test: boolean
           logo_path: string | null
           managed_by_traction: boolean
@@ -1828,6 +1829,7 @@ export type Database = {
           default_widgets?: string[] | null
           id?: string
           is_always_free?: boolean
+          is_demo?: boolean
           is_test?: boolean
           logo_path?: string | null
           managed_by_traction?: boolean
@@ -1841,6 +1843,7 @@ export type Database = {
           default_widgets?: string[] | null
           id?: string
           is_always_free?: boolean
+          is_demo?: boolean
           is_test?: boolean
           logo_path?: string | null
           managed_by_traction?: boolean
@@ -4289,6 +4292,10 @@ export type Database = {
       }
       admin_set_card_status: {
         Args: { _card_key: string; _status: string }
+        Returns: undefined
+      }
+      admin_set_firm_demo: {
+        Args: { _firm_id: string; _is_demo: boolean }
         Returns: undefined
       }
       admin_set_org_early_access: {

@@ -12,6 +12,7 @@ export type FirmOverviewCard = {
   clientCount: number;
   clientLimit: number;
   isAlwaysFree: boolean;
+  isDemo: boolean;
   trialEndsAt: string | null;
   currentPeriodEnd: string | null;
   isOwn: boolean;
@@ -64,6 +65,7 @@ export const listFirmsForSuperAdmin = createServerFn({ method: "GET" })
         clientCount: countByFirm.get(f.id) ?? 0,
         clientLimit: option?.client_limit ?? 0,
         isAlwaysFree,
+        isDemo: false,
         trialEndsAt: null,
         currentPeriodEnd: null,
         isOwn: ownFirmIds.has(f.id),
@@ -93,7 +95,7 @@ export const listMyFirms = createServerFn({ method: "GET" })
     if (myIds.length === 0) return { firms: [] };
     const { data: firmRows, error: fErr } = await context.supabase
       .from("firms")
-      .select("id, name")
+      .select("id, name, is_demo")
       .in("id", myIds);
     if (fErr) throw new Error(fErr.message);
     const firms = ((firmRows ?? []) as any[]).map((f) => ({ id: f.id as string, name: f.name as string }));
@@ -124,6 +126,7 @@ export const listMyFirms = createServerFn({ method: "GET" })
           clientCount: countByFirm.get(f.id) ?? 0,
           clientLimit: option?.client_limit ?? 0,
           isAlwaysFree,
+          isDemo: !!f.is_demo,
           trialEndsAt: null,
           currentPeriodEnd: null,
           isOwn: true,
