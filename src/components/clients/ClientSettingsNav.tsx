@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { cn } from "@/lib/utils";
-import { getClientWidgets } from "@/lib/clients.functions";
+import { getClientWidgets } from "@/lib/tier-config.functions";
 
 const ITEMS = [
   ["general", "General"], ["cards", "Cards & report branding"], ["people", "People"],
