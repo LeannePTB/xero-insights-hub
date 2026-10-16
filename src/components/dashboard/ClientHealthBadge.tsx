@@ -34,7 +34,7 @@ export function ClientHealthBadge({ summary, loading }: { summary: HealthBadgeSu
           {summary ? (
             <ul className="space-y-1">
               {summary.checks.map((c) => (
-                <li key={c.question}><span className="font-medium">{c.question}</span> {STATUS_LABEL[c.status]} · {c.figure}</li>
+                <li key={c.question}><span className="font-medium">{c.question}</span> {STATUS_LABEL[c.status as keyof typeof STATUS_LABEL] ?? c.status} · {c.figure}</li>
               ))}
             </ul>
           ) : "Business health uses last night's saved Xero figures."}
