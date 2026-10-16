@@ -37,7 +37,8 @@ import {
   type DebtorSplit,
   type NextTaxPayment,
 } from "./health-checks";
-import { atoOwedFromTaxLines } from "./health-checks.server";
+import { periodEndTaxLookup, taxBalancesFromLines } from "./health-checks.server";
+import type { TaxBalances } from "./health-checks";
 import { sydneyDate } from "@/lib/sydney-time";
 
 export type RuleSeverity = "critical" | "warning" | "watch";
@@ -58,6 +59,7 @@ export type SnapshotRow = {
   as_at: string;
   fetched_at: string;
   complete: boolean;
+  params?: any;
 };
 
 export type ClientVerdictInput = {
@@ -196,6 +198,8 @@ export type TaxContext = {
   paygCycle: Cycle;
   /** Recent debtors (due in the last 90 days or not yet due). */
   recentDebtors: number;
+  /** Tax balances at a lodgement period end; absent → full-balance estimate. */
+  periodEnd?: (date: string) => TaxBalances | null;
 };
 const DEFAULT_TAX_CONTEXT: TaxContext = { today: sydneyDate(), gstCycle: "quarterly", paygCycle: "quarterly", recentDebtors: 0 };
 
@@ -318,8 +322,13 @@ export function ruleProtectedMoneyVsCash(
   }
   const cashAmount = analysed.cashAtBank.total;
   const total = protectedMoney.total;
-  const atoOwed = atoOwedFromTaxLines(analysed.taxLines.lines, tax.gstCycle ?? null, tax.paygCycle ?? null);
-  const nextTax = nextTaxPayment(tax.gstCycle, tax.paygCycle, tax.today, atoOwed);
+  const nextTax = nextTaxPayment({
+    gstCycle: tax.gstCycle,
+    paygCycle: tax.paygCycle,
+    today: tax.today,
+    current: taxBalancesFromLines(analysed.taxLines.lines, tax.gstCycle ?? null, tax.paygCycle ?? null),
+    periodEnd: tax.periodEnd ?? (() => null),
+  });
   const pastDue = payables ? pastDueTaxBills(payables.payload, statutoryAccountIds, tax.today) : 0;
   const alert = taxPaymentAlert({ next: nextTax, today: tax.today, cashAtBank: cashAmount, recentDebtors: tax.recentDebtors, pastDueOwing: pastDue });
 
@@ -345,11 +354,11 @@ export function ruleProtectedMoneyVsCash(
     title = "A tax payment is past its due date";
     detail = `${money(pastDue)} of bills coded to tax accounts is past its due date and still owing, against ${money(cashAmount)} cash at bank.`;
   } else if (alert.reason === "due_soon_over_available") {
-    title = "Next tax payment is more than cash and recent debtors";
-    detail = `About ${money(nextTax!.amount!)} of GST and PAYG withholding is due ${when}, against ${money(cashAmount)} cash at bank and ${money(tax.recentDebtors)} of recent debtors.`;
+    title = "Tax due now is more than cash and recent debtors";
+    detail = `About ${money(nextTax!.amount!)} of GST and PAYG withholding for the period ended ${nextTax!.periodEnd ?? "last period"} is due ${when}${nextTax!.estimate ? " (estimate, full balance)" : ""}, against ${money(cashAmount)} cash at bank and ${money(tax.recentDebtors)} of recent debtors.`;
   } else {
-    title = "Next tax payment is more than cash at bank";
-    detail = `About ${money(nextTax!.amount!)} of GST and PAYG withholding is due ${when}, against ${money(cashAmount)} cash at bank. Recent debtors of ${money(tax.recentDebtors)} would cover it once collected.`;
+    title = "Tax due now is more than cash at bank";
+    detail = `About ${money(nextTax!.amount!)} of GST and PAYG withholding for the period ended ${nextTax!.periodEnd ?? "last period"} is due ${when}${nextTax!.estimate ? " (estimate, full balance)" : ""}, against ${money(cashAmount)} cash at bank. Recent debtors of ${money(tax.recentDebtors)} would cover it once collected.`;
   }
 
   return {
@@ -630,6 +639,13 @@ export function evaluateFromRows(
     gstCycle: cycleOf(options.gstCycle, expected.gst),
     paygCycle: cycleOf(options.paygCycle, expected.payg),
     recentDebtors: debtorSplit?.recent ?? 0,
+    periodEnd: periodEndTaxLookup(
+      input.snapshots as any,
+      byKey.get("accounts")?.payload,
+      options.statutoryOverrides,
+      (cycleOf(options.gstCycle, expected.gst) ?? null) as string | null,
+      (cycleOf(options.paygCycle, expected.payg) ?? null) as string | null,
+    ),
   };
 
   const bsState = states.get("balance_sheet");

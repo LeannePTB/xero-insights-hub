@@ -3,8 +3,8 @@
 // `@/lib/xero/api.server`.
 
 import { protectedShareOfCash } from "@/lib/health/protected-money-share";
-import { lateSharePct, nextTaxPayment, splitDebtors, taxSetAsideTooltip } from "@/lib/health/health-checks";
-import { atoOwedFromTaxLines } from "@/lib/health/health-checks.server";
+import { lateSharePct, splitDebtors, taxSetAsideTooltip } from "@/lib/health/health-checks";
+import { PERIOD_END_BS_KEYS, classifiedAccounts } from "@/lib/health/health-checks.server";
 import { bankReconWarning, parseStored, statementPosition } from "./bank-reconciliation";
 import { addDays, addMonths, endOfMonth, startOfFinancialYear, sydneyDate } from "@/lib/sydney-time";
 import { VERDICT_REPORT_KEYS } from "@/lib/health/rule-thresholds";
@@ -22,8 +22,6 @@ export type DayFigures = {
   cash: number | null;
   creditCardDebt: number | null;
   protectedMoney: number | null;
-  /** GST / PAYG withholding owed (the next tax payment amount). */
-  atoOwed?: number | null;
   /** Per-account breakdown of protected money, for the tooltip. */
   protectedAccounts?: { name: string; amount: number; counted: boolean }[];
   revenueMtd: number | null;
@@ -55,6 +53,14 @@ export type OverviewContext = {
   today: string;
   now: Date;
 };
+
+/** Possible lodgement period ends for `today`: last month end and last quarter end. */
+function periodEnds(today: string): string[] {
+  const y = +today.slice(0, 4);
+  const m = +today.slice(5, 7);
+  const end = (mm: number) => new Date(Date.UTC(y, mm, 0)).toISOString().slice(0, 10);
+  return Array.from(new Set([end(m - 1), end(Math.floor((m - 1) / 3) * 3)]));
+}
 
 function chunk<T>(a: T[], n: number): T[][] {
   const out: T[][] = [];
@@ -107,7 +113,6 @@ export async function loadOverviewContext(sb: Sb, firmId: string | null = null):
 
   const { data: classifications, error: classificationError } = await sb.from('client_bank_account_classifications').select('client_id, tenant_id, account_id, classification').in('client_id', ids);
   if (classificationError) throw new Error('Bank account classifications could not be read.');
-  const { applyBankClassifications } = await import('@/lib/xero/bank-classifications');
 
   const dates = comparisonDates(today);
   const cols =
@@ -115,7 +120,7 @@ export async function loadOverviewContext(sb: Sb, firmId: string | null = null):
   const undatedKeys = (VERDICT_REPORT_KEYS as readonly string[]).filter((k) => k !== "balance_sheet");
 
   for (const part of chunk(ids, 50)) {
-    const [undated, bs, pnl, ytd, links, ov, cl, rep, runs, st, kf] = await Promise.all([
+    const [undated, bs, pnl, ytd, links, ov, cl, rep, runs, st, kf, pe] = await Promise.all([
       sb.from("xero_snapshots").select(cols).in("report_key", undatedKeys).in("client_id", part),
       sb.from("xero_snapshots").select(cols).eq("report_key", "balance_sheet").in("params->>date", dates).in("client_id", part),
       sb.from("xero_snapshots").select(cols).eq("report_key", "profit_and_loss_mtd").in("params->>toDate", dates).in("client_id", part),
@@ -127,11 +132,15 @@ export async function loadOverviewContext(sb: Sb, firmId: string | null = null):
       sb.from("xero_snapshot_runs").select("client_id, status, started_at").in("client_id", part).gte("started_at", addDays(today, -9)),
       sb.from("overview_alert_states").select("client_id, event_key, severity_at_ack, acknowledged_by, acknowledged_at, snoozed_by, snoozed_until").in("client_id", part),
       sb.from("client_key_figures").select("client_id, as_at, cash, debtors_total, debtors_overdue, creditors, bank_reconciled_to, bank_reconciliation, last_xero_login_at").in("client_id", part).gte("as_at", addDays(today, -40)),
+      // Lodgement period-end balance sheets (closed periods), for the tax split.
+      sb.from("xero_snapshots").select(cols).in("report_key", PERIOD_END_BS_KEYS as unknown as string[]).in("params->>date", periodEnds(today)).in("client_id", part),
     ]);
-    for (const r of [undated, bs, pnl, ytd]) if (r.error) throw new Error(r.error.message);
+    for (const r of [undated, bs, pnl, ytd, pe]) if (r.error) throw new Error(r.error.message);
+    for (const row of (pe.data ?? []) as Row[]) push(ctx.rowsByClient, row.client_id, row);
     for (const row of (undated.data ?? []) as Row[]) {
       if (row.report_key === 'accounts' && Array.isArray(row.payload?.Accounts)) {
-        row.payload = { ...row.payload, Accounts: applyBankClassifications(row.payload.Accounts, (classifications ?? []).filter((r: any) => r.client_id === row.client_id && r.tenant_id === row.tenant_id)) };
+        // One cash-at-bank definition: shared with Business Health and the tax rule.
+        row.payload = { ...row.payload, ...classifiedAccounts(row.payload.Accounts, (classifications ?? []).filter((r: any) => r.client_id === row.client_id && r.tenant_id === row.tenant_id)) };
       }
       push(ctx.rowsByClient, row.client_id, row);
     }
@@ -237,8 +246,6 @@ export function seriesFor(ctx: OverviewContext, clientId: string): ClientSeries 
       if (a.taxLines.status === "assessed") {
         const pm = buildProtectedMoney(d, a.taxLines.lines);
         f.protectedMoney = pm.total;
-        const cy = ctx.cycles.get(clientId);
-        f.atoOwed = atoOwedFromTaxLines(a.taxLines.lines, cy?.gst ?? null, cy?.payg ?? null);
         f.protectedAccounts = pm.components.flatMap((c) => (c.status === "resolved" ? c.accounts : []));
       }
     } else if (row.report_key === "profit_and_loss_mtd") {
@@ -272,7 +279,7 @@ export function seriesFor(ctx: OverviewContext, clientId: string): ClientSeries 
   return { anchor, byDate, avgMonthlyRevenue };
 }
 
-export type FigureKey = Exclude<keyof DayFigures, "protectedAccounts" | "atoOwed">;
+export type FigureKey = Exclude<keyof DayFigures, "protectedAccounts">;
 
 /** A move of one figure over `days` ending at the anchor, with the prior-month routine check. */
 export function moveFor(s: ClientSeries, key: FigureKey, days: number): MoveResult {
@@ -367,9 +374,8 @@ export async function buildOverview(
         const lines = (today?.protectedAccounts ?? []).map(
           (a) => `${a.name}: ${money(a.amount)}${a.counted ? "" : " (debit balance, not a refund — not counted)"}`,
         );
-        const cy = ctx.cycles.get(c.client_id);
-        const next = nextTaxPayment((cy?.gst ?? null) as any, (cy?.payg ?? null) as any, ctx.today, today?.atoOwed ?? null);
-        const tooltip = share ? [taxSetAsideTooltip(next), ...(prot !== null ? [`Protected money: ${money(prot)}`] : []), ...lines].join("\n") : null;
+        // The tax rule's own split (due now vs building), so tooltip and badge agree.
+        const tooltip = share ? [taxSetAsideTooltip(verdict.nextTax ?? null), ...(prot !== null ? [`Protected money: ${money(prot)}`] : []), ...lines].join("\n") : null;
         return { protectedPctOfCash: share?.pct ?? null, protectedTooltip: tooltip };
       })(),
       netProfitMtd: today?.netProfitMtd ?? null,

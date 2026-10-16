@@ -14,9 +14,10 @@ export async function computeClientVerdicts(supabase: any, clientIdsIn: string[]
     let q = supabase
       .from("xero_snapshots")
       .select(
-        "client_id, tenant_id, report_key, payload, payload_version, as_at, fetched_at, complete",
+        "client_id, tenant_id, report_key, params, payload, payload_version, as_at, fetched_at, complete",
       )
-      .in("report_key", VERDICT_REPORT_KEYS as unknown as string[])
+      // Period-end balance sheets feed the tax "due now vs building" split.
+      .in("report_key", [...(VERDICT_REPORT_KEYS as unknown as string[]), "balance_sheet_prior", "balance_sheet_period_end"])
       .in("client_id", clientIds);
     if (firmId) q = q.eq("firm_id", firmId);
     const { data: rows, error } = await q;
@@ -41,9 +42,9 @@ export async function computeClientVerdicts(supabase: any, clientIdsIn: string[]
     const snapshots = new Map<string, any[]>();
     const { data: bankChoices, error: bankError } = await supabase.from('client_bank_account_classifications').select('client_id, tenant_id, account_id, classification').in('client_id', clientIds);
     if (bankError) throw new Error('Bank account classifications could not be read.');
-    const { applyBankClassifications } = await import('@/lib/xero/bank-classifications');
+    const { classifiedAccounts } = await import('./health-checks.server');
     for (const row of (rows ?? []) as any[]) {
-      if (row.report_key === 'accounts' && Array.isArray(row.payload?.Accounts)) row.payload = { ...row.payload, Accounts: applyBankClassifications(row.payload.Accounts, (bankChoices ?? []).filter((r: any) => r.client_id === row.client_id && r.tenant_id === row.tenant_id) as import('@/lib/xero/bank-classifications').BankClassificationRow[]) };
+      if (row.report_key === 'accounts' && Array.isArray(row.payload?.Accounts)) row.payload = { ...row.payload, ...classifiedAccounts(row.payload.Accounts, (bankChoices ?? []).filter((r: any) => r.client_id === row.client_id && r.tenant_id === row.tenant_id) as import('@/lib/xero/bank-classifications').BankClassificationRow[]) };
       const list = snapshots.get(row.client_id) ?? [];
       list.push(row);
       snapshots.set(row.client_id, list);

@@ -240,33 +240,122 @@ export function nextAtoDueDate(cycle: Cycle, today: string): string | null {
   return cands.sort().find((d) => d >= today) ?? null;
 }
 
-export type NextTaxPayment = { due: string; amount: number | null };
+/** GST and PAYG withholding owed on one balance sheet (combined ATO account included). */
+export type TaxBalances = { gst: number; payg: number };
+
+/** End of the client's last completed lodgement period on or before `today`. */
+export function lastPeriodEnd(cycle: Cycle, today: string): string | null {
+  const y = +today.slice(0, 4);
+  const m = +today.slice(5, 7);
+  const end = (yy: number, mm: number) => new Date(Date.UTC(yy, mm, 0)).toISOString().slice(0, 10);
+  if (cycle === "monthly") return end(y, m - 1);
+  if (cycle === "quarterly") {
+    const qEndMonth = Math.floor((m - 1) / 3) * 3; // 0, 3, 6, 9 — month index of last completed quarter end
+    return end(y, qEndMonth);
+  }
+  return null;
+}
+
+/** Standard ATO due date for the period ending `periodEnd`. */
+export function dueDateForPeriodEnd(cycle: Cycle, periodEnd: string): string {
+  const y = +periodEnd.slice(0, 4);
+  const m = +periodEnd.slice(5, 7); // 1-12, the period's last month
+  const pad = (n: number) => String(n).padStart(2, "0");
+  if (cycle === "quarterly") {
+    // Oct–Dec quarter is due 28 Feb; the others 28th of the month after.
+    if (m === 12) return `${y + 1}-02-28`;
+    return `${y}-${pad(m + 1)}-28`;
+  }
+  const d = new Date(Date.UTC(y, m, 21));
+  return d.toISOString().slice(0, 10);
+}
+
+function nextPeriodEndAfter(cycle: Cycle, periodEnd: string): string {
+  const y = +periodEnd.slice(0, 4);
+  const m = +periodEnd.slice(5, 7);
+  const step = cycle === "quarterly" ? 3 : 1;
+  return new Date(Date.UTC(y, m + step, 0)).toISOString().slice(0, 10);
+}
+
+export type NextTaxPayment = {
+  due: string;
+  /** Due now for the completed period; null when nothing is known to be due yet. */
+  amount: number | null;
+  /** Accruing for a period that has not ended yet. */
+  building: number;
+  /** Period end the due amount was read at; null when estimated. */
+  periodEnd: string | null;
+  /** True when the period-end balance sheet was missing (full balance used). */
+  estimate: boolean;
+  /** Other completed-period payments due on a later date (e.g. quarterly GST after monthly PAYG). */
+  later: { due: string; amount: number }[];
+};
 
 /**
- * The next GST / PAYG withholding payment: earliest due date across the
- * client's registered cycles, with the balance-sheet amount owed (null when
- * unknown or not positive). Null when registered for neither.
+ * The next GST / PAYG withholding payment, split into what is due now for the
+ * last completed lodgement period and what is still building for the next.
+ * Due now = min(period-end balance, current balance) — any fall since the
+ * period end is a payment; never below zero. Without the period-end balance
+ * the full current balance is used and flagged as an estimate.
  */
-export function nextTaxPayment(gstCycle: Cycle, paygCycle: Cycle, today: string, atoOwed: number | null): NextTaxPayment | null {
-  const gstDue = gstCycle && gstCycle !== "not_registered" ? nextAtoDueDate(gstCycle, today) : null;
-  const paygDue = paygCycle && paygCycle !== "not_registered" ? nextAtoDueDate(paygCycle, today) : null;
-  const due = [gstDue, paygDue].filter((d): d is string => !!d).sort()[0] ?? null;
-  if (!due) return null;
-  return { due, amount: atoOwed !== null && atoOwed > 0 ? atoOwed : null };
+export function nextTaxPayment(i: {
+  gstCycle: Cycle;
+  paygCycle: Cycle;
+  today: string;
+  current: TaxBalances | null;
+  periodEnd: (date: string) => TaxBalances | null;
+}): NextTaxPayment | null {
+  type Item = { due: string; amount: number | null; building: number; periodEnd: string | null; estimate: boolean };
+  const items: Item[] = [];
+  for (const [comp, cycle] of [["gst", i.gstCycle], ["payg", i.paygCycle]] as const) {
+    if (cycle !== "monthly" && cycle !== "quarterly") continue;
+    const cur = Math.max(0, i.current?.[comp] ?? 0);
+    const pe = lastPeriodEnd(cycle, i.today)!;
+    const due = dueDateForPeriodEnd(cycle, pe);
+    if (due < i.today) {
+      // Last period's due date has passed: everything on the books is for the next period.
+      items.push({ due: dueDateForPeriodEnd(cycle, nextPeriodEndAfter(cycle, pe)), amount: null, building: cur, periodEnd: null, estimate: false });
+      continue;
+    }
+    if (!i.current) { items.push({ due, amount: null, building: 0, periodEnd: null, estimate: false }); continue; }
+    const at = i.periodEnd(pe);
+    if (!at) { items.push({ due, amount: cur, building: 0, periodEnd: null, estimate: true }); continue; }
+    const dueNow = Math.max(0, Math.min(at[comp], cur));
+    items.push({ due, amount: dueNow, building: Math.max(0, cur - dueNow), periodEnd: pe, estimate: false });
+  }
+  if (!items.length) return null;
+  const dueItems = items.filter((x) => x.amount !== null && x.amount > 0);
+  const first = (dueItems.length ? dueItems : items).map((x) => x.due).sort()[0]!;
+  const now = items.filter((x) => x.due === first && x.amount !== null);
+  const amount = now.length ? now.reduce((s, x) => s + (x.amount ?? 0), 0) : null;
+  const later = dueItems.filter((x) => x.due !== first).map((x) => ({ due: x.due, amount: x.amount! })).sort((a, b) => (a.due < b.due ? -1 : 1));
+  return {
+    due: first,
+    amount: amount !== null && amount > 0 ? amount : null,
+    building: items.reduce((s, x) => s + x.building, 0),
+    periodEnd: now.find((x) => x.periodEnd)?.periodEnd ?? null,
+    estimate: now.some((x) => x.estimate),
+    later,
+  };
+}
+
+function nextTaxCore(next: NextTaxPayment): string {
+  const head = next.amount !== null
+    ? `~${money(next.amount)} due ${dayLabel(next.due)}${next.estimate ? " (estimate, full balance)" : ""}`
+    : `due ${dayLabel(next.due)}`;
+  const then = next.later.map((l) => ` · then ~${money(l.amount)} due ${dayLabel(l.due)}`).join("");
+  const building = next.building > 0 ? ` · building for next period: ~${money(next.building)}` : "";
+  return `${head}${then}${building}`;
 }
 
 export function nextTaxText(next: NextTaxPayment): string {
-  return next.amount !== null
-    ? `Next tax payment: ~${money(next.amount)} due ${dayLabel(next.due)}`
-    : `Next tax payment due ${dayLabel(next.due)}`;
+  return next.amount !== null ? `Next tax payment: ${nextTaxCore(next)}` : `Next tax payment ${nextTaxCore(next)}`;
 }
 
 /** Neutral tooltip for the Overview "Protected money %" column. */
 export function taxSetAsideTooltip(next: NextTaxPayment | null): string {
   if (!next) return "Tax set aside";
-  return next.amount !== null
-    ? `Tax set aside · next ~${money(next.amount)} due ${dayLabel(next.due)}`
-    : `Tax set aside · next due ${dayLabel(next.due)}`;
+  return `Tax set aside · next ${nextTaxCore(next)}`;
 }
 
 export function oldDebtsText(d: DebtorSplit): string {
@@ -336,8 +425,8 @@ export type HealthInputs = {
   cashAtBank: number | null;
   invoices: any[] | null;
   monthly: MonthlyCosts | null;
-  /** Amount owed to the ATO for GST/PAYG on the balance sheet; null when unknown. */
-  atoOwed: number | null;
+  /** Next GST / PAYG payment, from `nextTaxPayment` (built by the loader). */
+  nextTax: NextTaxPayment | null;
   gstCycle: Cycle;
   paygCycle: Cycle;
 };
@@ -409,7 +498,7 @@ export function computeHealthChecks(input: HealthInputs): HealthChecks {
 
   // Info lines (never counted)
   const info: HealthInfoLine[] = [];
-  const next = nextTaxPayment(input.gstCycle, input.paygCycle, input.today, input.atoOwed);
+  const next = input.nextTax;
   if (next) info.push({ key: "next_tax", text: nextTaxText(next) });
   if (haveDebtors && debtors.old > 0) {
     info.push({ key: "old_debts", text: oldDebtsText(debtors) });

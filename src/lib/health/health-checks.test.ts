@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   cashCoverStatus,
+  nextTaxPayment,
+  nextTaxText,
+  lastPeriodEnd,
+  dueDateForPeriodEnd,
   taxPaymentAlert,
   debtorAlert,
   computeHealthChecks,
@@ -92,7 +96,7 @@ describe("Headline and info lines", () => {
   it("after the 21st, next month's 21st", () => expect(nextAtoDueDate("monthly", "2026-10-22")).toBe("2026-11-21"));
   it("quarterly BAS for Jul–Sep is due 28 Oct", () => expect(nextAtoDueDate("quarterly", TODAY)).toBe("2026-10-28"));
   it("no tax line when not registered", () => {
-    const r = computeHealthChecks(base({ gstCycle: "not_registered", paygCycle: "not_registered" }));
+    const r = computeHealthChecks(base({ gstCycle: "not_registered", paygCycle: "not_registered", nextTax: null }));
     expect(r.info.find((l) => l.key === "next_tax")).toBeUndefined();
   });
   it("old debts line hidden when there are none", () => {
@@ -111,7 +115,7 @@ function base(over: Partial<HealthInputs>): HealthInputs {
     cashAtBank: 50000,
     invoices: [inv(1000, "2026-10-30")],
     monthly: { months: 3, average: 10000, wages: 6000, other: 4000 },
-    atoOwed: 4980,
+    nextTax: { due: "2026-10-21", amount: 4980, building: 0, periodEnd: "2026-09-30", estimate: false, later: [] },
     gstCycle: "monthly",
     paygCycle: "monthly",
     ...over,
@@ -119,7 +123,7 @@ function base(over: Partial<HealthInputs>): HealthInputs {
 }
 
 describe("Overview alert rules (shared with Business Health)", () => {
-  const next = { due: "2026-10-21", amount: 6_205 };
+  const next = { due: "2026-10-21", amount: 6_205, building: 0, periodEnd: "2026-09-30", estimate: false, later: [] };
   it("tax due in 5 days and more than cash + recent debtors → Action", () => {
     expect(taxPaymentAlert({ next, today: "2026-10-16", cashAtBank: 1_000, recentDebtors: 2_000, pastDueOwing: 0 }).level).toBe("action");
   });
@@ -141,5 +145,50 @@ describe("Overview alert rules (shared with Business Health)", () => {
     expect(debtorAlert(3_492, 11_600)).toBe("warn");
     expect(debtorAlert(6_000, 10_000)).toBe("action");
     expect(debtorAlert(1_900, 10_000)).toBe(null);
+  });
+});
+
+describe("Next tax payment: due now vs still building", () => {
+  const cur = { gst: 4_000, payg: 2_205 };
+  it("monthly: period end is last month end, due on the 21st", () => {
+    expect(lastPeriodEnd("monthly", "2026-10-16")).toBe("2026-09-30");
+    expect(dueDateForPeriodEnd("monthly", "2026-09-30")).toBe("2026-10-21");
+  });
+  it("quarterly: Jul–Sep due 28 Oct; Oct–Dec due 28 Feb", () => {
+    expect(lastPeriodEnd("quarterly", "2026-10-16")).toBe("2026-09-30");
+    expect(dueDateForPeriodEnd("quarterly", "2026-09-30")).toBe("2026-10-28");
+    expect(dueDateForPeriodEnd("quarterly", "2026-12-31")).toBe("2027-02-28");
+  });
+  it("splits the balance into due now (period end) and building", () => {
+    const n = nextTaxPayment({ gstCycle: "monthly", paygCycle: "monthly", today: "2026-10-16", current: cur,
+      periodEnd: (d) => (d === "2026-09-30" ? { gst: 2_500, payg: 2_000 } : null) })!;
+    expect(n.due).toBe("2026-10-21");
+    expect(n.amount).toBe(4_500);
+    expect(n.building).toBe(1_705);
+    expect(n.periodEnd).toBe("2026-09-30");
+    expect(nextTaxText(n)).toBe("Next tax payment: ~$4,500 due 21 Oct · building for next period: ~$1,705");
+  });
+  it("a payment since the period end reduces due now, never below zero", () => {
+    const n = nextTaxPayment({ gstCycle: "monthly", paygCycle: "not_registered", today: "2026-10-16", current: { gst: 300, payg: 0 },
+      periodEnd: () => ({ gst: 2_500, payg: 0 }) })!;
+    expect(n.amount).toBe(300);
+    expect(n.building).toBe(0);
+  });
+  it("missing period-end snapshot falls back to the full balance, flagged as an estimate", () => {
+    const n = nextTaxPayment({ gstCycle: "monthly", paygCycle: "monthly", today: "2026-10-16", current: cur, periodEnd: () => null })!;
+    expect(n.amount).toBe(6_205);
+    expect(n.estimate).toBe(true);
+    expect(nextTaxText(n)).toContain("(estimate, full balance)");
+  });
+  it("after the due date has passed, everything is building for the next period", () => {
+    const n = nextTaxPayment({ gstCycle: "monthly", paygCycle: "monthly", today: "2026-10-22", current: cur, periodEnd: () => ({ gst: 1, payg: 1 }) })!;
+    expect(n.due).toBe("2026-11-21");
+    expect(n.amount).toBe(null);
+    expect(n.building).toBe(6_205);
+  });
+  it("the tax rule uses due now only", () => {
+    const n = nextTaxPayment({ gstCycle: "monthly", paygCycle: "monthly", today: "2026-10-16", current: cur,
+      periodEnd: () => ({ gst: 1_000, payg: 500 }) })!;
+    expect(taxPaymentAlert({ next: n, today: "2026-10-16", cashAtBank: 2_000, recentDebtors: 0, pastDueOwing: 0 }).level).toBe(null);
   });
 });
