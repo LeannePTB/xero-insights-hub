@@ -162,8 +162,11 @@ export function OverviewView({ firmId, title }: { firmId?: string; title?: strin
                 <th className="p-3 text-right">Cash at bank</th>
                 <th className="p-3 text-right">Net cash</th>
                 <th className="p-3 text-right">7-day change</th>
-                <th className="p-3 text-right">Tax &amp; super owed</th>
-                <th className="p-3 text-right">Protected money %</th>
+                <th className="p-3 text-right" aria-sort={taxSort ? "descending" : "none"}>
+                  <button type="button" className="inline-flex items-center gap-1 hover:text-foreground" onClick={() => setTaxSort((v) => !v)}>
+                    Tax &amp; super owed <ArrowDownWideNarrow className={`h-3.5 w-3.5 ${taxSort ? "text-foreground" : "opacity-50"}`} />
+                  </button>
+                </th>
                 <th className="p-3 text-right">Net profit MTD</th>
                 <th className="p-3 text-right">Debtors overdue</th>
                 <th className="p-3">Last report sent</th>
@@ -246,13 +249,33 @@ function GroupRows({ name, rows, onOpen, queue }: { name: string | null; rows: O
             </span>
           </td>
           <td className="p-3 text-right tabular-nums" onClick={e => e.stopPropagation()}>
-            <Popover><PopoverTrigger asChild><Button variant="ghost" size="sm" aria-label={`Tax and super owed for ${r.clientName}`}>{r.protectedMoney == null || r.protectedMoney < 0 ? '—' : money(r.protectedMoney)}</Button></PopoverTrigger><PopoverContent className="max-w-sm whitespace-pre-line text-xs">{r.protectedTooltip ?? (r.protectedMoney != null && r.protectedMoney < 0 ? 'ATO refund due — nothing to protect' : 'Protected money details unavailable.')}</PopoverContent></Popover>
-          </td>
-          <td className="p-3 text-right tabular-nums" title={staleTitle ? staleTitle : (r.protectedTooltip ?? undefined)}>
-            <span className="inline-flex items-center justify-end gap-1">
-              {staleMark}
-              {pct(r.protectedPctOfCash)}
-            </span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-auto flex-col items-end gap-0.5 py-1" aria-label={`Tax and super owed for ${r.clientName}`}>
+                  <span className={r.taxNext?.overdue ? "font-semibold text-destructive" : ""}>
+                    {r.taxNext ? `Next due: ${money(r.taxNext.amount)} · ${dayMonth(r.taxNext.due)}${r.taxNext.overdue ? " · overdue" : ""}` : "—"}
+                  </span>
+                  {(r.taxBuilding || r.superDue) && (
+                    <span className="text-xs font-normal text-muted-foreground">
+                      {[r.taxBuilding ? `Building ~${money(r.taxBuilding.amount)} (${monthShort(r.taxBuilding.due)})` : null,
+                        r.superDue ? `Super ${money(Math.round(r.superDue.amount))}${r.superDue.due ? ` (${dayMonth(r.superDue.due)})` : ""}` : null].filter(Boolean).join(" · ")}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="max-w-sm text-xs">
+                {r.taxItems.length ? (
+                  <ul className="space-y-1">
+                    {r.taxItems.map((it, i) => (
+                      <li key={i} className={`flex justify-between gap-3 ${it.overdue ? "text-destructive" : ""}`}>
+                        <span>{it.label}</span>
+                        <span className="tabular-nums">{money(it.amount)}{it.due ? ` · due ${dayMonth(it.due)}` : ""}{it.overdue ? " · overdue" : ""}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : "Nothing known to be due yet."}
+              </PopoverContent>
+            </Popover>
           </td>
           <td className="p-3 text-right tabular-nums">{money(r.netProfitMtd)}</td>
           <td className="p-3 text-right tabular-nums" title="Share of invoices due in the last 90 days (or not yet due) that are more than 14 days late">
