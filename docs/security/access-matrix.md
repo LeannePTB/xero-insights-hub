@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **2726**. Known failures: **0**.
+Rows: **2735**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -210,6 +210,7 @@ None.
 | ca: auto teaser never makes the card visible | execute | ALLOW | pglite | The per-card opt-out, Available status and a shown manual entry each remove the automatic teaser; listing never grants the card |  |
 | ca: admin_set_card_coming_soon | execute | DENY | pglite | Nobody else changes the per-card Coming soon opt-out |  |
 | demo: admin_set_firm_demo | execute | DENY | pglite | Nobody else marks an organisation as a demo organisation |  |
+| demo: my_firm_demo_flags | execute | DENY | pglite | An organisation's own owner or staff, an adviser, a business owner, a support grant, an aal1 session or a signed-out caller never receives a demo marking — the database answers false for every organisation, or refuses |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — assert_widget_access(WIP card) | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — catalogue row | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -481,6 +482,7 @@ None.
 | cs: admin_save_coming_soon | execute | ALLOW | pglite | Only a System Administrator (aal2, audited) edits Coming soon entries |  |
 | ca: admin_set_card_coming_soon | execute | ALLOW | pglite | Only a System Administrator (aal2, audited) changes the per-card Coming soon opt-out |  |
 | demo: admin_set_firm_demo | execute | ALLOW | pglite | Only a System Administrator (aal2, audited) marks an organisation as a demo organisation; the flag is display only and grants no access |  |
+| demo: my_firm_demo_flags | execute | ALLOW | pglite | A System Administrator (aal2) reads the real demo marking for the organisations they may list |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — assert_widget_access(WIP card) | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — catalogue row | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -712,6 +714,7 @@ None.
 | wip: client_visible_cards shows a ticked Work-in-progress card | execute | ALLOW | pglite | Testing exception: a System Administrator sees a purchased Work-in-progress card, labelled, only on a client they can already read (here through an approved read-only support grant) |  |
 | wip: assert_widget_access(Work-in-progress card) | execute | ALLOW | pglite | Testing exception: a System Administrator sees a purchased Work-in-progress card, labelled, only on a client they can already read (here through an approved read-only support grant) |  |
 | wip: report sections include a Work-in-progress card | execute | DENY | pglite | client_report_sections ignores Work-in-progress cards for everyone, so no report draft freezes them |  |
+| demo: my_firm_demo_flags | execute | DENY | pglite | An organisation's own owner or staff, an adviser, a business owner, a support grant, an aal1 session or a signed-out caller never receives a demo marking — the database answers false for every organisation, or refuses |  |
 | set_org_card_defaults(an organisation) | execute | ALLOW | pglite | Owner decision 14 Oct 2026: a System Administrator at aal2 may set default modules (plan configuration, Path C); returns no client data, audited. The support-grant fixture holder is a System Administrator — the role allows it, the read-only grant itself never does |  |
 | apply_org_card_defaults(an organisation) | execute | ALLOW | pglite | Owner decision 14 Oct 2026: a System Administrator at aal2 may set default modules (plan configuration, Path C); returns no client data, audited. The support-grant fixture holder is a System Administrator — the role allows it, the read-only grant itself never does |  |
 | set_client_module(a client) | execute | ALLOW | pglite | Owner decision 14 Oct 2026: the Organisation Owner ticks modules/cards for own clients within the purchase; a System Administrator at aal2 may also set them; audited |  |
@@ -1174,6 +1177,7 @@ None.
 | cs: register_coming_soon_interest | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ca: auto teaser lists the Work-in-progress card | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ca: interest on the auto teaser | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| demo: my_firm_demo_flags | execute | DENY | pglite | An organisation's own owner or staff, an adviser, a business owner, a support grant, an aal1 session or a signed-out caller never receives a demo marking — the database answers false for every organisation, or refuses |  |
 | ea: granted — client_visible_cards shows the WIP card | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
 | ea: granted — assert_widget_access(WIP card) | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
 | ea: granted — catalogue row | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
@@ -1371,6 +1375,7 @@ None.
 | cs: register_coming_soon_interest | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ca: auto teaser lists the Work-in-progress card | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ca: interest on the auto teaser | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| demo: my_firm_demo_flags | execute | DENY | pglite | An organisation's own owner or staff, an adviser, a business owner, a support grant, an aal1 session or a signed-out caller never receives a demo marking — the database answers false for every organisation, or refuses |  |
 | ea: granted — client_visible_cards shows the WIP card | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
 | ea: granted — assert_widget_access(WIP card) | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
 | ea: granted — catalogue row | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
@@ -1611,6 +1616,7 @@ None.
 | ca: interest on the auto teaser | execute | ALLOW | pglite | Every Work-in-progress card is automatically a Coming soon teaser for practice users, and accepts interest through the same guarded recorder |  |
 | ca: admin_set_card_coming_soon | execute | DENY | pglite | Nobody else changes the per-card Coming soon opt-out |  |
 | demo: admin_set_firm_demo | execute | DENY | pglite | Nobody else marks an organisation as a demo organisation |  |
+| demo: my_firm_demo_flags | execute | DENY | pglite | An organisation's own owner or staff, an adviser, a business owner, a support grant, an aal1 session or a signed-out caller never receives a demo marking — the database answers false for every organisation, or refuses |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — assert_widget_access(WIP card) | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — catalogue row | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -1837,6 +1843,7 @@ None.
 | ca: interest on the auto teaser | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ca: admin_set_card_coming_soon | execute | DENY | pglite | Nobody else changes the per-card Coming soon opt-out |  |
 | demo: admin_set_firm_demo | execute | DENY | pglite | Nobody else marks an organisation as a demo organisation |  |
+| demo: my_firm_demo_flags | execute | DENY | pglite | An organisation's own owner or staff, an adviser, a business owner, a support grant, an aal1 session or a signed-out caller never receives a demo marking — the database answers false for every organisation, or refuses |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — assert_widget_access(WIP card) | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — catalogue row | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -2115,6 +2122,7 @@ None.
 | ca: interest on the auto teaser | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ca: admin_set_card_coming_soon | execute | DENY | pglite | Nobody else changes the per-card Coming soon opt-out |  |
 | demo: admin_set_firm_demo | execute | DENY | pglite | Nobody else marks an organisation as a demo organisation |  |
+| demo: my_firm_demo_flags | execute | DENY | pglite | An organisation's own owner or staff, an adviser, a business owner, a support grant, an aal1 session or a signed-out caller never receives a demo marking — the database answers false for every organisation, or refuses |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — assert_widget_access(WIP card) | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — catalogue row | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -2383,6 +2391,7 @@ None.
 | ca: interest on the auto teaser | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ca: admin_set_card_coming_soon | execute | DENY | pglite | Nobody else changes the per-card Coming soon opt-out |  |
 | demo: admin_set_firm_demo | execute | DENY | pglite | Nobody else marks an organisation as a demo organisation |  |
+| demo: my_firm_demo_flags | execute | DENY | pglite | An organisation's own owner or staff, an adviser, a business owner, a support grant, an aal1 session or a signed-out caller never receives a demo marking — the database answers false for every organisation, or refuses |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — assert_widget_access(WIP card) | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
 | ea: no early access — catalogue row | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
