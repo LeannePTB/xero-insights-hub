@@ -5,10 +5,22 @@ import type { PnlObservation } from './standard';
 /** Stored reads only. A separate result per existing card gate, never a combined data grant. */
 export async function loadStandardHistory(db: any, clientId: string, tenantId: string, card: string, basis: string) {
   const today = sydneyDate(), from = addMonths(today,-13);
-  const result: {today:string;pnl:PnlObservation[];cash:{date:string;value:number|null}[];overdue:{date:string;value:number|null}[];scores:{date:string;value:number|null}[];note:string} = {today,pnl:[],cash:[],overdue:[],scores:[],note:'Stored observations only. Missing periods are unavailable, not zero.'};
+  const result: {today:string;pnl:PnlObservation[];cash:{date:string;value:number|null}[];overdue:{date:string;value:number|null}[];scores:{date:string;value:number|null}[];note:string;cashNote:string|null} = {today,pnl:[],cash:[],overdue:[],scores:[],note:'Stored observations only. Missing periods are unavailable, not zero.',cashNote:null};
   if(card==='health') {
     const {rows} = await readMergedHistory(db,[clientId],from,today,tenantId);
     result.cash=rows.filter(r=>r.as_at>=addMonths(today,-12)).map(r=>({date:r.as_at,value:r.cash===null?null:Number(r.cash)}));
+    // Display-only context: where the bank would stand if everything coded
+    // were reconciled. The ledger figure is never replaced by this.
+    const {data: latest} = await db.from('client_key_figures').select('cash, bank_reconciliation').eq('client_id',clientId).eq('tenant_id',tenantId).order('as_at',{ascending:false}).limit(1);
+    const kf = (latest??[])[0];
+    if(kf) {
+      const { parseStored, statementPosition } = await import('@/lib/overview/bank-reconciliation');
+      const pos = statementPosition(parseStored(kf.bank_reconciliation), kf.cash===null?null:Number(kf.cash));
+      if(pos) {
+        const aud = (n:number)=>n.toLocaleString('en-AU',{style:'currency',currency:'AUD',signDisplay:'negative'});
+        result.cashNote = `Reconciled bank position ${aud(pos.reconciled)} — ${aud(Math.abs(pos.unreconciled))} not yet reconciled in Xero (last 90 days).`;
+      }
+    }
     // No historical health scores are stored; never infer them from incomplete old snapshots.
     result.note+=' Cash includes nightly observations and backfilled month-ends using the bank settings at capture. Historical health scores are not stored.';
   }
