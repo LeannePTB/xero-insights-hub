@@ -30,3 +30,7 @@ for (const [id,[name,g,p]] of Object.entries(C)) {
   console.log("BEFORE:", before.state, badgeLabel as any ? (before.findings??[]).map((f:any)=>`${f.ruleId}/${f.severity}: ${f.title}`).join(" | ") : "", `debtors overdue ${(book.overdue/book.total*100).toFixed(0)}%`);
   console.log("AFTER :", after.state, badgeLabel(after), (after.findings??[]).map((f:any)=>`${f.ruleId}/${f.severity}: ${f.title}`).join(" | "), "notes:", after.notes, `late ${lateSharePct(sp)?.toFixed(0)}% recent=${sp.recent.toFixed(0)} late=${sp.late.toFixed(0)} old=${sp.old.toFixed(0)}`, taxSetAsideTooltip(nextTaxPayment(g as any,p as any,today,ato)));
 }
+const id="267318f4-d05a-4013-8afc-9310758b5d28";
+const ap = snaps.find((r:any)=>r.client_id===id&&r.report_key==="invoices_accpay_open");
+const r = NEW.evaluateClient({clientId:id,connections:conns.filter((c:any)=>c.client_id===id).map((c:any)=>({tenantId:c.tenant_id,status:c.status})),snapshots:snaps.filter((r:any)=>r.client_id===id),now:new Date()},{gstCycle:"quarterly",paygCycle:"quarterly"}) as any;
+console.log(r.findings[0].detail, "| gaps:", r.gaps);
