@@ -27,6 +27,7 @@ import {
   debtorAlert,
   lateSharePct,
   nextTaxPayment,
+  lodgedAtoBills,
   oldDebtsText,
   splitDebtors,
   taxPaymentAlert,
@@ -328,6 +329,7 @@ export function ruleProtectedMoneyVsCash(
     today: tax.today,
     current: taxBalancesFromLines(analysed.taxLines.lines, tax.gstCycle ?? null, tax.paygCycle ?? null),
     periodEnd: tax.periodEnd ?? (() => null),
+    lodged: payables ? lodgedAtoBills(payables.payload) : null,
   });
   const pastDue = payables ? pastDueTaxBills(payables.payload, statutoryAccountIds, tax.today) : 0;
   const alert = taxPaymentAlert({ next: nextTax, today: tax.today, cashAtBank: cashAmount, recentDebtors: tax.recentDebtors, pastDueOwing: pastDue });
