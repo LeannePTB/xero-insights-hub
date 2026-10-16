@@ -209,7 +209,11 @@ export function useBreakevenData({
       void classQ.refetch();
       void accountsQ.refetch();
     },
-    refetch: pnlQ.refetch,
+    refetch: async () => {
+      // A refresh can bring newer saved figures: the default TO date follows.
+      await rangeQ.refetch();
+      return pnlQ.refetch();
+    },
     // Deliberately NOT exposed: React Query's `dataUpdatedAt`. Freshness comes
     // from the provenance the server returns on `data.source`, never from when
     // our own query happened to run.
