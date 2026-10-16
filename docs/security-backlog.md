@@ -1864,3 +1864,6 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - Closed (15 Oct 2026): bank classification widened with `overdraft` (migration 0060). Same table, RLS, guarded audited save function (AAL2 + user_can_write_client); no access change.
 
 - 2026-10-16 — Shared Xero reference cache (`src/lib/xero/shared-cache.server.ts`): 10-minute, per-instance, tenant-keyed, resolved payloads only, below each caller's access check; Accounts/Organisation/BankSummary/BalanceSheet/P&L only. Hourly per-file hold raised 200 → 1,500 and reworded as a wait. No access change. OPEN: `health.functions.ts` reads `client_cost_classifications` with `supabaseAdmin` (user-initiated path) — not registered; review.
+
+## 16 Oct 2026 — Closed: System Administrator WIP testing exception removed
+`app_private.client_cards_v2` no longer adds purchased Work-in-progress cards for a System Administrator. WIP cards now show only through a live `org_early_access` grant plus a client tick, for every caller (migration 0062). Narrows access only; grants unchanged. Access matrix row for `support_grant_active` flipped to deny; 2,542 proofs and 18 live checks pass.
