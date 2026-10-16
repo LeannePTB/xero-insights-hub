@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as HealthTilePreviewRouteImport } from './routes/health-tile-preview'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SecurityRouteImport } from './routes/security'
 import { Route as SetPasswordRouteImport } from './routes/set-password'
@@ -110,11 +109,6 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HealthTilePreviewRoute = HealthTilePreviewRouteImport.update({
-  id: '/health-tile-preview',
-  path: '/health-tile-preview',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -599,7 +593,6 @@ const AuthenticatedFirmsFirmIdSettingsSupportRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/health-tile-preview': typeof HealthTilePreviewRoute
   '/privacy': typeof PrivacyRoute
   '/security': typeof SecurityRoute
   '/set-password': typeof SetPasswordRoute
@@ -688,7 +681,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/health-tile-preview': typeof HealthTilePreviewRoute
   '/privacy': typeof PrivacyRoute
   '/security': typeof SecurityRoute
   '/set-password': typeof SetPasswordRoute
@@ -774,7 +766,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/health-tile-preview': typeof HealthTilePreviewRoute
   '/privacy': typeof PrivacyRoute
   '/security': typeof SecurityRoute
   '/set-password': typeof SetPasswordRoute
@@ -865,7 +856,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
-    | '/health-tile-preview'
     | '/privacy'
     | '/security'
     | '/set-password'
@@ -954,7 +944,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
-    | '/health-tile-preview'
     | '/privacy'
     | '/security'
     | '/set-password'
@@ -1039,7 +1028,6 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
-    | '/health-tile-preview'
     | '/privacy'
     | '/security'
     | '/set-password'
@@ -1130,7 +1118,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
-  HealthTilePreviewRoute: typeof HealthTilePreviewRoute
   PrivacyRoute: typeof PrivacyRoute
   SecurityRoute: typeof SecurityRoute
   SetPasswordRoute: typeof SetPasswordRoute
@@ -1179,13 +1166,6 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/health-tile-preview': {
-      id: '/health-tile-preview'
-      path: '/health-tile-preview'
-      fullPath: '/health-tile-preview'
-      preLoaderRoute: typeof HealthTilePreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -2013,7 +1993,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
-  HealthTilePreviewRoute: HealthTilePreviewRoute,
   PrivacyRoute: PrivacyRoute,
   SecurityRoute: SecurityRoute,
   SetPasswordRoute: SetPasswordRoute,
