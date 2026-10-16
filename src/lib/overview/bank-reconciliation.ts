@@ -70,19 +70,46 @@ export function computeBankReconciliation(opts: {
   const windowFrom = addDays(opts.asAt, -RECON_WINDOW_DAYS);
   const complete = opts.transactions.complete && opts.payments.complete;
   const oldest = new Map<string, string>();
+  const net = new Map<string, number>();
+  const inWindow = (d: string | null) => !!d && d >= windowFrom && d <= opts.asAt;
   const note = (id: unknown, d: string | null) => {
-    if (typeof id !== "string" || !d || d < windowFrom || d > opts.asAt) return;
+    if (typeof id !== "string" || !inWindow(d)) return;
     const k = id.toLowerCase();
-    if (!oldest.has(k) || d < oldest.get(k)!) oldest.set(k, d);
+    if (!oldest.has(k) || d! < oldest.get(k)!) oldest.set(k, d!);
   };
-  for (const t of opts.transactions.items) if (t?.IsReconciled !== true) note(t?.BankAccount?.AccountID, xeroDateOnly(t?.Date));
-  for (const p of opts.payments.items) if (p?.IsReconciled !== true) note(p?.Account?.AccountID, xeroDateOnly(p?.Date));
+  const addNet = (id: unknown, d: string | null, amount: number) => {
+    if (typeof id !== "string" || !inWindow(d) || !Number.isFinite(amount)) return;
+    const k = id.toLowerCase();
+    net.set(k, (net.get(k) ?? 0) + amount);
+  };
+  for (const t of opts.transactions.items) {
+    if (t?.IsReconciled === true) continue;
+    const d = xeroDateOnly(t?.Date);
+    note(t?.BankAccount?.AccountID, d);
+    // SPEND* is money out; every other bank transaction type is money in.
+    const total = Number(t?.Total);
+    const signed = String(t?.Type ?? "").toUpperCase().startsWith("SPEND") ? -Math.abs(total) : Math.abs(total);
+    addNet(t?.BankAccount?.AccountID, d, signed);
+  }
+  for (const p of opts.payments.items) {
+    if (p?.IsReconciled === true) continue;
+    const d = xeroDateOnly(p?.Date);
+    note(p?.Account?.AccountID, d);
+    // Payments are always money out of the account.
+    addNet(p?.Account?.AccountID, d, -Math.abs(Number(p?.Amount)));
+  }
   return {
     scope: scope.scope,
     windowFrom,
     accounts: scope.accounts.map((a) => {
       const id = String(a.AccountID);
-      return { accountId: id, name: String(a.Name ?? "Bank account"), reconciledTo: oldest.get(id.toLowerCase()) ?? (complete ? opts.asAt : null) };
+      const k = id.toLowerCase();
+      return {
+        accountId: id,
+        name: String(a.Name ?? "Bank account"),
+        reconciledTo: oldest.get(k) ?? (complete ? opts.asAt : null),
+        unreconciledNet: complete ? (net.get(k) ?? 0) : null,
+      };
     }),
   };
 }
