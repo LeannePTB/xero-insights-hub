@@ -96,10 +96,10 @@ const HEALTHY_DEBTORS = row({
 const CONNECTED = [{ tenantId: "t1", status: "connected" }];
 
 describe("R01 protected money vs cash", () => {
-  it("fires critical when protected money exceeds cash at bank", () => {
+  it("fires Action when the next tax payment, due within 7 days, exceeds cash + recent debtors", () => {
     const r = ruleProtectedMoneyVsCash(
       row({ report_key: "balance_sheet", payload: balanceSheet(50_000, FULL_TAX) }),
-      accountRow(),
+      accountRow(), undefined, undefined, undefined, { today: "2026-10-16", gstCycle: "monthly", paygCycle: "monthly", recentDebtors: 0 },
     );
     assert.ok(r.finding);
     assert.strictEqual(r.finding!.severity, "critical");
@@ -152,13 +152,12 @@ describe("R01 protected money vs cash", () => {
     assert.ok(r.unavailable);
   });
 
-  it("does not fire when cash at bank is not a positive balance", () => {
+  it("an overdrawn bank with tax due within 7 days is Action", () => {
     const r = ruleProtectedMoneyVsCash(
       row({ report_key: "balance_sheet", payload: balanceSheet(-10_000, FULL_TAX) }),
-      accountRow(),
+      accountRow(), undefined, undefined, undefined, { today: "2026-10-16", gstCycle: "monthly", paygCycle: "monthly", recentDebtors: 0 },
     );
-    assert.strictEqual(r.finding, null);
-    assert.match(r.unavailable ?? "", /not a positive balance/i);
+    assert.strictEqual(r.finding?.severity, "critical");
   });
 
   const CC_ACCOUNT = { AccountID: "cc-1", Name: "Business Credit Card", Class: "LIABILITY", Status: "ACTIVE", Type: "BANK" };
@@ -189,10 +188,10 @@ describe("R01 protected money vs cash", () => {
     assert.strictEqual(r.finding, null);
   });
 
-  it("is critical when credit card debt absorbs the cash entirely", () => {
+  it("compares the next tax payment with cash at bank, not net cash", () => {
     const r = ruleProtectedMoneyVsCash(
       row({ report_key: "balance_sheet", payload: balanceSheetWithCard(50_000, -60_000, FULL_TAX) }),
-      accountRowWithCard(),
+      accountRowWithCard(), undefined, undefined, undefined, { today: "2026-10-16", gstCycle: "monthly", paygCycle: "monthly", recentDebtors: 0 },
     );
     assert.ok(r.finding);
     assert.strictEqual(r.finding!.severity, "critical");
@@ -345,9 +344,9 @@ describe("Balance Sheet extraction", () => {
       ],
       now: NOW,
     });
-    assert.strictEqual(v.state, "issues");
-    if (v.state !== "issues") throw new Error("expected issues verdict");
-    assert.ok(v.findings.some((f) => f.ruleId === "R01"));
+    // Tax larger than cash is money set aside: nothing is due within 7 days.
+    assert.notStrictEqual(v.state, "issues");
+    assert.ok(v.nextTax);
   });
 
   it("evaluates R01 through the live report path shape", () => {
@@ -360,13 +359,14 @@ describe("Balance Sheet extraction", () => {
           accountRow(),
           HEALTHY_DEBTORS,
         ],
-        now: NOW,
+        now: new Date("2026-10-16T02:00:00Z"),
       },
-      { skipFreshness: true },
+      { skipFreshness: true, gstCycle: "monthly", paygCycle: "monthly" },
     );
     assert.strictEqual(v.state, "issues");
     if (v.state !== "issues") throw new Error("expected issues verdict");
     assert.ok(v.findings.some((f) => f.ruleId === "R01"));
+    assert.ok(!v.findings.some((f) => f.ruleId === "R05"), "R05 is merged into R01");
   });
 });
 
@@ -443,7 +443,7 @@ describe("statutory registration settings", () => {
     assert.ok(!/Cash at bank/.test(r.unavailable ?? ""));
   });
 
-  it("a registered client with overdrawn bank still reports the cash gap", () => {
+  it("a registered client with overdrawn bank and GST due within 7 days is Action", () => {
     const bs = row({
       report_key: "balance_sheet",
       payload: balanceSheet(-600_813, [
@@ -454,8 +454,8 @@ describe("statutory registration settings", () => {
       gst: true,
       payg: false,
       super: false,
-    });
-    assert.notStrictEqual(r.unavailable, undefined);
+    }, { today: "2026-10-16", gstCycle: "monthly", paygCycle: "not_registered", recentDebtors: 0 });
+    assert.strictEqual(r.finding?.severity, "critical");
   });
 
   it("a GST-registered client that does not withhold PAYG is not told PAYG or super are unmatched", () => {
@@ -500,8 +500,8 @@ describe("statutory registration settings", () => {
       { skipFreshness: true },
     );
     assert.strictEqual(v.state, "ok");
-    assert.match(v.detail, /money set aside for tax and super/i);
-    assert.match(v.detail, /ageing and concentration of the debtors/i);
+    assert.match(v.detail, /next GST and PAYG withholding payment/i);
+    assert.match(v.detail, /paying recent invoices on time/i);
     assert.doesNotMatch(v.detail, /debtor book/i);
     assert.doesNotMatch(v.detail, /We reviewed protected money/i);
   });
@@ -521,7 +521,7 @@ describe("statutory registration settings", () => {
       { skipFreshness: true, gstRegistered: false, withholdsPayg: false },
     );
     assert.strictEqual(v.state, "ok");
-    assert.match(v.detail, /This month we checked the ageing and concentration of the debtors\. Nothing needed attention\./);
+    assert.match(v.detail, /This month we checked whether customers are paying recent invoices on time\. Nothing needed attention\./);
     assert.doesNotMatch(v.detail, /protected money|GST|PAYG|super|tax/i);
   });
 
@@ -544,7 +544,7 @@ describe("statutory registration settings", () => {
       { skipFreshness: true, gstRegistered: true, withholdsPayg: false },
     );
     assert.strictEqual(v.state, "ok");
-    assert.match(v.detail, /GST set aside against cash at bank/i);
+    assert.match(v.detail, /next GST payment against cash at bank/i);
     assert.doesNotMatch(v.detail, /tax withheld from wages|super/i);
   });
 });
@@ -559,13 +559,34 @@ describe("R06 debtors", () => {
     assert.match(r.unavailable ?? "", /incomplete/i);
   });
 
-  it("fires critical when the book is badly aged", () => {
+  it("debts more than 90 days past due never raise an alert; they become an info note", () => {
     const payload = invoicePayload([
       { due: 60_000, dueDate: "2026-01-01", contact: "Ancient Co" },
-      { due: 40_000, dueDate: "2026-09-01", contact: "Current Co" },
+      { due: 4_000, dueDate: "2026-10-20", contact: "Current Co" },
+      { due: 4_000, dueDate: "2026-10-25", contact: "Other Co" },
     ]);
-    const r = ruleDebtors(row({ report_key: "invoices_accrec_open", payload }));
-    assert.strictEqual(r.finding?.severity, "critical");
+    const r = ruleDebtors(row({ report_key: "invoices_accrec_open", payload }), "2026-10-16");
+    assert.strictEqual(r.finding, null);
+    assert.match(r.notes[0] ?? "", /Old debts to review: \$60\.0k/);
+  });
+
+  it("over 50% of recent invoices late (and ≥ $2,000) is Action; 20–50% is Warn", () => {
+    const mk = (late: number, ok: number) => invoicePayload([
+      { due: late, dueDate: "2026-09-01", contact: "A" },
+      { due: ok, dueDate: "2026-10-30", contact: "B" },
+      { due: ok, dueDate: "2026-10-30", contact: "C" },
+    ]);
+    assert.strictEqual(ruleDebtors(row({ report_key: "invoices_accrec_open", payload: mk(6_000, 2_000) }), "2026-10-16").finding?.severity, "critical");
+    assert.strictEqual(ruleDebtors(row({ report_key: "invoices_accrec_open", payload: mk(3_000, 3_000) }), "2026-10-16").finding?.severity, "warning");
+  });
+
+  it("late amount under $2,000 is ignored", () => {
+    const payload = invoicePayload([
+      { due: 1_999, dueDate: "2026-09-01", contact: "A" },
+      { due: 500, dueDate: "2026-10-30", contact: "B" },
+      { due: 500, dueDate: "2026-10-30", contact: "C" },
+    ]);
+    assert.strictEqual(ruleDebtors(row({ report_key: "invoices_accrec_open", payload }), "2026-10-16").finding, null);
   });
 });
 
@@ -887,18 +908,17 @@ describe("R01 lodged and still owing", () => {
     assert.strictEqual(truncated.split!.pattern, "unavailable");
   });
 
-  it("severity is unchanged by the split", () => {
-    const without = ruleProtectedMoneyVsCash(BS_ROW, accountRow());
-    const with_ = ruleProtectedMoneyVsCash(
-      BS_ROW,
-      accountRow(),
-      payablesRow(
-        billsPayload([
-          { contact: "ATO", total: 50_000, due: 50_000, lines: [{ accountId: "gst-1", amount: 50_000 }] },
-        ]),
-      ),
-    );
-    assert.strictEqual(without.finding!.severity, with_.finding!.severity);
+  it("an unpaid tax bill past its due date is Action", () => {
+    const ctx = { today: "2026-08-26", gstCycle: "quarterly" as const, paygCycle: "quarterly" as const, recentDebtors: 0 };
+    const without = ruleProtectedMoneyVsCash(BS_ROW, accountRow(), undefined, undefined, undefined, ctx);
+    const bills = billsPayload([
+      { contact: "ATO", total: 50_000, due: 50_000, lines: [{ accountId: "gst-1", amount: 50_000 }] },
+    ]) as any;
+    for (const b of bills.Invoices) b.DueDate = "2026-07-28";
+    const with_ = ruleProtectedMoneyVsCash(BS_ROW, accountRow(), payablesRow(bills), undefined, undefined, ctx);
+    assert.strictEqual(without.finding, null);
+    assert.strictEqual(with_.finding?.severity, "critical");
+    assert.match(with_.finding!.title, /past its due date/);
   });
 });
 
