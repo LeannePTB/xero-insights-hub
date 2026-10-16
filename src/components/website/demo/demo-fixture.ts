@@ -61,7 +61,7 @@ export const DEMO_TAX: ForwardTax = {
 export const DEMO_SUPER = {
   outstanding: 1490,
   rows: [
-    { payday: "2 Oct 2026", amount: 495, due: "13 Oct 2026", flag: "Overdue" as const },
+    { payday: "2 Oct 2026", amount: 495, due: "13 Oct 2026", flag: null as string | null },
     { payday: "9 Oct 2026", amount: 495, due: "20 Oct 2026", flag: null },
     { payday: "16 Oct 2026", amount: 500, due: "27 Oct 2026", flag: null },
   ],
