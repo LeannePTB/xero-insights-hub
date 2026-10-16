@@ -1,8 +1,8 @@
 import type { CardCatalogue } from '@/lib/cards/catalogue';
 
 // Presentation only: callers pass the cards already granted by the database.
-export const MODULE_ORDER = ['cash_flow', 'profit', 'tax_compliance', 'bookkeeping_checks', 'rental_properties'];
-export const GROUP_ORDER = ['standard', ...MODULE_ORDER, 'consolidation'];
+// Advisory module order is card_modules.sort_order: catalogue.modules arrives
+// already ordered by it, so no module list is hard-coded here.
 export const STANDARD_ORDER = ['health', 'pnl', 'receivables', 'payables', 'notes'];
 const WIDE_CARDS = new Set(['health', 'pnl', 'cashflow', 'cashflow_scenario', 'accounting_breakeven', 'transaction_search', 'gst_reconciliation', 'notes', 'loan_consolidation']);
 
@@ -17,17 +17,23 @@ export function dashboardCardMeta(id: string, catalogue: CardCatalogue) {
       ? catalogue.modules.find(m => m.key === card.module)?.label ?? 'Advisory'
       : card?.package === 'consolidation' ? 'Consolidation' : 'Standard',
     rank: card?.package === 'standard' ? STANDARD_ORDER.indexOf(key) : catalogue.cards.findIndex(c => c.key === key),
-    groupRank: group === 'standard' ? 0 : group === 'consolidation' ? 1 + MODULE_ORDER.length : 1 + MODULE_ORDER.indexOf(group ?? ''),
+    groupRank: moduleGroupRank(group ?? 'standard', catalogue),
     fullWidth: WIDE_CARDS.has(key),
   };
 }
 
+/** Standard first, Advisory modules in sort_order, Consolidation last. */
+export function moduleGroupRank(group: string, catalogue: CardCatalogue): number {
+  if (group === 'standard') return 0;
+  const n = catalogue.modules.length;
+  if (group === 'consolidation') return n + 2;
+  const i = catalogue.modules.findIndex(m => m.key === group);
+  return i < 0 ? n + 1 : 1 + i;
+}
+
 export function dashboardPackageSummary(catalogue: CardCatalogue, visible: readonly string[]) {
   const advisory = catalogue.cards.filter(c => c.package === 'advisory' && visible.includes(c.key));
-  const modules = MODULE_ORDER.flatMap(key => {
-    const m = catalogue.modules.find(m => m.key === key);
-    return m && advisory.some(c => c.module === key) ? [m.label] : [];
-  });
+  const modules = catalogue.modules.filter(m => advisory.some(c => c.module === m.key)).map(m => m.label);
   const consolidation = catalogue.cards.some(c => c.package === 'consolidation' && visible.includes(c.key));
   return `Standard${advisory.length ? ` + Advisory${modules.length ? ` (${modules.join(', ')})` : ''}` : ''}${consolidation ? ' + Consolidation' : ''}`;
 }
@@ -38,13 +44,14 @@ export function orderedCardIds(ids: readonly string[], saved: readonly string[])
   return [...custom, ...ids.filter(id => !custom.includes(id))];
 }
 
-/** Saved preferences reorder within modules, never between them. */
+/**
+ * Saved preferences reorder within modules, never between them. Groups keep
+ * the order they arrive in (callers sort by moduleGroupRank first).
+ */
 export function groupedCardIds(cards: readonly { id: string; group?: string }[], saved: readonly string[]) {
   const groups = new Map(cards.map(c => [c.id, c.group ?? 'cards']));
-  const rank = (id: string) => {
-    const index = GROUP_ORDER.indexOf(groups.get(id) ?? 'cards');
-    return index < 0 ? GROUP_ORDER.length : index;
-  };
+  const groupOrder = [...new Set(cards.map(c => c.group ?? 'cards'))];
+  const rank = (id: string) => groupOrder.indexOf(groups.get(id) ?? 'cards');
   return orderedCardIds(cards.map(c => c.id), saved).sort((a, b) => rank(a) - rank(b));
 }
 
