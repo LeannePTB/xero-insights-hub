@@ -8,6 +8,17 @@ export type { HealthChecksResult } from "@/lib/health/health-checks.server";
 const uuid = z.string().uuid();
 
 /**
+ * Release gate (narrows only): until Business Health is released to clients,
+ * only practice users (me_can_manage_client, the database's rule) get it.
+ */
+async function practiceOrReleased(db: any, clientId: string): Promise<boolean> {
+  const { BUSINESS_HEALTH_RELEASED_TO_CLIENTS } = await import("@/lib/config/features");
+  if (BUSINESS_HEALTH_RELEASED_TO_CLIENTS) return true;
+  const { data, error } = await db.rpc("me_can_manage_client", { _client_id: clientId });
+  return !error && data === true;
+}
+
+/**
  * Business Health card: three checks from stored figures only (never a live
  * Xero call). Entitlement is the card's own widget check; reads then run as
  * the caller, so RLS applies.
@@ -18,6 +29,7 @@ export const getHealthChecks = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<HealthChecksResult> => {
     const { assertWidgetAccess } = await import("./xero/access.server");
     await assertWidgetAccess(context.supabase, data.tenantId, "health");
+    if (!(await practiceOrReleased(context.supabase, data.clientId))) throw new Error("Business health is not available.");
     const { loadHealthChecks } = await import("@/lib/health/health-checks.server");
     const { sydneyDate } = await import("@/lib/sydney-time");
     const res = (await loadHealthChecks(context.supabase, [{ clientId: data.clientId, tenantId: data.tenantId }], sydneyDate())).get(data.clientId);
@@ -39,7 +51,8 @@ export const listClientHealthChecks = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ results: Record<string, HealthBadgeSummary> }> => {
     const { loadHealthChecks } = await import("@/lib/health/health-checks.server");
     const { sydneyDate } = await import("@/lib/sydney-time");
-    const map = await loadHealthChecks(context.supabase, data.clientIds.map((clientId) => ({ clientId })), sydneyDate());
+    const allowed = (await Promise.all(data.clientIds.map(async (id) => ((await practiceOrReleased(context.supabase, id)) ? id : null)))).filter((id): id is string => !!id);
+    const map = await loadHealthChecks(context.supabase, allowed.map((clientId) => ({ clientId })), sydneyDate());
     const results: Record<string, HealthBadgeSummary> = {};
     for (const [id, r] of map) {
       if (r.source.mode === "pending") continue;
