@@ -70,6 +70,27 @@ export const adminSetFirmDemo = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** System Admin: is Business Health released to Business Owners? */
+export const adminGetBusinessHealthRelease = createServerFn({ method: "GET" })
+  .middleware([requireAal2])
+  .handler(async ({ context }) => {
+    await assertSuperAdminDb(context.supabase);
+    const { data, error } = await (context.supabase as any).rpc("business_health_released");
+    if (error) throw new Error("The release setting could not be read.");
+    return { released: data === true };
+  });
+
+/** System Admin: release (or withdraw) Business Health for Business Owners. Audited in the database. */
+export const adminSetBusinessHealthRelease = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) => z.object({ released: z.boolean() }).strict().parse(i))
+  .handler(async ({ data, context }) => {
+    await assertSuperAdminDb(context.supabase);
+    const { error } = await (context.supabase as any).rpc("admin_set_business_health_release", { _released: data.released });
+    if (error) throw new Error("The release setting could not be saved.");
+    return { ok: true };
+  });
+
 export const listFirmsAdmin = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .handler(async ({ context }) => {
