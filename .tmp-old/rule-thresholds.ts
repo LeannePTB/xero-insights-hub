@@ -6,20 +6,31 @@
 // move. One exported object per rule keeps a later lift into a table a read
 // swap rather than a rewrite.
 
-// The tax and debtor thresholds themselves (7 days, 14 days, 90 days, $2,000,
-// 20% / 50%) live in `health-checks.ts`, shared with the Business Health card.
-// Only the ranking weights live here.
-
-/** R01 — tax set aside (R05 statutory magnitude merged in, 16 Oct 2026). */
-export const TAX_RULE = {
-  consequence: { action: 90, warn: 70 },
+export const R01_PROTECTED_MONEY = {
+  /** Protected money as a fraction of cash at bank. */
+  criticalRatio: 1.0,
+  warningRatio: 0.75,
+  watchRatio: 0.5,
+  consequence: { critical: 90, warning: 70, watch: 45 },
 } as const;
 
-/** R06 — customers paying recent invoices on time. */
-export const DEBTOR_RULE = {
-  /** Share of recent invoices owed by a single customer (Watch only). */
+export const R05_STATUTORY_MAGNITUDE = {
+  /** GST + PAYG withholding + tax balances as a fraction of cash at bank. */
+  warningRatio: 0.6,
+  watchRatio: 0.35,
+  consequence: { warning: 60, watch: 35 },
+} as const;
+
+export const R06_DEBTORS = {
+  /** Share of the open debtor book more than 90 days past its due date. */
+  criticalOver90Share: 0.2,
+  /** Share of the open debtor book past its due date at all. */
+  warningOverdueShare: 0.4,
+  /** Share of the open debtor book owed by a single customer. */
   watchConcentrationShare: 0.5,
-  consequence: { action: 85, warn: 65, watch: 40 },
+  over90Days: 90,
+  consequence: { critical: 85, warning: 65, watch: 40 },
+  daysToConsequence: { critical: 0, warning: 30, watch: 60 },
 } as const;
 
 /** Report keys a client must have before any verdict is produced. */

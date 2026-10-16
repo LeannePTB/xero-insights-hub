@@ -21,24 +21,13 @@ import {
   type AtoPayablesAnalysis,
   type ProtectedMoneySplit,
 } from "@/lib/xero/ato-payables";
-import { DEBTOR_RULE, REQUIRED_REPORT_KEYS, TAX_RULE } from "./rule-thresholds";
 import {
-  dayLabel,
-  debtorAlert,
-  lateSharePct,
-  nextTaxPayment,
-  oldDebtsText,
-  splitDebtors,
-  taxPaymentAlert,
-  xeroDateISO,
-  LATE_AFTER_DAYS,
-  RECENT_DEBTOR_DAYS,
-  type Cycle,
-  type DebtorSplit,
-  type NextTaxPayment,
-} from "./health-checks";
-import { atoOwedFromTaxLines } from "./health-checks.server";
-import { sydneyDate } from "@/lib/sydney-time";
+  R01_PROTECTED_MONEY,
+  R05_STATUTORY_MAGNITUDE,
+  R06_DEBTORS,
+  REQUIRED_REPORT_KEYS,
+} from "./rule-thresholds";
+import { protectedShareOfCash } from "./protected-money-share";
 
 export type RuleSeverity = "critical" | "warning" | "watch";
 
@@ -68,17 +57,7 @@ export type ClientVerdictInput = {
   now?: Date;
 };
 
-/**
- * Neutral context attached to a verdict: info notes (never counted as a
- * warning), the next tax payment and the recent/late/old debtor split.
- */
-export type VerdictExtras = {
-  notes?: string[];
-  nextTax?: NextTaxPayment | null;
-  debtorSplit?: DebtorSplit | null;
-};
-
-export type Verdict = VerdictExtras & (
+export type Verdict =
   | { state: "ok"; label: string; detail: string; findings: [] }
   | {
       state: "issues";
@@ -97,8 +76,7 @@ export type Verdict = VerdictExtras & (
       detail: string;
       findings: [];
       gaps?: string[];
-    }
-);
+    };
 
 // ---------------------------------------------------------------------------
 // Coverage
@@ -140,7 +118,7 @@ function money(n: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// R01 — tax set aside: next payment vs cash (R05 merged in, 16 Oct 2026)
+// R01 — protected money vs cash at bank
 // ---------------------------------------------------------------------------
 
 /** Returns a finding, or a reason the rule could not be evaluated. */
@@ -189,36 +167,6 @@ function cashUnavailable(cash: CashExtraction): string | null {
 export type ExpectedStatutory = { gst: boolean; payg: boolean; super: boolean };
 const ALL_EXPECTED: ExpectedStatutory = { gst: true, payg: true, super: true };
 
-/** What the tax rule needs beyond the Balance Sheet. */
-export type TaxContext = {
-  today: string;
-  gstCycle: Cycle;
-  paygCycle: Cycle;
-  /** Recent debtors (due in the last 90 days or not yet due). */
-  recentDebtors: number;
-};
-const DEFAULT_TAX_CONTEXT: TaxContext = { today: sydneyDate(), gstCycle: "quarterly", paygCycle: "quarterly", recentDebtors: 0 };
-
-/**
- * Unpaid bills coded to the client's own statutory accounts (matched by
- * AccountID, never by contact name) whose due date has passed.
- */
-export function pastDueTaxBills(payload: any, statutoryAccountIds: string[], today: string): number {
-  const ids = new Set(statutoryAccountIds);
-  if (!ids.size) return 0;
-  const invoices = Array.isArray(payload) ? payload : Array.isArray(payload?.Invoices) ? payload.Invoices : [];
-  let owing = 0;
-  for (const inv of invoices) {
-    const due = Number(inv?.AmountDue ?? 0);
-    if (!(due > 0)) continue;
-    const dueIso = xeroDateISO(inv?.DueDateString) ?? xeroDateISO(inv?.DueDate);
-    if (!dueIso || dueIso >= today) continue;
-    const lines = Array.isArray(inv?.LineItems) ? inv.LineItems : [];
-    if (lines.some((li: any) => typeof li?.AccountID === "string" && ids.has(li.AccountID))) owing += due;
-  }
-  return owing;
-}
-
 /** Returns a finding, or a reason the rule could not be evaluated. */
 export function ruleProtectedMoneyVsCash(
   balanceSheet: SnapshotRow,
@@ -226,11 +174,9 @@ export function ruleProtectedMoneyVsCash(
   payables?: SnapshotRow,
   overrides?: StatutoryOverrides,
   expected: ExpectedStatutory = ALL_EXPECTED,
-  tax: TaxContext = DEFAULT_TAX_CONTEXT,
 ): {
   finding: Finding | null;
   unavailable?: string;
-  nextTax?: NextTaxPayment | null;
   /** Refusal sentence for the lodged-and-owing split, if it was refused. */
   splitGap?: string;
   split?: ProtectedMoneySplit;
@@ -311,60 +257,147 @@ export function ruleProtectedMoneyVsCash(
     return { finding: null, unavailable: PROTECTED_MONEY_UNKNOWN, splitGap, split, debug: { protectedMoneyTotal: protectedMoney.total, cashAtBank: cash ?? undefined } };
   }
 
-  // Absent or unreadable cash ends the rule. A zero or overdrawn balance is a
-  // real figure here: it is what the next payment is compared against.
-  if (analysed.cashAtBank.status !== "assessed") {
-    return { finding: null, unavailable: cashUnavailable(analysed.cashAtBank) ?? CASH_UNKNOWN, splitGap, split, debug: { protectedMoneyTotal: protectedMoney.total } };
+  const cashReason = cashUnavailable(analysed.cashAtBank);
+  if (cashReason) {
+    return { finding: null, unavailable: cashReason, splitGap, split, debug: { protectedMoneyTotal: protectedMoney.total, cashAtBank: cash ?? undefined } };
   }
-  const cashAmount = analysed.cashAtBank.total;
-  const total = protectedMoney.total;
-  const atoOwed = atoOwedFromTaxLines(analysed.taxLines.lines, tax.gstCycle ?? null, tax.paygCycle ?? null);
-  const nextTax = nextTaxPayment(tax.gstCycle, tax.paygCycle, tax.today, atoOwed);
-  const pastDue = payables ? pastDueTaxBills(payables.payload, statutoryAccountIds, tax.today) : 0;
-  const alert = taxPaymentAlert({ next: nextTax, today: tax.today, cashAtBank: cashAmount, recentDebtors: tax.recentDebtors, pastDueOwing: pastDue });
 
-  if (!alert.level) {
+  const t = R01_PROTECTED_MONEY;
+  // Severity is driven by the Balance Sheet accrual exactly as it was before
+  // the lodged-and-owing split existed. Compared with CASH AT BANK (owner
+  // decision 11 Oct 2026), through the one shared rule.
+  const total = protectedMoney.total;
+  const cashAmount = cash as number;
+  const severity: RuleSeverity | null = protectedShareOfCash(total, cashAmount).level;
+  const title =
+    severity === "critical"
+      ? "Protected money exceeds cash at bank"
+      : severity === "warning"
+        ? "Protected money is close to cash at bank"
+        : severity === "watch"
+          ? "Protected money is over half of cash at bank"
+          : "";
+
+  if (!severity) {
+    // An unmatched component is not a zero. If the rule would otherwise stay
+    // quiet, report the gap rather than implying the client is fine.
     if (unresolved.length > 0) {
       return {
         finding: null,
-        unavailable: `Tax set aside is incomplete: ${unresolved.join(", ")} could not be matched on the Balance Sheet, so the total is understated.`,
-        nextTax,
+        unavailable: `Protected money is incomplete: ${unresolved.join(", ")} could not be matched on the Balance Sheet, so the total is understated.`,
         splitGap,
         split,
         debug: { protectedMoneyTotal: total, cashAtBank: cashAmount },
       };
     }
-    return { finding: null, nextTax, splitGap, split, debug: { protectedMoneyTotal: total, cashAtBank: cashAmount } };
+    return { finding: null, splitGap, split };
   }
 
-  const severity: RuleSeverity = alert.level === "action" ? "critical" : "warning";
-  const when = nextTax ? `${dayLabel(nextTax.due)}${alert.daysToDue === 0 ? " (today)" : ` (in ${alert.daysToDue} day${alert.daysToDue === 1 ? "" : "s"})`}` : "";
-  let title: string;
-  let detail: string;
-  if (alert.reason === "past_due") {
-    title = "A tax payment is past its due date";
-    detail = `${money(pastDue)} of bills coded to tax accounts is past its due date and still owing, against ${money(cashAmount)} cash at bank.`;
-  } else if (alert.reason === "due_soon_over_available") {
-    title = "Next tax payment is more than cash and recent debtors";
-    detail = `About ${money(nextTax!.amount!)} of GST and PAYG withholding is due ${when}, against ${money(cashAmount)} cash at bank and ${money(tax.recentDebtors)} of recent debtors.`;
-  } else {
-    title = "Next tax payment is more than cash at bank";
-    detail = `About ${money(nextTax!.amount!)} of GST and PAYG withholding is due ${when}, against ${money(cashAmount)} cash at bank. Recent debtors of ${money(tax.recentDebtors)} would cover it once collected.`;
-  }
+  const gap =
+    unresolved.length > 0
+      ? ` ${unresolved.length} component(s) could not be matched, so the true figure is higher.`
+      : "";
+
+  // Where the split was refused, the lodged and total lines are suppressed
+  // entirely — they are never rendered as zero.
+  const splitSentence =
+    split.lodgedOwing !== null && split.total !== null && split.lodgedOwing > 0
+      ? ` A further ${money(split.lodgedOwing)} has been lodged and is still owing to the ATO in unpaid bills, so ${money(split.total)} is held or owed in total.`
+      : "";
 
   return {
     finding: {
       ruleId: "R01",
       title,
-      detail,
+      detail: `${money(total)} of GST, PAYG withholding and superannuation is accruing toward the next lodgement against ${money(cashAmount)} cash at bank.${splitSentence}${gap}`,
       severity,
-      consequenceScore: TAX_RULE.consequence[alert.level],
-      daysToConsequence: alert.daysToDue,
+      consequenceScore: t.consequence[severity],
+      daysToConsequence: null,
     },
-    nextTax,
     splitGap,
     split,
     debug: { protectedMoneyTotal: total, cashAtBank: cashAmount },
+  };
+}
+
+
+// ---------------------------------------------------------------------------
+// R05 — statutory balances relative to cash (magnitude only)
+//
+// This rule describes what the Balance Sheet says is owing. It says nothing
+// about what has been lodged or when anything is due: Xero has no endpoint
+// that reports lodgement status. Never word it as "overdue".
+// ---------------------------------------------------------------------------
+
+export function ruleStatutoryMagnitude(
+  balanceSheet: SnapshotRow,
+  accounts?: SnapshotRow,
+  overrides?: StatutoryOverrides,
+  /** See `ruleProtectedMoneyVsCash` — components not expected stay silent. */
+  expected: ExpectedStatutory = ALL_EXPECTED,
+): {
+  finding: Finding | null;
+  unavailable?: string;
+  debug?: { statutoryTotal?: number; cashAtBank?: number };
+} {
+  const analysed = analyseBalanceSheet(balanceSheet.payload, accounts?.payload, overrides);
+  if (analysed.status === "input_invalid" || analysed.cashAtBank.status === "input_invalid") {
+    return { finding: null, unavailable: PROTECTED_MONEY_UNKNOWN };
+  }
+
+  const unavailable = taxExtractionUnavailable(analysed.taxLines);
+  if (unavailable) {
+    if (analysed.taxLines.status === "absent" && !expected.gst && !expected.payg && !expected.super) {
+      return { finding: null };
+    }
+    return { finding: null, unavailable };
+  }
+
+  const lines = analysed.taxLines.lines;
+  const statutory = lines
+    .filter((l) => l.category !== "super")
+    .reduce((s, l) => s + l.amount, 0);
+  if (
+    !lines.some((l) => l.category !== "super")
+  ) {
+    // Only super matched. For a client expected to carry neither GST nor PAYG
+    // withholding, that is the expected position — not a gap.
+    if (!expected.gst && !expected.payg) return { finding: null };
+    return {
+      finding: null,
+      unavailable: "No GST, PAYG withholding or tax account could be matched on the Balance Sheet.",
+      debug: {
+        statutoryTotal: statutory,
+        cashAtBank: analysed.cashAtBank.status === "assessed" ? analysed.cashAtBank.total : undefined,
+      },
+    };
+  }
+
+  const cashReason = cashUnavailable(analysed.cashAtBank);
+  if (cashReason) {
+    return { finding: null, unavailable: cashReason, debug: { statutoryTotal: statutory } };
+  }
+
+  const cash = (analysed.cashAtBank as { total: number }).total;
+  const t = R05_STATUTORY_MAGNITUDE;
+  const ratio = statutory / cash;
+
+
+  let severity: RuleSeverity | null = null;
+  if (ratio >= t.warningRatio) severity = "warning";
+  else if (ratio >= t.watchRatio) severity = "watch";
+  if (!severity) return { finding: null, debug: { statutoryTotal: statutory, cashAtBank: cash } };
+
+  return {
+    finding: {
+      ruleId: "R05",
+      title: "Statutory balances are large relative to cash",
+      detail: `${money(statutory)} of GST, PAYG withholding and tax balances sits on the Balance Sheet at ${balanceSheet.as_at}, against ${money(cash)} cash at bank. This is the balance owing only — it says nothing about what has been lodged.`,
+      severity,
+      consequenceScore: t.consequence[severity],
+      daysToConsequence: null,
+    },
+    debug: { statutoryTotal: statutory, cashAtBank: cash },
   };
 }
 
@@ -387,8 +420,9 @@ function xeroDate(v: any): number | null {
 }
 
 /**
- * The whole open-invoice book as at `asAtMs` (totals for key figures and
- * creditors). Alerting never uses this — see `ruleDebtors`.
+ * The open-invoice book as at `asAtMs`: total due, overdue, over 90 days, and
+ * per-contact totals. The one implementation; R06 and the client overview both
+ * use it.
  */
 export function debtorBook(
   payload: any,
@@ -396,7 +430,7 @@ export function debtorBook(
 ): { total: number; overdue: number; over60: number; over90: number; byContact: Map<string, number> } {
   const over60Cutoff = asAtMs - 60 * 86_400_000;
   let over60 = 0;
-  const over90Cutoff = asAtMs - RECENT_DEBTOR_DAYS * 86_400_000;
+  const over90Cutoff = asAtMs - R06_DEBTORS.over90Days * 86_400_000;
   let total = 0;
   let overdue = 0;
   let over90 = 0;
@@ -415,76 +449,76 @@ export function debtorBook(
   return { total, overdue, over60, over90, byContact };
 }
 
-/**
- * R06 — the "Customers paying on time?" rule. Only invoices due in the last
- * 90 days or not yet due count; debts older than that are an info note, never
- * Action or Warn.
- */
-export function ruleDebtors(
-  row: SnapshotRow,
-  today: string = sydneyDate(),
-): { finding: Finding | null; unavailable?: string; notes: string[]; split: DebtorSplit | null } {
+export function ruleDebtors(row: SnapshotRow): { finding: Finding | null; unavailable?: string } {
+  // A truncated invoice pull is written with `complete = false`. Ageing and
+  // concentration computed on part of the book would be wrong in the safe-
+  // looking direction, so the rule refuses to run.
   if (!row.complete) {
     return {
       finding: null,
       unavailable: "The open invoice list is incomplete, so debtor ageing was not assessed.",
-      notes: [],
-      split: null,
     };
   }
-  const invoices = invoicesOf(row.payload);
-  const split = splitDebtors(invoices, today);
-  const notes = split.old > 0 ? [oldDebtsText(split)] : [];
-  if (split.recent <= 0) return { finding: null, notes, split };
 
-  const level = debtorAlert(split.late, split.recent);
-  const share = Math.round(lateSharePct(split) ?? 0);
-  if (level) {
-    const severity: RuleSeverity = level === "action" ? "critical" : "warning";
+  if (!invoicesOf(row.payload).length) return { finding: null };
+
+  const asAt = new Date(`${row.as_at}T00:00:00Z`).getTime();
+  const { total, overdue, over90, byContact } = debtorBook(row.payload, asAt);
+
+  if (total <= 0) return { finding: null };
+
+  const t = R06_DEBTORS;
+  const over90Share = over90 / total;
+  const overdueShare = overdue / total;
+  let topName = "";
+  let topAmount = 0;
+  for (const [name, amount] of byContact) {
+    if (amount > topAmount) {
+      topAmount = amount;
+      topName = name;
+    }
+  }
+  const concentration = topAmount / total;
+
+  if (over90Share >= t.criticalOver90Share) {
     return {
       finding: {
         ruleId: "R06",
-        title: level === "action" ? "Most recent invoices are running late" : "Recent invoices are running late",
-        detail: `${money(split.late)} of ${money(split.recent)} owing on recent invoices is more than ${LATE_AFTER_DAYS} days past due (${share}%).`,
-        severity,
-        consequenceScore: DEBTOR_RULE.consequence[level],
-        daysToConsequence: null,
+        // Canonical document wording: descriptive, no judgement. The staff
+        // badge abbreviates this in badge-wording.ts.
+        title: "Most of the debtor book is more than 90 days past due",
+        detail: `${money(over90)} of ${money(total)} owing is more than ${t.over90Days} days past its due date (${Math.round(over90Share * 100)}% of the accounting file).`,
+        severity: "critical",
+        consequenceScore: t.consequence.critical,
+        daysToConsequence: t.daysToConsequence.critical,
       },
-      notes,
-      split,
     };
   }
-
-  // Single-customer concentration, recent invoices only, Watch level at most.
-  const byContact = new Map<string, number>();
-  const t = new Date(`${today}T00:00:00Z`).getTime();
-  for (const inv of invoices) {
-    const due = Number(inv?.AmountDue ?? 0);
-    if (!(due > 0)) continue;
-    const iso = xeroDateISO(inv?.DueDateString) ?? xeroDateISO(inv?.DueDate);
-    if (iso && (t - new Date(`${iso}T00:00:00Z`).getTime()) / 86_400_000 > RECENT_DEBTOR_DAYS) continue;
-    const name = inv?.Contact?.Name ?? "Unnamed customer";
-    byContact.set(name, (byContact.get(name) ?? 0) + due);
+  if (overdueShare >= t.warningOverdueShare) {
+    return {
+      finding: {
+        ruleId: "R06",
+        title: "Most of the debtor book is overdue",
+        detail: `${money(overdue)} of ${money(total)} owing is past its due date (${Math.round(overdueShare * 100)}% of the accounting file).`,
+        severity: "warning",
+        consequenceScore: t.consequence.warning,
+        daysToConsequence: t.daysToConsequence.warning,
+      },
+    };
   }
-  let topName = "";
-  let topAmount = 0;
-  for (const [name, amount] of byContact) if (amount > topAmount) { topAmount = amount; topName = name; }
-  const concentration = topAmount / split.recent;
-  if (concentration >= DEBTOR_RULE.watchConcentrationShare) {
+  if (concentration >= t.watchConcentrationShare) {
     return {
       finding: {
         ruleId: "R06",
         title: "Debtors are concentrated in one customer",
-        detail: `${topName} owes ${money(topAmount)} of ${money(split.recent)} on recent invoices (${Math.round(concentration * 100)}%).`,
+        detail: `${topName} owes ${money(topAmount)} of ${money(total)} (${Math.round(concentration * 100)}% of the accounting file).`,
         severity: "watch",
-        consequenceScore: DEBTOR_RULE.consequence.watch,
-        daysToConsequence: null,
+        consequenceScore: t.consequence.watch,
+        daysToConsequence: t.daysToConsequence.watch,
       },
-      notes,
-      split,
     };
   }
-  return { finding: null, notes, split };
+  return { finding: null };
 }
 
 // ---------------------------------------------------------------------------
@@ -517,9 +551,6 @@ export type EvaluateOptions = {
    */
   gstRegistered?: boolean;
   withholdsPayg?: boolean;
-  /** Lodgement cycles, for the next-tax-payment due date. */
-  gstCycle?: Cycle;
-  paygCycle?: Cycle;
 };
 
 /** Evaluate against stored snapshot rows (the staff badge). */
@@ -604,34 +635,6 @@ export function evaluateFromRows(
     super: options.withholdsPayg !== false,
   };
 
-  const today = sydneyDate(now);
-  const notes: string[] = [];
-  let nextTax: NextTaxPayment | null = null;
-  let debtorSplit: DebtorSplit | null = null;
-
-  // Debtors first: the tax rule counts recent debtors as money coming in.
-  const arState = states.get("invoices_accrec_open");
-  const ar = byKey.get("invoices_accrec_open");
-  let debtorFinding: Finding | null = null;
-  if (ar && (arState === "usable" || arState === "partial")) {
-    const r = ruleDebtors(ar, today);
-    debtorFinding = r.finding;
-    debtorSplit = r.split;
-    notes.push(...r.notes);
-    if (r.unavailable) gaps.push(r.unavailable);
-  } else {
-    gaps.push("The open invoice snapshot is missing, so debtor ageing was not assessed.");
-  }
-
-  const cycleOf = (c: Cycle | undefined, registered: boolean): Cycle =>
-    c !== undefined ? c : registered ? "quarterly" : "not_registered";
-  const taxCtx: TaxContext = {
-    today,
-    gstCycle: cycleOf(options.gstCycle, expected.gst),
-    paygCycle: cycleOf(options.paygCycle, expected.payg),
-    recentDebtors: debtorSplit?.recent ?? 0,
-  };
-
   const bsState = states.get("balance_sheet");
   const bs = byKey.get("balance_sheet");
   if (bs && (bsState === "usable" || bsState === "partial")) {
@@ -650,21 +653,30 @@ export function evaluateFromRows(
       ap,
       options.statutoryOverrides,
       expected,
-      taxCtx,
     );
-    nextTax = r01.nextTax ?? null;
     if (r01.finding) findings.push(r01.finding);
     else if (r01.unavailable) gaps.push(r01.unavailable);
     // A refused lodged-and-owing split is reported even when R01 itself fired:
     // the reader must know the total was not established.
     if (r01.splitGap) gaps.push(r01.splitGap);
 
+    const r05 = ruleStatutoryMagnitude(bs, accounts, options.statutoryOverrides, expected);
+    if (r05.finding) findings.push(r05.finding);
+    else if (r05.unavailable) gaps.push(r05.unavailable);
+
   } else {
     gaps.push("The Balance Sheet snapshot is missing, so protected money was not assessed.");
   }
 
-  if (debtorFinding) findings.push(debtorFinding);
-  const extras: VerdictExtras = { notes, nextTax, debtorSplit };
+  const arState = states.get("invoices_accrec_open");
+  const ar = byKey.get("invoices_accrec_open");
+  if (ar && (arState === "usable" || arState === "partial")) {
+    const r = ruleDebtors(ar);
+    if (r.finding) findings.push(r.finding);
+    else if (r.unavailable) gaps.push(r.unavailable);
+  } else {
+    gaps.push("The open invoice snapshot is missing, so debtor ageing was not assessed.");
+  }
 
   if (findings.length) {
     const ranked = rankFindings(findings);
@@ -678,7 +690,6 @@ export function evaluateFromRows(
       more: ranked.length - 1,
       findings: ranked,
       gaps,
-      ...extras,
     };
   }
 
@@ -689,18 +700,17 @@ export function evaluateFromRows(
       detail: gaps.join(" "),
       findings: [],
       gaps,
-      ...extras,
     };
   }
 
-  const debtorsClause = "whether customers are paying recent invoices on time";
+  const debtorsClause = "the ageing and concentration of the debtors";
   const parts: string[] = [];
   if (expected.gst && expected.payg) {
-    parts.push("the next GST and PAYG withholding payment against cash at bank");
+    parts.push("the money set aside for tax and super against cash at bank");
   } else if (expected.gst) {
-    parts.push("the next GST payment against cash at bank");
+    parts.push("the GST set aside against cash at bank");
   } else if (expected.payg) {
-    parts.push("the next PAYG withholding payment against cash at bank");
+    parts.push("the tax withheld from wages and super against cash at bank");
   }
   parts.push(debtorsClause);
 
@@ -714,6 +724,5 @@ export function evaluateFromRows(
     label: "Nothing required attention this month",
     detail,
     findings: [],
-    ...extras,
   };
 }
