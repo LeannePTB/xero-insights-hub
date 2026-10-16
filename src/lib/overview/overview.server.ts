@@ -113,7 +113,6 @@ export async function loadOverviewContext(sb: Sb, firmId: string | null = null):
 
   const { data: classifications, error: classificationError } = await sb.from('client_bank_account_classifications').select('client_id, tenant_id, account_id, classification').in('client_id', ids);
   if (classificationError) throw new Error('Bank account classifications could not be read.');
-  const { applyBankClassifications } = await import('@/lib/xero/bank-classifications');
 
   const dates = comparisonDates(today);
   const cols =
