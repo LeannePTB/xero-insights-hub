@@ -9,8 +9,10 @@ import { estimateTrixieCostUsd, maxOutputTokensForGuard } from "@/lib/trixie/tri
 import { trixieGuide } from "@/lib/trixie/trixie-guide";
 import { catalogueGuideText, mapCatalogue, offeredCatalogue } from "@/lib/cards/catalogue";
 import { pageMapText, trixiePageMap } from "@/lib/trixie/trixie-pagemap";
+import { isTrixieJob, TRIXIE_JOBS } from "@/lib/trixie/trixie-jobs";
+import { jobsAllowed } from "@/lib/trixie/trixie-tool-policy";
 
-type Payload = { messages?: UIMessage[]; pathname?: string; threadId?: string | null };
+type Payload = { messages?: UIMessage[]; pathname?: string; threadId?: string | null; job?: string | null };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const TRIXIE_EMPTY_REPLY =
@@ -66,6 +68,11 @@ export const Route = createFileRoute("/api/trixie")({
             throw Object.assign(new Error("Forbidden"), { status: 403 });
           }
           const sbc = ctx.supabase as any;
+          // A ready-made job is a fixed server-side prompt and tool set; the
+          // browser only names it. Staff on a client page only.
+          const job = body.job == null ? null : isTrixieJob(body.job) ? TRIXIE_JOBS[body.job] : undefined;
+          if (job === undefined || (job && !jobsAllowed(ctx))) throw Object.assign(new Error("Forbidden"), { status: 403 });
+          if (job) messages = [{ id: crypto.randomUUID(), role: "user", parts: [{ type: "text", text: job.prompt }] }];
           const newQuestion = lastUserText(messages);
           if (!newQuestion.trim()) return Response.json({ error: "The conversation is not valid." }, { status: 400 });
           if (thread) {
@@ -128,8 +135,8 @@ export const Route = createFileRoute("/api/trixie")({
             model: provider.responses(c.model),
             instructions,
             messages: await convertToModelMessages(messages),
-            tools: buildTrixieTools(c),
-            stopWhen: stepCountIs(6),
+            tools: (() => { const all = buildTrixieTools(c); return job ? Object.fromEntries(Object.entries(all).filter(([k]) => (job.tools as readonly string[]).includes(k))) : all; })(),
+            stopWhen: stepCountIs(job ? 10 : 8),
             abortSignal: request.signal,
             maxRetries: 1,
             maxOutputTokens: maxOutputTokensForGuard(c.model, guard == null ? null : Number(guard)),
