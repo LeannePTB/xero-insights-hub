@@ -1,4 +1,6 @@
 # Roadmap
+- [x] 16 Oct dashboard tidy-up: full-width first Tax obligations; explicit saved order preserved; shared lodged BAS/PAYG labels; distinct Health names and title badge. 282 app + 336 security/regression tests, 2,568 proofs, 18 live checks, automatic compilation pass; no database changes.
+- [ ] 16 Oct tidy-up real Positive Traction dashboard readback — restored requesting-user sign-in redirects to /auth; owner must sign in. security_posture() remains tool-permission denied; separate manual tsgo/full-build commands not run (automatic compilation used).
 - [x] Owner 14 Oct 18:10: monthly report preparation/steps/collapsed history; manager-only period video and draft locks; unchanged notes snapshots. 219 app tests, 317 security/regression tests, 2,499 access proofs and 18 live checks pass; automatic compilation OK.
 - [ ] Monthly report real desktop/mobile generate/finalise/readback — requesting account stops at two-factor verification; security_posture() tool is permission-denied.
 - [x] Owner 14 Oct 16:24: module-first ordering and within-module dragging; 720 saved-order permutations and rendered test pass; synthetic desktop/mobile checked. Real Positive Traction readback blocked by session-ended sign-in.

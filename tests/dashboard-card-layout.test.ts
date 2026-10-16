@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GROUP_ORDER, groupedCardIds, canReorderCards, standardFallbackCards, dashboardCardMeta, orderedCardIds, smallCardRowSizes } from '../src/components/dashboard/dashboard-card-layout';
+import { groupedCardIds, canReorderCards, standardFallbackCards, dashboardCardMeta, orderedCardIds, smallCardRowSizes } from '../src/components/dashboard/dashboard-card-layout';
 import type { CardCatalogue } from '../src/lib/cards/catalogue';
 
 const catalogue: CardCatalogue = {
@@ -11,6 +11,16 @@ const catalogue: CardCatalogue = {
 };
 
 describe('dashboard catalogue ordering', () => {
+  it('defaults Tax obligations first and full width without changing explicit saved order', () => {
+    const keys = ['gst_reconciliation', 'superannuation', 'payg_withholding', 'tax_obligations'];
+    const cat: CardCatalogue = { modules: [{ key: 'tax_compliance', label: 'Tax & compliance', description: '' }], cards: keys.map(key => ({ key, package: 'advisory', module: 'tax_compliance', label: key, description: '' })) };
+    const cards = keys.map(key => ({ id: `file:${key}`, group: 'tax_compliance' })).sort((a,b) => dashboardCardMeta(a.id, cat).rank - dashboardCardMeta(b.id,cat).rank);
+    expect(groupedCardIds(cards, [])).toEqual(['file:tax_obligations','file:gst_reconciliation','file:superannuation','file:payg_withholding']);
+    expect(dashboardCardMeta('file:tax_obligations',cat).fullWidth).toBe(true);
+    expect(groupedCardIds(cards, ['file:payg_withholding','file:gst_reconciliation'])).toEqual(['file:tax_obligations','file:payg_withholding','file:gst_reconciliation','file:superannuation']);
+    const explicit = ['file:payg_withholding','file:tax_obligations','file:gst_reconciliation','file:superannuation'];
+    expect(groupedCardIds(cards, explicit)).toEqual(explicit);
+  });
   it('groups all saved module permutations once in the incoming order without changing saved data', () => {
     const GROUP_ORDER = ['standard', 'tax_compliance', 'profit', 'cash_flow', 'bookkeeping_checks', 'rental_properties', 'consolidation'];
     const cards = GROUP_ORDER.flatMap(group => [{ id: `${group}:a`, group }, { id: `${group}:b`, group }]);

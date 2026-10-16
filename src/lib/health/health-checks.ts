@@ -280,7 +280,7 @@ function nextPeriodEndAfter(cycle: Cycle, periodEnd: string): string {
 }
 
 /** An open, unpaid bill to the ATO for a lodged activity statement. */
-export type LodgedAtoBill = { due: string; amount: number; reference: string; contact: string };
+export type LodgedAtoBill = { due: string; amount: number; reference: string; contact: string; total?: number; periodText?: string };
 
 const ACTIVITY_STATEMENT = /\b(bas|ias|activity\s+statements?)\b/i;
 
@@ -304,7 +304,10 @@ export function lodgedAtoBills(payload: any): LodgedAtoBill[] {
     if (!ACTIVITY_STATEMENT.test(text)) continue;
     const due = xeroDateISO(inv?.DueDateString) ?? xeroDateISO(inv?.DueDate);
     if (!due) continue;
-    out.push({ due, amount, reference: String(inv?.Reference || inv?.InvoiceNumber || ""), contact });
+    out.push({ due, amount, reference: String(inv?.Reference || inv?.InvoiceNumber || ""), contact,
+      ...(inv?.Total != null && Number.isFinite(Number(inv.Total)) ? { total: Number(inv.Total) } : {}),
+      ...(lines.length ? { periodText: text } : {}),
+    });
   }
   return out.sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : 0));
 }

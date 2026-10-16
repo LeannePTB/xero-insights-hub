@@ -49,12 +49,13 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId, relea
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
       <DashboardCardHeader
-        label={[clientName, tenantName, q.data?.fyLabel].filter(Boolean).join(" · ")}
+        label={[clientName, tenantName?.trim().toLowerCase() !== clientName?.trim().toLowerCase() ? tenantName : null, q.data?.fyLabel].filter(Boolean).join(" · ")}
         title="Business health"
         icon={<Activity className="h-4 w-4" />}
         description="Three quick checks on profit, cash and getting paid"
         source={q.data?.source}
         isFetching={q.isFetching}
+        badge={!released ? <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Practice only — not visible to clients</span> : undefined}
       />
 
       {q.isLoading && (
@@ -64,12 +65,6 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId, relea
         </div>
       )}
       {!!q.error && !q.data && <XeroErrorNotice error={q.error} onRetry={() => q.refetch()} isRetrying={q.isFetching} />}
-
-      {!released && (
-        <p className="mt-2 inline-flex rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-          Practice only — not visible to clients
-        </p>
-      )}
 
       {q.data && (
         <>

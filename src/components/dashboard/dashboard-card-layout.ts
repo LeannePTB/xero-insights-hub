@@ -4,7 +4,7 @@ import type { CardCatalogue } from '@/lib/cards/catalogue';
 // Advisory module order is card_modules.sort_order: catalogue.modules arrives
 // already ordered by it, so no module list is hard-coded here.
 export const STANDARD_ORDER = ['health', 'pnl', 'receivables', 'payables', 'notes'];
-const WIDE_CARDS = new Set(['health', 'pnl', 'cashflow', 'cashflow_scenario', 'accounting_breakeven', 'transaction_search', 'gst_reconciliation', 'notes', 'loan_consolidation']);
+const WIDE_CARDS = new Set(['health', 'pnl', 'cashflow', 'cashflow_scenario', 'accounting_breakeven', 'transaction_search', 'gst_reconciliation', 'tax_obligations', 'notes', 'loan_consolidation']);
 
 export function dashboardCardMeta(id: string, catalogue: CardCatalogue) {
   const key = id.includes(':') ? id.slice(id.indexOf(':') + 1) : id;
@@ -16,7 +16,7 @@ export function dashboardCardMeta(id: string, catalogue: CardCatalogue) {
     label: card?.package === 'advisory'
       ? catalogue.modules.find(m => m.key === card.module)?.label ?? 'Advisory'
       : card?.package === 'consolidation' ? 'Consolidation' : 'Standard',
-    rank: card?.package === 'standard' ? STANDARD_ORDER.indexOf(key) : catalogue.cards.findIndex(c => c.key === key),
+    rank: card?.package === 'standard' ? STANDARD_ORDER.indexOf(key) : key === 'tax_obligations' && group === 'tax_compliance' ? -1 : catalogue.cards.findIndex(c => c.key === key),
     groupRank: moduleGroupRank(group ?? 'standard', catalogue),
     fullWidth: WIDE_CARDS.has(key),
   };
@@ -52,7 +52,9 @@ export function groupedCardIds(cards: readonly { id: string; group?: string }[],
   const groups = new Map(cards.map(c => [c.id, c.group ?? 'cards']));
   const groupOrder = [...new Set(cards.map(c => c.group ?? 'cards'))];
   const rank = (id: string) => groupOrder.indexOf(groups.get(id) ?? 'cards');
-  return orderedCardIds(cards.map(c => c.id), saved).sort((a, b) => rank(a) - rank(b));
+  // New default-first cards stay first until explicitly included in a save.
+  const defaults = cards.filter(c => (c.id === 'health' || c.id.endsWith(':tax_obligations') || c.id === 'tax_obligations') && !saved.includes(c.id)).map(c => c.id);
+  return orderedCardIds(cards.map(c => c.id), [...defaults, ...saved]).sort((a, b) => rank(a) - rank(b));
 }
 
 export function canReorderCards(cards: readonly { id: string; group?: string }[], active: string, over: string) {
