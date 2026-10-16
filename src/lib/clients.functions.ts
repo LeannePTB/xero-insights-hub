@@ -1,4 +1,4 @@
-import { BUSINESS_HEALTH_ENABLED } from "@/lib/config/features";
+
 import { createServerFn } from "@tanstack/react-start";
 import { findVerifiedAuthUserByEmail, listVerifiedAuthUsers } from "@/lib/auth-users.server";
 import { siteUrl } from "@/lib/site-origin";
@@ -133,7 +133,7 @@ export const listClients = createServerFn({ method: "POST" })
                 exIndex.effective(tier, { firmId, clientId: c.id }),
               )
             : [];
-        healthByClient.set(c.id, BUSINESS_HEALTH_ENABLED && widgets.includes("health"));
+        healthByClient.set(c.id, widgets.includes("health"));
       } catch (err) {
         console.error("[listClients] health entitlement failed", { clientId: c.id, err });
         healthByClient.set(c.id, false);

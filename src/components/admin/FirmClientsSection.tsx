@@ -1,4 +1,4 @@
-import { BUSINESS_HEALTH_ENABLED } from "@/lib/config/features";
+
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -150,7 +150,7 @@ export function FirmClientsSection({
   const clientIdsForVerdicts = clients.map((c: any) => c.id);
   const verdictsQ = useQuery({
     queryKey: ["client-health-checks", firmId, clientIdsForVerdicts.join(",")],
-    enabled: BUSINESS_HEALTH_ENABLED && showHealth && canOpenClientData && clientIdsForVerdicts.length > 0,
+    enabled: showHealth && canOpenClientData && clientIdsForVerdicts.length > 0,
     staleTime: 5 * 60 * 1000,
     queryFn: () => fetchHealthChecks({ data: { clientIds: clientIdsForVerdicts } }),
   });
@@ -327,7 +327,7 @@ export function FirmClientsSection({
                         <div className="mt-0.5 text-xs text-muted-foreground truncate">
                           {tenantNames || "No Xero org linked"}
                         </div>
-                        {BUSINESS_HEALTH_ENABLED && canOpenClientData && showHealth && c.healthAllowed && (
+                        {canOpenClientData && showHealth && c.healthAllowed && (
                           <ClientHealthBadge summary={verdictsQ.data?.results?.[c.id]} loading={verdictsQ.isLoading} />
                         )}
                       </div>
