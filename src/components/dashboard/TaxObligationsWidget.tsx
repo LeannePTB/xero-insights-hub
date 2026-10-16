@@ -1,5 +1,5 @@
 import { staggered, xeroQueryRetry } from "@/lib/xero/live-load";
-import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
+import { DashboardCardHeader } from "./DashboardCardHeader";
 import { paygQueryKey, paygQueryLimits } from "./payg-query";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -17,7 +17,8 @@ import {
   saveIncomeTaxInstalment,
 } from "@/lib/income-tax-instalments.functions";
 import { completedGstPeriod, type GstCycle } from "./recon-periods";
-import { latestCompletedPaygMonth, netGstAmount } from "./tax-obligations";
+import { latestCompletedPaygMonth, netGstAmount, lodgedBillsForPeriod } from "./tax-obligations";
+import { getLodgedTaxBills } from "@/lib/xero/lodged-tax.functions";
 import { formatMoneyExact, useTenantCurrency } from "./useTenantCurrency";
 
 function periodLabel(from: string, to: string) {
@@ -42,6 +43,7 @@ export function TaxObligationsWidget({
   const queryClient = useQueryClient();
   const fetchGst = useServerFn(getGstReconciliation);
   const fetchPayg = useServerFn(getPaygWithholdingPosition);
+  const fetchBills = useServerFn(getLodgedTaxBills);
   const listInstalments = useServerFn(listIncomeTaxInstalments);
   const saveInstalment = useServerFn(saveIncomeTaxInstalment);
   const currency = useTenantCurrency(tenantId);
@@ -77,6 +79,12 @@ export function TaxObligationsWidget({
     queryKey: ["income-tax-instalments", clientId, tenantId],
     queryFn: () => listInstalments({ data: { clientId, tenantId } }),
   });
+  const billsQuery = useQuery({
+    queryKey: ["lodged-tax-bills", tenantId, "tax_obligations"],
+    queryFn: () => fetchBills({ data: { tenantId, widget: "tax_obligations" } }),
+    staleTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
   const saveMutation = useMutation({
     mutationFn: () => saveInstalment({
       data: { clientId, tenantId, periodStart, periodEnd, amount: Number(amount) },
@@ -92,12 +100,18 @@ export function TaxObligationsWidget({
 
   const gst = gstQuery.data;
   const payg = latestCompletedPaygMonth(paygQuery.data);
+  const periodBills = [...new Set([
+    ...lodgedBillsForPeriod(billsQuery.data?.bills ?? [], gst?.periodFrom ?? gstPeriod.from, gst?.periodTo ?? gstPeriod.asAt),
+    ...(payg ? lodgedBillsForPeriod(billsQuery.data?.bills ?? [], payg.month, payg.month) : []),
+  ])];
   const latestInstalment = instalmentsQuery.data?.instalments[0] ?? null;
   const busy = gstQuery.isLoading || paygQuery.isLoading || instalmentsQuery.isLoading;
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
       <DashboardCardHeader label={tenantName} title="Tax obligations" icon={<Calculator className="h-4 w-4"/>} description="Latest completed periods and the ATO-set instalment" source={paygQuery.data?.source} isFetching={gstQuery.isFetching || paygQuery.isFetching} actions={instalmentsQuery.data?.canEdit && !editing ? <Button variant="outline" size="sm" onClick={() => setEditing(true)}><Pencil className="h-4 w-4"/> Add instalment</Button> : undefined}/>
+      {periodBills.map((bill, i) => <p key={`${bill.reference}:${bill.due}:${i}`} className="mt-2 text-sm font-medium text-info">Lodged{bill.total !== undefined ? ` · ${money(bill.total)}` : ""} · {money(bill.amount)} still owing · due {format(new Date(`${bill.due}T00:00:00`), "d MMM")}</p>)}
+      {billsQuery.isError && <p className="mt-2 text-xs text-muted-foreground">Lodged bill status unavailable</p>}
 
       {busy ? (
         <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>

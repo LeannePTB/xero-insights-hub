@@ -10,6 +10,8 @@ import { getPaygWithholdingPosition } from "@/lib/xero/reports.functions";
 import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
 import { useTenantCurrency, formatMoneyExact } from "@/components/dashboard/useTenantCurrency";
 import { CardFreshness } from "@/components/dashboard/CardFreshness";
+import { getLodgedTaxBills } from "@/lib/xero/lodged-tax.functions";
+import { paygMonthState } from "./tax-obligations";
 
 /**
  * PAYG withholding, month by month.
@@ -38,6 +40,13 @@ export function PaygWithholdingWidget({
   clientId?: string;
 }) {
   const fetchPayg = useServerFn(getPaygWithholdingPosition);
+  const fetchBills = useServerFn(getLodgedTaxBills);
+  const billsQ = useQuery({
+    queryKey: ["lodged-tax-bills", tenantId, "payg_withholding"],
+    queryFn: () => fetchBills({ data: { tenantId, widget: "payg_withholding" } }),
+    staleTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
   const currency = useTenantCurrency(tenantId);
   const fmt = (n: number) => formatMoneyExact(n, currency);
 
@@ -51,7 +60,8 @@ export function PaygWithholdingWidget({
   const available = data?.status === "available" ? data : null;
   const outstanding =
     data?.status === "available" || data?.status === "no_payroll" ? data.outstanding : 0;
-  const isPaidUp = !!data && data.status !== "no_payg_accounts" && outstanding <= 0.005;
+  const hasLodgedOwing = available?.months.some(m => paygMonthState(m, billsQ.data?.bills ?? [], billsQ.data?.complete === true).startsWith("lodged")) === true;
+  const isPaidUp = !!data && data.status !== "no_payg_accounts" && outstanding <= 0.005 && !hasLodgedOwing && billsQ.data?.complete === true;
 
   if (!isLoading && !error && data && (data.status === 'no_payg_accounts' || data.status === 'no_payroll')) {
     const explanation = data.status === 'no_payg_accounts' ? 'No PAYG withholding account exists on this Xero file’s balance sheet.'
@@ -117,13 +127,13 @@ export function PaygWithholdingWidget({
                 {available.matchesMonths && available.oldestOwingMonth
                   ? `This is the PAYG withheld back to ${monthLabel(
                       available.oldestOwingMonth,
-                    )}. Months before that are covered by payments already made.`
+                    )}. Open lodged ATO bills are shown separately below.`
                   : available.oldestOwingMonth
                     ? `${fmt(
                         available.outstanding - available.residue,
                       )} of this is the PAYG withheld in the months ticked below, back to ${monthLabel(
                         available.oldestOwingMonth,
-                      )}. Months before that are covered by payments already made.`
+                      )}. Open lodged ATO bills are shown separately below.`
                     : "The months behind this balance could not be identified from this organisation's pay runs."}
               </p>
 
@@ -185,8 +195,10 @@ export function PaygWithholdingWidget({
           )}
 
           <ul className="mt-5 divide-y divide-border rounded-xl border border-border">
-            {available.months.map((m) => (
-              <li key={m.month} className="flex items-center justify-between gap-4 px-4 py-2.5">
+            {available.months.map((m) => {
+              const state = paygMonthState(m, billsQ.data?.bills ?? [], billsQ.data?.complete === true);
+              const label = state === "lodged_part_paid" ? "Lodged · part paid" : state === "lodged_owing" ? "Lodged · still owing" : state === "owing" ? "Still owing" : "Paid";
+              return <li key={m.month} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
                 <span className="min-w-0">
                   <span className="text-sm">{monthLabel(m.month)}</span>
                   {m.incomplete && (
@@ -196,21 +208,21 @@ export function PaygWithholdingWidget({
                   )}
                 </span>
                 <span className="flex shrink-0 items-center gap-3">
-                  {!isPaidUp && available.months.some((x) => x.owing) && (
+                  {state !== "unknown" && (!isPaidUp || state.startsWith("lodged")) && (
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        m.owing
-                          ? "bg-info/10 text-info bg-info/10 text-info"
-                          : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                        state !== "paid"
+                          ? "bg-info/10 text-info"
+                          : "bg-success/10 text-success"
                       }`}
                     >
-                      {m.owing ? "Still owing" : "Paid"}
+                      {label}
                     </span>
                   )}
                   <span className="text-sm tabular-nums">{fmt(m.withheld)}</span>
                 </span>
-              </li>
-            ))}
+              </li>;
+            })}
           </ul>
 
           {available.accounts.length > 1 && (
@@ -237,10 +249,7 @@ export function PaygWithholdingWidget({
       )}
 
       <p className="mt-4 text-xs text-muted-foreground">
-        Monthly amounts come from the pay runs paid in each month. Xero does not make ATO
-        lodgements or payments available through its connection, so what is owing is worked out
-        from the PAYG withholding account balance falling as it is paid, not from any record of a
-        payment.
+        Monthly amounts come from the pay runs paid in each month. Open lodged ATO activity-statement bills take precedence over payment inferred from the PAYG withholding account balance.
       </p>
     </div>
   );
