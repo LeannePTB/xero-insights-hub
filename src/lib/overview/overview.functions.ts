@@ -49,6 +49,7 @@ export type OverviewRow = {
   bankReconciledTo: string | null;
   /** Named stale-account warning; null when fine or when data is missing/unclear. */
   bankReconWarning: string | null;
+  cashNote: string | null;
   /** Most recent Xero sign-in by anyone in the file (Finance API), from the nightly key figures. */
   lastXeroLoginAt: string | null;
   historyNote: string | null;
