@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 import { Button } from "@/components/ui/button";
@@ -17,12 +17,12 @@ import { siteUrl } from "@/lib/site-origin";
 import { useSignOut } from "@/lib/use-sign-out";
 import {
   clearIdleDeadline,
-  postAuthDestination,
   signOutMessage,
   takeSignOutReason,
   type SignOutReason,
 } from "@/lib/session-cutoff";
 import { sessionIsActive } from "@/lib/session-activity.functions";
+import { routeAfterAuth } from "@/lib/auth/route-after-auth";
 
 
 export const Route = createFileRoute("/auth")({
@@ -31,22 +31,6 @@ export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Sign in — Traction Advisory" }, { name: "description", content: "Sign in to Traction Advisory’s Xero dashboards and monthly reports." }, { property: "og:title", content: "Sign in — Traction Advisory" }, { property: "og:description", content: "Sign in to Traction Advisory’s Xero dashboards and monthly reports." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: AuthPage,
 });
-
-async function routeAfterAuth(navigate: (opts: { to: string; replace?: boolean }) => void | Promise<void>) {
-  const { data: factorsData } = await supabase.auth.mfa.listFactors();
-  const hasVerified = (factorsData?.totp ?? []).some((f) => f.status === "verified");
-  if (!hasVerified) {
-    await navigate({ to: "/auth/mfa-enroll", replace: true });
-    return;
-  }
-  const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (aalData?.currentLevel !== "aal2") {
-    await navigate({ to: "/auth/mfa-verify", replace: true });
-    return;
-  }
-  // Back to the page they were on when the session ended, else the dashboard.
-  await navigate({ to: postAuthDestination(), replace: true });
-}
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -59,6 +43,7 @@ function AuthPage() {
   const [hasSession, setHasSession] = useState(false);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
+  const routing = useRef(false);
   const [endedReason, setEndedReason] = useState<SignOutReason | null>(null);
   // Request access (Sign Up with Xero modified flow): the Xero callback lands
   // here with ?signup=1&email=…&name=… to pre-fill the form. Every field is
@@ -103,53 +88,66 @@ function AuthPage() {
   }, []);
 
 
-  useEffect(() => {
-    (async () => {
-      // No daily cut-off (owner decision, 15 Sep 2026): an existing session is
-      // offered back — but NEVER a dead end. If the server no longer accepts
-      // this session, sign it out here and show the sign-in form with the plain
-      // reason, rather than a "Continue" button that leads to a page whose every
-      // query is refused. The SERVER answers; this page never decides.
+  const continueSession = useCallback(async () => {
+    if (routing.current) return;
+    routing.current = true;
+    setCheckingSession(true);
+    try {
       const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        let stillActive = true;
-        try {
-          const res = await sessionIsActive();
-          stillActive = res.active !== false;
-        } catch (err) {
-          // A refusal answered as SESSION_IDLE means ended; anything else
-          // (offline, transient) leaves the session alone — this page must not
-          // sign people out because a request failed.
-          stillActive = !/SESSION_IDLE/i.test(String((err as { message?: string })?.message ?? err));
-        }
-        if (!stillActive) {
-          clearIdleDeadline();
-          await supabase.auth.signOut();
-          setEndedReason("ended");
-          setHasSession(false);
-          setSignedInEmail(null);
-          setCheckingSession(false);
-          return;
-        }
+      if (!data.session) {
+        setHasSession(false);
+        setSignedInEmail(null);
+        routing.current = false;
+        setCheckingSession(false);
+        return;
       }
-      setHasSession(!!data.session);
-      setSignedInEmail(data.session?.user?.email ?? null);
+      setHasSession(true);
+      setSignedInEmail(data.session.user.email ?? null);
+      let stillActive = true;
+      try {
+        const res = await sessionIsActive();
+        stillActive = res.active !== false;
+      } catch (err) {
+        // Preserve the existing rule: SESSION_IDLE ends a session; a transient
+        // refusal does not sign the person out. Destination/server guards remain.
+        stillActive = !/SESSION_IDLE/i.test(String((err as { message?: string })?.message ?? err));
+      }
+      if (!stillActive) {
+        clearIdleDeadline();
+        await supabase.auth.signOut();
+        setEndedReason("ended");
+        setHasSession(false);
+        setSignedInEmail(null);
+        routing.current = false;
+        setCheckingSession(false);
+        return;
+      }
+      await routeAfterAuth(supabase.auth.mfa, navigate);
+    } catch {
+      // Retain the old signed-in screen only if routing fails, as a retry.
+      routing.current = false;
       setCheckingSession(false);
-    })();
+    }
   }, [navigate]);
 
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    void continueSession();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
+        routing.current = false;
         setHasSession(false);
         setSignedInEmail(null);
-      } else if (event === "SIGNED_IN" || event === "USER_UPDATED") {
-        setHasSession(!!session);
-        setSignedInEmail(session?.user?.email ?? null);
+        setCheckingSession(false);
+      } else if ((event === "SIGNED_IN" || event === "USER_UPDATED") && session) {
+        setCheckingSession(true);
+        if (timer) clearTimeout(timer);
+        // Never call auth APIs while inside the auth event session lock.
+        timer = setTimeout(() => void continueSession(), 0);
       }
     });
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => { subscription.unsubscribe(); if (timer) clearTimeout(timer); };
+  }, [continueSession]);
 
   async function handleSignIn() {
     setLoading(true);
@@ -166,7 +164,7 @@ function AuthPage() {
       clearIdleDeadline();
       setEndedReason(null);
       toast.success("Welcome back");
-      await routeAfterAuth(navigate);
+      await continueSession();
     } catch (e: any) {
       toast.error(e.message ?? "Something went wrong");
     } finally {
@@ -219,7 +217,7 @@ function AuthPage() {
   return (
     <AuthLayout>
           {checkingSession ? (
-            <div className="flex justify-center py-12">
+            <div className="flex justify-center py-12" role="status" aria-label="Opening your dashboard">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : hasSession ? (
@@ -228,7 +226,7 @@ function AuthPage() {
               {signedInEmail ? (
                 <p className="text-sm text-muted-foreground">{signedInEmail}</p>
               ) : null}
-              <Button className="w-full" onClick={() => routeAfterAuth(navigate)}>
+              <Button className="w-full" onClick={() => void continueSession()}>
                 Continue to dashboards
               </Button>
               <Button variant="outline" className="w-full" onClick={signOut}>

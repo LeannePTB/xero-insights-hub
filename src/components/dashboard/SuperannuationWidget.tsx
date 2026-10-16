@@ -3,12 +3,12 @@ import { staggered, xeroQueryRetry } from "@/lib/xero/live-load";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
-import { AlertTriangle, CheckCircle2, Loader2, PiggyBank, RefreshCw } from "lucide-react";
+import { CheckCircle2, Loader2, PiggyBank, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSuperannuationPosition } from "@/lib/xero/reports.functions";
 import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
 import { useTenantCurrency, formatMoneyExact } from "@/components/dashboard/useTenantCurrency";
-import { CardFreshness } from "@/components/dashboard/CardFreshness";
+import { paydaySuperDueDate, paydaySuperStatus } from "@/lib/payday-super";
 
 /**
  * Superannuation not yet paid.
@@ -18,21 +18,6 @@ import { CardFreshness } from "@/components/dashboard/CardFreshness";
  * inferred from that balance falling — this card never claims to see a payment
  * or its status. Pay run data is used only to explain an outstanding balance.
  */
-
-/** Business days between a date and today, weekends only. Public holidays are
- *  not known to this app, so the count can be a day or two generous. */
-function businessDaysSince(iso: string): number {
-  const start = new Date(`${iso}T00:00:00`);
-  const today = new Date();
-  let days = 0;
-  const cursor = new Date(start);
-  while (cursor < today) {
-    cursor.setDate(cursor.getDate() + 1);
-    const d = cursor.getDay();
-    if (d !== 0 && d !== 6) days += 1;
-  }
-  return days;
-}
 
 export function SuperannuationWidget({
   tenantId,
@@ -56,9 +41,7 @@ export function SuperannuationWidget({
   const available = data?.status === "available" ? data : null;
   const outstanding = available?.outstanding ?? 0;
   const isPaidUp = !!available && outstanding <= 0.005;
-  const oldest = available?.oldestUnpaidPayday ?? null;
-  const ageDays = oldest ? businessDaysSince(oldest) : null;
-  const mayBeOverdue = !isPaidUp && ageDays !== null && ageDays > 7;
+  const paydayRows = available?.paydayRows ?? [];
 
   if (!isLoading && !error && data && data.status !== 'available') {
     const explanation = data.status === 'no_super_accounts'
@@ -112,20 +95,26 @@ export function SuperannuationWidget({
           <div className="mt-6">
             <p className="text-xs text-muted-foreground">Super not yet paid</p>
             <p className="mt-1 font-display text-lg font-semibold tabular-nums">{fmt(outstanding)}</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {available.matchesPaydays && available.unpaidPaydays && oldest
-                ? `This is the super accrued on the last ${available.unpaidPaydays} ${
-                    available.unpaidPaydays === 1 ? "payday" : "paydays"
-                  }, the oldest being ${format(new Date(`${oldest}T00:00:00`), "d MMM yyyy")}.`
-                : oldest
-                  ? `The paydays this balance fully covers go back to ${format(
-                      new Date(`${oldest}T00:00:00`),
-                      "d MMM yyyy",
-                    )}. The rest does not match whole paydays and is not assigned to an earlier payday.`
-                  : available.payrollStatus === "not_authorised"
-                    ? "Payroll access has not been authorised in Xero for this organisation, so the paydays behind this balance cannot be identified."
-                    : "The paydays behind this balance could not be identified from this organisation's pay runs."}
-            </p>
+            {paydayRows.length > 0 ? (
+              <div className="mt-3 divide-y divide-border">
+                <div className="hidden grid-cols-[1fr_1fr_1fr_1.4fr] gap-3 pb-2 text-xs text-muted-foreground sm:grid">
+                  <span>Payday</span><span>Super</span><span>Due date</span><span>Status</span>
+                </div>
+                {paydayRows.map(({ payday, amount }) => {
+                  const due = paydaySuperDueDate(payday);
+                  const status = paydaySuperStatus(due);
+                  return <div key={payday} className="grid grid-cols-2 gap-x-3 gap-y-1 py-3 text-sm sm:grid-cols-[1fr_1fr_1fr_1.4fr]">
+                    <span><span className="text-muted-foreground sm:hidden">Payday </span>{format(new Date(`${payday}T00:00:00`), "d MMM yyyy")}</span>
+                    <span className="tabular-nums">{fmt(amount)}</span>
+                    <span><span className="text-muted-foreground sm:hidden">Due </span>{format(new Date(`${due}T00:00:00`), "d MMM yyyy")}</span>
+                    <span className={status.overdue ? "font-medium text-destructive" : "text-muted-foreground"}>{status.text}</span>
+                  </div>;
+                })}
+                <p className="pt-2 text-xs text-muted-foreground">Due seven business days after payday, excluding weekends and national public holidays. A state public holiday can add a day.</p>
+              </div>
+            ) : <p className="mt-2 text-sm text-muted-foreground">{available.payrollStatus === "not_authorised"
+              ? "Payroll access has not been authorised in Xero for this organisation, so the paydays behind this balance cannot be identified."
+              : "The paydays behind this balance could not be identified from this organisation's pay runs."}</p>}
             {/* A residue is stated for what it is, never attributed to an
                 older payday. */}
             {available.residue > 0.005 && (
@@ -181,19 +170,6 @@ export function SuperannuationWidget({
             </ul>
           )}
 
-          {mayBeOverdue && (
-            <div className="mt-4 flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 px-3 py-2 text-xs text-info border-info/30 bg-info/10 text-info">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <div>
-                <p className="font-semibold">May be overdue — check the fund</p>
-                <p className="opacity-90">
-                  Since 1 July 2026 super must reach each employee&apos;s fund within seven business
-                  days of the payday it relates to, and the oldest payday here is older than that.
-                  The business-day count ignores public holidays, so treat it as approximate.
-                </p>
-              </div>
-            </div>
-          )}
         </>
       ) : null}
 
