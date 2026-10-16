@@ -11,8 +11,6 @@ import { breakevenReadiness } from "@/components/dashboard/breakeven-readiness";
 import {
   clearLegacyRangeStorage,
   toISO,
-  startOfCurrentMonth,
-  today,
 } from "@/components/dashboard/DateRangeControls";
 
 
