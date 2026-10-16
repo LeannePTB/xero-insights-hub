@@ -304,7 +304,7 @@ export function lodgedAtoBills(payload: any): LodgedAtoBill[] {
     if (!ACTIVITY_STATEMENT.test(text)) continue;
     const due = xeroDateISO(inv?.DueDateString) ?? xeroDateISO(inv?.DueDate);
     if (!due) continue;
-    out.push({ due, amount, reference: String(inv?.Reference ?? inv?.InvoiceNumber ?? ""), contact });
+    out.push({ due, amount, reference: String(inv?.Reference || inv?.InvoiceNumber || ""), contact });
   }
   return out.sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : 0));
 }
