@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
-import { Calculator, Loader2, Pencil, Save } from "lucide-react";
+import { Calculator, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,8 +20,10 @@ import { completedGstPeriod, type GstCycle } from "./recon-periods";
 import { latestCompletedPaygMonth, netGstAmount, currentGstPeriod, forwardTax, basDueDate } from "./tax-obligations";
 import { getLodgedTaxBills } from "@/lib/xero/lodged-tax.functions";
 import { formatMoneyExact, useTenantCurrency } from "./useTenantCurrency";
+import { TaxObligationsBody } from "./TaxObligationsBody";
 
 function periodLabel(from: string, to: string) {
+  if (from.slice(0, 7) === to.slice(0, 7)) return format(new Date(`${from}T00:00:00`), "MMM yyyy");
   const start = format(new Date(`${from}T00:00:00`), "d MMM");
   const end = format(new Date(`${to}T00:00:00`), "d MMM yyyy");
   return `${start} – ${end}`;
@@ -122,31 +124,26 @@ export function TaxObligationsWidget({
     gst: gstCycle === "not_registered" ? 0 : run ? (run.statementNet ?? netGstAmount(run)) : null, payg: runPayg, paygRegistered,
     instalment: latestInstalment ? { amount: latestInstalment.amount, due: basDueDate("quarter", latestInstalment.periodEnd) } : null,
   });
-  const day = (d: string) => format(new Date(`${d}T00:00:00`), "d MMM");
   const accountGap = run && run.closingBalance !== null && run.statementNet !== null ? Math.round((run.closingBalance - run.statementNet) * 100) / 100 : null;
   const busy = gstQuery.isLoading || paygQuery.isLoading || instalmentsQuery.isLoading || runGstQuery.isLoading;
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
-      <DashboardCardHeader label={tenantName} title="Tax obligations" icon={<Calculator className="h-4 w-4"/>} description="What still has to be paid to the ATO" source={paygQuery.data?.source} isFetching={gstQuery.isFetching || paygQuery.isFetching || runGstQuery.isFetching} actions={instalmentsQuery.data?.canEdit && !editing ? <Button variant="outline" size="sm" onClick={() => setEditing(true)}><Pencil className="h-4 w-4"/> Add instalment</Button> : undefined}/>
+      <DashboardCardHeader label={tenantName} title="Tax obligations" icon={<Calculator className="h-4 w-4"/>} description="What still has to be paid to the ATO" source={paygQuery.data?.source} isFetching={gstQuery.isFetching || paygQuery.isFetching || runGstQuery.isFetching}/>
       {billsQuery.isError && <p className="mt-2 text-xs text-muted-foreground">Lodged bill status unavailable</p>}
       {busy ? (
         <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>
       ) : (
-        <div className="mt-2 space-y-2 text-sm">
-          {fwd.owing.map((o, i) => (
-            <p key={`${o.reference}:${o.due}:${i}`} className={o.overdue ? "font-medium text-destructive" : "font-medium"}>
-              Lodged and still owing: {money(o.amount)}{o.reference ? ` · ${o.reference}` : ""} · {o.overdue ? `overdue since ${day(o.due)}` : `due ${day(o.due)}`}
-            </p>
-          ))}
-          <p>
-            Building now ({runPeriod.kind === "quarter" ? `quarter ${day(fwd.building.from)} – ${day(fwd.building.to)}` : `${format(new Date(`${fwd.building.from}T00:00:00`), "MMMM")} so far`}):{" "}
-            GST {fwd.building.gst === null ? "unavailable" : `~${money(fwd.building.gst)}`}
-            {paygRegistered && <> · PAYG withholding {fwd.building.payg === null ? "unavailable" : `~${money(fwd.building.payg)}`}</>}
-            {fwd.building.total !== null && <> · total ~{money(fwd.building.total)}</>} · due {day(fwd.building.due)}
-          </p>
-          <p>Income tax instalment: {fwd.instalment ? `${money(fwd.instalment.amount)} · due ${day(fwd.instalment.due)}` : "Not entered — add instalment"}</p>
-          <p className="font-semibold">Total to plan for: {fwd.totalToPlan === null ? "unavailable" : `~${money(fwd.totalToPlan)}`}</p>
+        <TaxObligationsBody
+          forward={fwd}
+          money={money}
+          paygRegistered={paygRegistered}
+          buildingLabel={runPeriod.kind === "quarter"
+            ? `${format(new Date(`${fwd.building.from}T00:00:00`), "MMM")}–${format(new Date(`${fwd.building.to}T00:00:00`), "MMM yyyy")}`
+            : format(new Date(`${fwd.building.from}T00:00:00`), "MMMM")}
+          partPaid={(billsQuery.data?.bills ?? []).map((bill) => bill.total !== undefined && bill.total > bill.amount + 0.005)}
+          addInstalment={instalmentsQuery.data?.canEdit && !editing ? () => setEditing(true) : undefined}
+          details={<>
           {run?.unfiled?.status === "estimate" && run.unfiled.sales - run.unfiled.purchases !== 0 && (
             <p className="text-xs text-muted-foreground">GST includes an estimated {money(run.unfiled.sales - run.unfiled.purchases)} of unfiled amounts from earlier periods.</p>
           )}
@@ -157,7 +154,8 @@ export function TaxObligationsWidget({
             Last lodged period: {gst ? `${periodLabel(gst.periodFrom, gst.periodTo)} · GST ${money(netGstAmount(gst))}` : "GST unavailable"}
             {payg ? ` · PAYG ${money(payg.amount)} (${format(new Date(`${payg.month}T00:00:00`), "MMM yyyy")})` : ""}
           </p>
-        </div>
+          </>}
+        />
       )}
 
       {editing && (

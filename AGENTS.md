@@ -28,9 +28,9 @@
 - Catalogue modules stay ordered; only Tax & compliance ignores saved order/disables dragging to preserve its pair. Layout grants no access; writes use `assert_card_manager`.
 - Loans/Consolidations access is only `me_can_open_client_loans`/`me_can_open_consolidations`, called by readers, card and menu, so the rule exists once.
 - Report sections come from `card_catalogue.report_sections` via `client_report_sections`, frozen into new drafts' `includedSections`: one list, final/sent untouched.
-- Subdirectories have their own `AGENTS.md`; read it before changing files there.
+- Read nested `AGENTS.md` before edits.
 - WIP early access (`org_early_access`) resolves only inside `client_cards_v2` for active org members, keeping one visibility path.
 
 - Period video uses separate storage, caller-scoped audited RPCs and a draft-only attachment trigger; the unchanged notes builder preserves generation snapshots.
 - Health uses the DB visibility/release rule; tax bill labels share `lodgedAtoBills` through a stored-only, card-gated reader (no access grant).
-- Module order is `card_modules.sort_order`; never hard-code module lists.
+- Modules use `card_modules.sort_order`. Tax tiles use pure `TaxObligationsBody` with unchanged shared figures.

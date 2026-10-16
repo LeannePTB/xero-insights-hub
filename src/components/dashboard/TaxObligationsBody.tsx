@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import type { ForwardTax } from "./tax-obligations";
 
 /** Presentation only: all amounts and deadlines come from the shared summary. */
-export function TaxObligationsBody({ forward, buildingLabel, money, partPaid, addInstalment, details }: {
+export function TaxObligationsBody({ forward, buildingLabel, money, partPaid, paygRegistered, addInstalment, details }: {
   forward: ForwardTax;
   buildingLabel: string;
   money: (amount: number) => string;
   partPaid: readonly boolean[];
+  paygRegistered: boolean;
   addInstalment?: () => void;
   details: ReactNode;
 }) {
@@ -36,7 +37,7 @@ export function TaxObligationsBody({ forward, buildingLabel, money, partPaid, ad
         <p className="mt-1 text-xs">due {day(forward.building.due)}</p>
         <div className="mt-2 space-y-1 text-xs text-muted-foreground">
           <p>GST {estimate(forward.building.gst)}</p>
-          {forward.building.payg !== null && <p>PAYG {estimate(forward.building.payg)}</p>}
+          {paygRegistered && <p>PAYG {estimate(forward.building.payg)}</p>}
         </div>
       </section>
       <section aria-label="Income tax instalment" className="flex min-w-0 flex-col rounded-md border border-border bg-background p-4">
