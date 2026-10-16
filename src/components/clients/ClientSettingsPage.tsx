@@ -72,11 +72,6 @@ import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 import { XeroSyncStatusCard } from "@/components/clients/XeroSyncStatusCard";
 import { CostClassificationPanel } from "@/components/dashboard/CostClassificationPanel";
 import { getClientWidgets } from "@/lib/tier-config.functions";
-import {
-  getTrueBreakevenInputs,
-  upsertTrueBreakevenInputs,
-} from "@/lib/true-breakeven.functions";
-import { COMMITMENT_FIELDS } from "@/components/dashboard/true-breakeven-figures";
 // import { SubscriptionPanel } from "@/components/billing/SubscriptionPanel";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -84,7 +79,7 @@ import {
   setCostClassificationEnabled,
 } from "@/lib/cost-classification.functions";
 
-export type ClientSettingsSection = "general" | "cards" | "people" | "xero" | "tax-reporting" | "banks" | "cost-classification" | "costs" | "danger";
+export type ClientSettingsSection = "general" | "cards" | "people" | "xero" | "tax-reporting" | "banks" | "cost-classification" | "danger";
 const ActiveSettingsSection = createContext<ClientSettingsSection>("general");
 
 export function ClientSettingsPage({ clientId, section }: { clientId: string; section: ClientSettingsSection }) {
@@ -747,9 +742,6 @@ export function ClientSettingsPage({ clientId, section }: { clientId: string; se
           setClassEnabled={setClassEnabled}
         />
 
-        {/* Loan repayments, tax and drawings — shown inside the Break-Even card */}
-        <CashCommitmentsSection clientId={clientId} linkedOrgs={linkedOrgs} />
-
         <Section title="Danger zone">
           <Button
             variant="destructive"
@@ -787,7 +779,6 @@ const SETTINGS_SECTION_BY_TITLE: Record<string, ClientSettingsSection> = {
   "How this client codes GST, PAYG and super": "tax-reporting",
   "Bank accounts & credit cards": "banks",
   "Cost classification": "cost-classification",
-  "What you really need to bring in": "costs",
   "Danger zone": "danger",
 };
 
@@ -1221,152 +1212,6 @@ function LodgementCyclesSection({
         </p>
       </div>
     </div>
-  );
-}
-
-/**
- * Loan repayments, tax set aside and drawings — the monthly money that leaves
- * the bank without appearing in the profit and loss. Shown as a section inside
- * the Break-Even card (card key `true_breakeven`), never as a card of its own,
- * so this editor only appears where that section is enabled.
- */
-function CashCommitmentsSection({
-  clientId,
-  linkedOrgs,
-}: {
-  clientId: string;
-  linkedOrgs: any[];
-}) {
-  const qc = useQueryClient();
-  const tenantId: string | undefined = linkedOrgs[0]?.xero_connections?.tenant_id;
-  const fetchWidgets = useServerFn(getClientWidgets);
-  const widgetsQ = useQuery({
-    queryKey: ["client-widgets", clientId, "cash-commitments"],
-    queryFn: () => fetchWidgets({ data: { clientId } }),
-  });
-  const allowed = new Set((widgetsQ.data?.widgets ?? []) as string[]);
-
-  const fetchInputs = useServerFn(getTrueBreakevenInputs);
-  const saveInputs = useServerFn(upsertTrueBreakevenInputs);
-  const inputsQ = useQuery({
-    queryKey: ["true-breakeven-inputs", clientId, tenantId],
-    queryFn: () => fetchInputs({ data: { clientId, tenantId: tenantId! } }),
-    enabled: !!tenantId,
-  });
-
-  const [draft, setDraft] = useState<Record<string, string> | null>(null);
-  const values =
-    draft ??
-    Object.fromEntries(
-      COMMITMENT_FIELDS.map((f) => {
-        const v = inputsQ.data?.[f.key];
-        return [f.key, v === null || v === undefined || v === 0 ? "" : String(v)];
-      }),
-    );
-
-  const saveMut = useMutation({
-    mutationFn: () =>
-      saveInputs({
-        data: {
-          clientId,
-          tenantId: tenantId!,
-          inputs: Object.fromEntries(
-            COMMITMENT_FIELDS.map((f) => {
-              const raw = (values[f.key] ?? "").trim();
-              if (f.key === "tax_payments") return [f.key, raw === "" ? null : Number(raw) || 0];
-              return [f.key, raw === "" ? 0 : Number(raw) || 0];
-            }),
-          ) as any,
-        },
-      }),
-    onSuccess: () => {
-      toast.success("Saved");
-      setDraft(null);
-      qc.invalidateQueries({ queryKey: ["true-breakeven-inputs", clientId, tenantId] });
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const activeSection = useContext(ActiveSettingsSection);
-  if (!allowed.has("true_breakeven")) {
-    // The tab must never be blank: explain what lives here and why it is empty.
-    if (activeSection !== "costs" || widgetsQ.isLoading) return null;
-    return (
-      <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-        <h2 className="mb-2 font-display text-lg font-semibold">Cost &amp; cash commitments</h2>
-        <p className="text-sm text-muted-foreground">
-          Nothing to set here yet. This page holds the monthly cash commitments — loan repayments,
-          tax set aside, drawings — that the Break-Even card adds to the profit-and-loss costs.
-          It opens once the Break-Even card is part of this client's package.
-        </p>
-      </section>
-    );
-  }
-
-  const total = COMMITMENT_FIELDS.reduce((a, f) => a + (Number(values[f.key]) || 0), 0);
-
-  return (
-    <Section
-      title="What you really need to bring in"
-      id="cash-commitments"
-      collapsible
-      storageKey={sectionStorageKey("client-settings", "Cash commitments")}
-    >
-      <p className="mb-4 text-sm text-muted-foreground">
-        Break-even only covers the costs in the profit and loss. Enter the money that leaves the bank
-        each month without ever appearing as an expense, and the Break-Even card will also show the
-        revenue needed to cover the lot. Monthly amounts. Leave a line blank if it does not apply.
-      </p>
-      {!tenantId ? (
-        <p className="text-sm text-muted-foreground">
-          Link a Xero organisation to this client first.
-        </p>
-      ) : inputsQ.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {COMMITMENT_FIELDS.map((f) => (
-            <div key={f.key} className="grid gap-1 sm:grid-cols-[1fr_10rem] sm:items-center sm:gap-4">
-              <div>
-                <Label htmlFor={`commit-${f.key}`}>{f.label}</Label>
-                <p className="text-xs text-muted-foreground">{f.hint}</p>
-              </div>
-              <Input
-                id={`commit-${f.key}`}
-                inputMode="decimal"
-                placeholder="0"
-                value={values[f.key] ?? ""}
-                onChange={(e) =>
-                  setDraft({ ...(draft ?? values), [f.key]: e.target.value })
-                }
-                className="text-right font-mono"
-              />
-            </div>
-          ))}
-          <div className="flex items-center justify-between border-t border-border pt-4">
-            <p className="text-sm text-muted-foreground">
-              Total paid out each month that is not an expense:{" "}
-              <span className="font-mono text-foreground">
-                {new Intl.NumberFormat(undefined, {
-                  style: "currency", signDisplay: "negative",
-                  currency: "AUD",
-                  maximumFractionDigits: 0,
-                }).format(total)}
-              </span>
-            </p>
-            <Button
-              onClick={() => saveMut.mutate()}
-              disabled={saveMut.isPending || draft === null}
-            >
-              {saveMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save
-            </Button>
-          </div>
-        </div>
-      )}
-    </Section>
   );
 }
 

@@ -591,3 +591,29 @@ export const getPaygWithholdingPosition = createServerFn({ method: "POST" })
       misfiledAccounts,
     };
   });
+
+/**
+ * Number of stored paydays in two date ranges, for the P&L like-for-like note.
+ * Stored pay runs only (never calls Xero); counts only, no amounts. Authorised
+ * as the P&L card; the tenantId is a filter and the read runs under RLS.
+ */
+export const getPaydayCounts = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((input: { tenantId: string; current: [string, string]; prior: [string, string] }) => {
+    const ok = (s: unknown) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
+    if (typeof input?.tenantId !== "string" || ![...(input.current ?? []), ...(input.prior ?? [])].every(ok)) throw new Error("Invalid request");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { assertWidgetAccess } = await import("./access.server");
+    await assertWidgetAccess(context.supabase, data.tenantId, "pnl");
+    const { readSnapshot } = await import("./snapshot-read.server");
+    const { PAYROLL_PAYRUNS_REPORT_KEY, payRunsInPeriod } = await import("./payroll.server");
+    const hit = await readSnapshot({ supabase: context.supabase, tenantId: data.tenantId, clientId: null, reportKey: PAYROLL_PAYRUNS_REPORT_KEY });
+    const payload = hit?.payload as { status?: string; payRuns?: any[] } | undefined;
+    if (payload?.status !== "available" || !Array.isArray(payload.payRuns)) return { current: null, prior: null };
+    return {
+      current: payRunsInPeriod(payload.payRuns, ...data.current).length,
+      prior: payRunsInPeriod(payload.payRuns, ...data.prior).length,
+    };
+  });

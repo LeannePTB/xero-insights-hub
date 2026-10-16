@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getProfitAndLoss } from "@/lib/xero/reports.functions";
+import { getProfitAndLoss, getPaydayCounts } from "@/lib/xero/reports.functions";
+import { sameDaysPreviousMonth, paydayNote } from "@/lib/pnl-comparison";
 import { Loader2, TrendingUp, TrendingDown, Minus, RefreshCw, LineChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StandardHistoryChart } from '@/components/charts/StandardHistoryChart';
@@ -21,13 +22,6 @@ import { CardFreshness } from "@/components/dashboard/CardFreshness";
 import { useTenantCurrency, formatMoney } from "@/components/dashboard/useTenantCurrency";
 
 
-
-function priorRange(from: Date, to: Date): { from: Date; to: Date } {
-  const ms = to.getTime() - from.getTime();
-  const priorTo = new Date(from.getTime() - 24 * 60 * 60 * 1000);
-  const priorFrom = new Date(priorTo.getTime() - ms);
-  return { from: priorFrom, to: priorTo };
-}
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -55,10 +49,20 @@ export function PnlWidget({
 
   const fromStr = toISO(fromDate);
   const toStr = toISO(toDate);
-  const prior = priorRange(fromDate, toDate);
+  const prior = sameDaysPreviousMonth(fromDate, toDate);
   const priorFromStr = toISO(prior.from);
   const priorToStr = toISO(prior.to);
-  const priorLabel = `${format(prior.from, "d MMM yyyy")} – ${format(prior.to, "d MMM yyyy")}`;
+  const priorLabel = prior.from.getMonth() === prior.to.getMonth()
+    ? `${format(prior.from, "d")}–${format(prior.to, "d MMM yyyy")}`
+    : `${format(prior.from, "d MMM")}–${format(prior.to, "d MMM yyyy")}`;
+  const fetchPaydays = useServerFn(getPaydayCounts);
+  const paydaysQ = useQuery({
+    queryKey: ["pnl-paydays", tenantId, fromStr, toStr, priorFromStr, priorToStr],
+    queryFn: () => fetchPaydays({ data: { tenantId, current: [fromStr, toStr], prior: [priorFromStr, priorToStr] } }),
+    enabled: shouldLoad,
+    staleTime: 30 * 60 * 1000,
+  });
+  const note = paydayNote(paydaysQ.data?.current ?? null, paydaysQ.data?.prior ?? null);
 
   const forceLive = useRef(false);
   const { data, isLoading, isFetching, error, refetch: runQuery } = useQuery({
@@ -101,8 +105,7 @@ export function PnlWidget({
       ) : current ? (
         <>
           <p className="mt-3 text-xs text-muted-foreground">
-            Compared with the same length of time immediately before:{" "}
-            {format(prior.from, "d MMM yyyy")} to {format(prior.to, "d MMM yyyy")}
+            Compared with {priorLabel}
           </p>
           <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Kpi label="Income" value={current.totalIncome} previous={priorData?.totalIncome ?? 0} higherIsBetter currency={currency} priorLabel={priorLabel} />
@@ -111,6 +114,7 @@ export function PnlWidget({
             <Kpi label="Expenses" value={current.totalExpenses} previous={priorData?.totalExpenses ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
             <Kpi label="Net Profit" value={current.netProfit} previous={priorData?.netProfit ?? 0} higherIsBetter currency={currency} priorLabel={priorLabel} />
           </div>
+          {note && <p className="mt-2 text-xs text-muted-foreground">{note}</p>}
         </>
       ) : null}
     </div>
