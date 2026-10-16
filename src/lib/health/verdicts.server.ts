@@ -14,9 +14,10 @@ export async function computeClientVerdicts(supabase: any, clientIdsIn: string[]
     let q = supabase
       .from("xero_snapshots")
       .select(
-        "client_id, tenant_id, report_key, payload, payload_version, as_at, fetched_at, complete",
+        "client_id, tenant_id, report_key, params, payload, payload_version, as_at, fetched_at, complete",
       )
-      .in("report_key", VERDICT_REPORT_KEYS as unknown as string[])
+      // Period-end balance sheets feed the tax "due now vs building" split.
+      .in("report_key", [...(VERDICT_REPORT_KEYS as unknown as string[]), "balance_sheet_prior", "balance_sheet_period_end"])
       .in("client_id", clientIds);
     if (firmId) q = q.eq("firm_id", firmId);
     const { data: rows, error } = await q;
