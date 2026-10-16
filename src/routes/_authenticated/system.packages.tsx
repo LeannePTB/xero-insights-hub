@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ComingSoonAdmin } from "@/components/admin/ComingSoonAdmin";
 import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getCardCatalogue, saveCardComingSoon, saveCardEntry, saveCardModule, saveCardStatus } from "@/lib/card-model.functions";
+import { getCardCatalogue, moveCardModule, saveCardComingSoon, saveCardEntry, saveCardModule, saveCardStatus } from "@/lib/card-model.functions";
 import { PACKAGE_LABEL, type CardPackage, type CatalogueCard, type CatalogueModule } from "@/lib/cards/catalogue";
 
 export const Route = createFileRoute("/_authenticated/system/packages")({
