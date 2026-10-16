@@ -38,13 +38,10 @@ export function PayablesWidget({
     queryKey: ["xero-ap-list", tenantId],
     queryFn: () => staggered(() => fetchList({ data: { tenantId } })),
     ...xeroQueryRetry,
-    // Keep the card genuinely live while the page stays open: re-pull every
-    // few minutes and on refocus, so the freshness line and dot reflect a
-    // recent call rather than the one made when the page first loaded.
-    staleTime: 3 * 60 * 1000,
-    refetchInterval: 3 * 60 * 1000,
-    refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
+    // Figures come from the nightly save (or a manual Refresh); no background
+    // re-pulling, so the card never spins on its own.
+    staleTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const oldest = [...(data?.invoices ?? [])]

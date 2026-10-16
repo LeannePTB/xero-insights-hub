@@ -96,6 +96,7 @@ export const getProfitAndLoss = createServerFn({ method: "POST" })
       toDate?: string;
       widget?: "pnl" | "accounting_breakeven" | "true_breakeven" | "health";
       basis?: "accrual" | "cash";
+      refresh?: boolean;
     }) => input,
   )
   .handler(async ({ data, context }) => {
@@ -109,8 +110,20 @@ export const getProfitAndLoss = createServerFn({ method: "POST" })
     // to Business Health, whose wages marking reads these figures.
     await assertWidgetAccess(context.supabase, data.tenantId, data.widget ?? "pnl");
 
-    const conn = await getConnectionByTenant(data.tenantId);
     const basis = data.basis ?? (await getClientReportBasis(data.tenantId));
+    // Saved figures first: the nightly save stores this month to date and last
+    // month on Xero's default (accrual) basis. An exact parameter match serves
+    // the stored copy; anything else, or an explicit Refresh, goes live.
+    if (basis !== "cash" && !data.refresh && data.fromDate && data.toDate) {
+      const { readSnapshot } = await import("./snapshot-read.server");
+      const params = { fromDate: data.fromDate, toDate: data.toDate, standardLayout: "false" };
+      for (const reportKey of ["profit_and_loss_mtd", "profit_and_loss_prior", "profit_and_loss_ytd"]) {
+        const hit = await readSnapshot({ supabase: context.supabase, tenantId: data.tenantId, reportKey, params });
+        const report = hit?.payload?.Reports?.[0];
+        if (hit && report) return { ...summarisePnl(report), basis, source: hit.source };
+      }
+    }
+    const conn = await getConnectionByTenant(data.tenantId);
     const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {
       fromDate: data.fromDate,
       toDate: data.toDate,
@@ -120,8 +133,6 @@ export const getProfitAndLoss = createServerFn({ method: "POST" })
     const report = res.Reports?.[0];
     if (!report) throw new Error("No P&L report returned by Xero.");
     const { liveSource } = await import("./snapshot-source");
-    // Profit & loss is fetched from Xero on every load; say so with real
-    // provenance rather than letting the card infer it from a query time.
     return { ...summarisePnl(report), basis, source: liveSource("disabled") };
   });
 
