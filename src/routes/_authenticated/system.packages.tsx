@@ -56,7 +56,9 @@ function PackagesPage() {
                   <tr><th className="p-3">Module</th><th className="p-3">Description</th><th className="p-3" /></tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {catalogue.modules.map((m) => <ModuleRow key={m.key} module={m} />)}
+                  {catalogue.modules.map((m, i) => (
+                    <ModuleRow key={m.key} module={m} isFirst={i === 0} isLast={i === catalogue.modules.length - 1} />
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -84,17 +86,35 @@ function PackagesPage() {
   );
 }
 
-function ModuleRow({ module }: { module: CatalogueModule }) {
+function ModuleRow({ module, isFirst, isLast }: { module: CatalogueModule; isFirst: boolean; isLast: boolean }) {
   const qc = useQueryClient();
   const save = useServerFn(saveCardModule);
+  const move = useServerFn(moveCardModule);
   const [label, setLabel] = useState(module.label);
   const [desc, setDesc] = useState(module.description);
   const [busy, setBusy] = useState(false);
   useEffect(() => { setLabel(module.label); setDesc(module.description); }, [module.label, module.description]);
   const dirty = label !== module.label || desc !== module.description;
+  const onMove = async (direction: "up" | "down") => {
+    setBusy(true);
+    try { await move({ data: { moduleKey: module.key, direction } }); await qc.invalidateQueries({ queryKey: KEY }); }
+    catch (e: any) { toast.error(e?.message ?? "Could not move"); } finally { setBusy(false); }
+  };
   return (
     <tr className="align-top">
-      <td className="p-3"><Input value={label} maxLength={60} className="w-44" onChange={(e) => setLabel(e.target.value)} aria-label="Module name" /></td>
+      <td className="p-3">
+        <div className="flex items-center gap-1">
+          <div className="flex flex-col">
+            <Button variant="ghost" size="icon" className="h-5 w-5" disabled={busy || isFirst} onClick={() => onMove("up")} aria-label={`Move ${module.label} up`}>
+              <ArrowUp className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-5 w-5" disabled={busy || isLast} onClick={() => onMove("down")} aria-label={`Move ${module.label} down`}>
+              <ArrowDown className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          <Input value={label} maxLength={60} className="w-44" onChange={(e) => setLabel(e.target.value)} aria-label="Module name" />
+        </div>
+      </td>
       <td className="p-3"><Textarea value={desc} maxLength={300} rows={1} className="min-w-64" onChange={(e) => setDesc(e.target.value)} aria-label={`${module.label} description`} /></td>
       <td className="p-3">
         <Button size="sm" disabled={!dirty || busy || !label.trim()} onClick={async () => {
