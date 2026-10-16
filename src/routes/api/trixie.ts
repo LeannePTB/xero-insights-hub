@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createOpenAI } from "@ai-sdk/openai";
 import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, stepCountIs, streamText, type UIMessage } from "ai";
 import { callerSupabaseFor, resolveTrixieContext } from "@/lib/trixie/trixie-context.server";
-import { autoTitle, threadPathname, threadScopeFor, visibleReply } from "@/lib/trixie/trixie-history";
+import { autoTitle, threadMatchesPage, threadPathname, threadScopeFor, visibleReply } from "@/lib/trixie/trixie-history";
 import { buildTrixieTools, readKnowledge, trixieInstructions } from "@/lib/trixie/trixie-tools.server";
 import { createTrixieRunIdFetch, incomingTrixieRunId, withTrixieRunId } from "@/lib/trixie/trixie-run-id.server";
 import { estimateTrixieCostUsd, maxOutputTokensForGuard } from "@/lib/trixie/trixie-cost";
@@ -60,7 +60,10 @@ export const Route = createFileRoute("/api/trixie")({
             if (typeof body.threadId !== "string" || !UUID.test(body.threadId)) return Response.json({ error: "That chat is no longer available." }, { status: 404 });
             const { data: found } = await (callerSupabaseFor(request) as any).from("trixie_threads").select("id, workspace, firm_id, client_id").eq("id", body.threadId).maybeSingle();
             if (!found) return Response.json({ error: "That chat is no longer available." }, { status: 404 });
-            thread = found;
+            // A chat saved in another workspace is not continued here: the page
+            // the person has open decides the scope, and a new chat is started.
+            if (threadMatchesPage(found, typeof body.pathname === "string" ? body.pathname : "/")) thread = found;
+            else messages = messages.filter((m) => m.role === "user").slice(-1);
           }
           ctx = await resolveTrixieContext(request, thread ? threadPathname(thread) : body.pathname);
           const scope = threadScopeFor(ctx);

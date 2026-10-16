@@ -16,6 +16,7 @@ import { Shimmer } from "@/components/ai-elements/shimmer";
 import { Tool, ToolContent, ToolHeader } from "@/components/ai-elements/tool";
 import { Source, Sources, SourcesContent, SourcesTrigger } from "@/components/ai-elements/sources";
 import { isKnownAppPath } from "@/lib/trixie/trixie-pagemap";
+import { pageScope, threadMatchesPage } from "@/lib/trixie/trixie-history";
 import { trixieSuggestions } from "@/lib/trixie/trixie-suggestions";
 import { TRIXIE_JOBS, type TrixieJobKey } from "@/lib/trixie/trixie-jobs";
 import { useCanManageClient } from "@/hooks/useCanManageClient";
@@ -84,6 +85,13 @@ function sourcesOf(message: UIMessage): Src[] {
 
 const ACTIVE_KEY = "trixie.activeThread";
 
+function threadPathFor(scope: { workspace: string; firm_id: string | null; client_id: string | null }): string {
+  if (scope.workspace === "client" && scope.client_id) return `/clients/${scope.client_id}`;
+  if (scope.workspace === "organisation" && scope.firm_id) return `/firms/${scope.firm_id}`;
+  if (scope.workspace === "system") return "/system";
+  return "/overview";
+}
+
 async function currentUserId(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
   return data.session?.user.id ?? null;
@@ -110,7 +118,9 @@ async function writeActive(id: string | null) {
   }
 }
 
-type Loaded = { key: string; threadId: string | null; messages: UIMessage[] };
+type Loaded = { key: string; threadId: string | null; messages: UIMessage[]; scopeKey: string };
+
+const scopeKeyOf = (pathname: string) => { const s = pageScope(pathname); return `${s.workspace}:${s.clientId ?? s.firmId ?? ""}`; };
 
 export function TrixieWidget() {
   const [open, setOpen] = useState(false);
@@ -118,32 +128,54 @@ export function TrixieWidget() {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const location = useLocation();
   const getThread = useServerFn(getMyTrixieThread);
+  const navigate = useNavigate();
 
-  const openThread = useCallback(async (id: string | null) => {
+  const pathRef = useRef(location.pathname);
+  pathRef.current = location.pathname;
+  const openThread = useCallback(async (id: string | null, onlyIfSamePage = false) => {
+    const scopeKey = scopeKeyOf(pathRef.current);
     if (!id) {
       await writeActive(null);
-      setLoaded({ key: crypto.randomUUID(), threadId: null, messages: [] });
+      setLoaded({ key: crypto.randomUUID(), threadId: null, messages: [], scopeKey });
       return;
     }
     const thread = await getThread({ data: { id } }).catch(() => null);
-    if (!thread) {
+    // The remembered chat is resumed only on a page of its own workspace; on
+    // another client or workspace a fresh chat starts, so the open client is used.
+    if (!thread || (onlyIfSamePage && !threadMatchesPage(thread.scope, pathRef.current))) {
       // Deleted, or the person can no longer read that client: never shown.
       await writeActive(null);
-      setLoaded({ key: crypto.randomUUID(), threadId: null, messages: [] });
+      setLoaded({ key: crypto.randomUUID(), threadId: null, messages: [], scopeKey });
       return;
     }
     await writeActive(thread.id);
+    const home = threadPathFor(thread.scope);
+    // A chat picked from History for another client opens on that client's page.
+    if (!threadMatchesPage(thread.scope, pathRef.current)) void navigate({ to: home });
     setLoaded({
+      scopeKey: scopeKeyOf(home),
       key: thread.id,
       threadId: thread.id,
       messages: thread.messages.map((m: TrixieStoredMessage) => ({ id: m.id, role: m.role, parts: [{ type: "text", text: m.content }], metadata: { sources: m.sources } })),
     });
-  }, [getThread]);
+  }, [getThread, navigate]);
 
   useEffect(() => {
     if (!open || loaded) return;
-    void readActive().then(openThread);
+    void readActive().then((id) => openThread(id, true));
   }, [open, loaded, openThread]);
+
+  // Moving to another client or workspace starts a fresh chat for that page.
+  const currentScopeKey = scopeKeyOf(location.pathname);
+  const prevScopeRef = useRef(currentScopeKey);
+  const loadedRef = useRef(loaded);
+  loadedRef.current = loaded;
+  useEffect(() => {
+    if (prevScopeRef.current === currentScopeKey) return;
+    prevScopeRef.current = currentScopeKey;
+    const l = loadedRef.current;
+    if (l && l.scopeKey !== currentScopeKey) void openThread(null);
+  }, [currentScopeKey, openThread]);
 
   return (
     <>

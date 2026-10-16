@@ -26,7 +26,10 @@ const UNAVAILABLE = "This card isn't available for this client with your access.
 
 function needClient(ctx: TrixieContext) {
   if (ctx.mode === "platform") return "System Admin help is how-to only; client figures are not available here.";
-  if (!ctx.clientId || ctx.tenants.length === 0) return "Open a client dashboard with a connected Xero file before asking about its figures.";
+  if (!ctx.clientId) return ctx.route.clientId
+    ? "I couldn't confirm your access to this client, so I can't read its figures."
+    : "No single client is open here; use the organisation-level tools instead.";
+  if (ctx.tenants.length === 0) return "I can't see a connected Xero file for this client.";
   return null;
 }
 
@@ -63,7 +66,7 @@ async function perFile(
   const files: FileResult[] = [];
   for (const t of targetTenants(ctx)) {
     if (!(await cardAllowed(ctx, t.tenantId, widget))) {
-      files.push({ file: t.name, available: false, reason: UNAVAILABLE } as FileResult);
+      files.push({ file: t.name, available: false, reason: `I can't see this client's ${label.replace(/ \(.*\)$/, "")} card with your access.` } as FileResult);
       continue;
     }
     try {
@@ -371,7 +374,7 @@ export function trixieInstructions(ctx: TrixieContext, preload: { guide: string;
   const scope = ctx.mode === "platform"
     ? "You are in System Admin. Provide how-to help only. Never request or discuss client financial figures."
     : ctx.clientId
-      ? "The person is on one authorised client's pages. Discuss only figures returned by your tools for this client."
+      ? "The person has this authorised client open right now. Discuss only figures returned by your tools for this client. Never ask them to open a client or go to the Live Dashboard — it is already open. If a tool says a card or file isn't available, say exactly that (e.g. \"I can't see this client's Receivables card\")."
       : ctx.audience === "staff"
         ? "The person is on an organisation-level page. For questions across clients (who owes money, overdue amounts, cash, tax due) call practice_overview. When the question names a client, call ask_about_client with that name. When an organisation owner says me/my/we/our, call ask_about_client with no name first; if it reports no own business, answer across all clients with practice_overview. If several clients match a name, ask which one — the options are shown as buttons."
         : "Provide dashboard how-to help.";
