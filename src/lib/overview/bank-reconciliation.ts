@@ -147,6 +147,31 @@ export function bankReconWarning(raw: unknown, anchor: string | null): BankRecon
 export function parseStored(raw: unknown): BankReconciliation | null {
   const r = raw as any;
   if (!r || (r.scope !== "selected" && r.scope !== "all_active") || !Array.isArray(r.accounts)) return null;
-  const ok = r.accounts.every((a: any) => typeof a?.accountId === "string" && typeof a?.name === "string" && (a.reconciledTo === null || /^\d{4}-\d{2}-\d{2}$/.test(a.reconciledTo)));
+  const ok = r.accounts.every(
+    (a: any) =>
+      typeof a?.accountId === "string" &&
+      typeof a?.name === "string" &&
+      (a.reconciledTo === null || /^\d{4}-\d{2}-\d{2}$/.test(a.reconciledTo)) &&
+      (a.unreconciledNet === undefined || a.unreconciledNet === null || typeof a.unreconciledNet === "number"),
+  );
   return ok ? (r as BankReconciliation) : null;
+}
+
+export type StatementPosition = { reconciled: number; unreconciled: number };
+
+/**
+ * Where the bank accounts would stand if everything coded were reconciled:
+ * the ledger cash figure with the unreconciled lines taken back out. This is
+ * the number that should roughly match the bank statement. Display-only
+ * context — it never replaces the ledger figure in any calculation. Null
+ * (no note) when any in-scope account's amount is unknown or the difference
+ * is under a cent.
+ */
+export function statementPosition(r: BankReconciliation | null, ledgerCash: number | null): StatementPosition | null {
+  if (!r || ledgerCash === null || !r.accounts.length) return null;
+  const nets = r.accounts.map((a) => a.unreconciledNet);
+  if (nets.some((n) => n === null || n === undefined)) return null;
+  const unreconciled = (nets as number[]).reduce((s, n) => s + n, 0);
+  if (Math.abs(unreconciled) < 0.01) return null;
+  return { reconciled: ledgerCash - unreconciled, unreconciled };
 }
