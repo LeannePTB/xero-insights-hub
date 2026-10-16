@@ -4,7 +4,7 @@
 
 import { protectedShareOfCash } from "@/lib/health/protected-money-share";
 import { lateSharePct, splitDebtors, taxSetAsideTooltip } from "@/lib/health/health-checks";
-import { PERIOD_END_BS_KEYS } from "@/lib/health/health-checks.server";
+import { PERIOD_END_BS_KEYS, classifiedAccounts } from "@/lib/health/health-checks.server";
 import { bankReconWarning, parseStored, statementPosition } from "./bank-reconciliation";
 import { addDays, addMonths, endOfMonth, startOfFinancialYear, sydneyDate } from "@/lib/sydney-time";
 import { VERDICT_REPORT_KEYS } from "@/lib/health/rule-thresholds";
@@ -140,7 +140,8 @@ export async function loadOverviewContext(sb: Sb, firmId: string | null = null):
     for (const row of (pe.data ?? []) as Row[]) push(ctx.rowsByClient, row.client_id, row);
     for (const row of (undated.data ?? []) as Row[]) {
       if (row.report_key === 'accounts' && Array.isArray(row.payload?.Accounts)) {
-        row.payload = { ...row.payload, Accounts: applyBankClassifications(row.payload.Accounts, (classifications ?? []).filter((r: any) => r.client_id === row.client_id && r.tenant_id === row.tenant_id)) };
+        // One cash-at-bank definition: shared with Business Health and the tax rule.
+        row.payload = { ...row.payload, ...classifiedAccounts(row.payload.Accounts, (classifications ?? []).filter((r: any) => r.client_id === row.client_id && r.tenant_id === row.tenant_id)) };
       }
       push(ctx.rowsByClient, row.client_id, row);
     }
