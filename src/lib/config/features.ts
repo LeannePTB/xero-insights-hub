@@ -1,11 +1,14 @@
 /**
- * Code-level feature flags (presentation and generation only — never an
- * access grant). Flip to true to restore the Business Health card, the
- * client-list health badge and the report health summary; nothing is deleted.
+ * Code-level release settings (presentation and generation only — never an
+ * access grant; entitlement stays `client_can_use_widget('health')`).
+ *
+ * Business Health is shown to practice users (anyone `me_can_manage_client`
+ * returns true for) and stays hidden from client logins and from newly
+ * generated monthly reports until it is released to clients here.
  */
-export const BUSINESS_HEALTH_ENABLED = false;
+export const BUSINESS_HEALTH_RELEASED_TO_CLIENTS = false;
 
-/** Removes the Business Health card key from a visible-card list while hidden. */
-export function withoutHiddenCards<T extends string>(keys: readonly T[]): T[] {
-  return BUSINESS_HEALTH_ENABLED ? [...keys] : keys.filter((k) => k !== "health");
+/** Whether a caller may see the Business Health card for a client. */
+export function canSeeBusinessHealth(isPractice: boolean): boolean {
+  return isPractice || BUSINESS_HEALTH_RELEASED_TO_CLIENTS;
 }

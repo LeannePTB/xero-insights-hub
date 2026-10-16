@@ -11,17 +11,32 @@ const catalogue: CardCatalogue = {
 };
 
 describe('dashboard catalogue ordering', () => {
-  it('groups all saved module permutations once in fixed order without changing saved data', () => {
+  it('groups all saved module permutations once in the incoming order without changing saved data', () => {
+    const GROUP_ORDER = ['standard', 'tax_compliance', 'profit', 'cash_flow', 'bookkeeping_checks', 'rental_properties', 'consolidation'];
     const cards = GROUP_ORDER.flatMap(group => [{ id: `${group}:a`, group }, { id: `${group}:b`, group }]);
     const permutations = (items: string[]): string[][] => items.length === 0 ? [[]] : items.flatMap((item, index) => permutations(items.filter((_, i) => i !== index)).map(rest => [item, ...rest]));
     for (const permutation of permutations([...GROUP_ORDER])) {
       const saved = permutation.flatMap(group => [`${group}:b`, `${group}:a`]);
       const ordered = groupedCardIds(cards, saved);
       const headings = ordered.map(id => cards.find(c => c.id === id)?.group).filter((group, i, all) => i === 0 || group !== all[i - 1]);
-      expect(headings).toEqual(['standard', 'cash_flow', 'profit', 'tax_compliance', 'bookkeeping_checks', 'rental_properties', 'consolidation']);
+      expect(headings).toEqual(GROUP_ORDER);
       expect(ordered).toEqual(GROUP_ORDER.flatMap(group => [`${group}:b`, `${group}:a`]));
       expect(saved).toEqual(permutation.flatMap(group => [`${group}:b`, `${group}:a`]));
     }
+  });
+  it('orders Advisory module sections by card_modules.sort_order (catalogue order)', () => {
+    const mods = (keys: string[]) => keys.map(key => ({ key, label: key, description: '' }));
+    const cards = [
+      { key: 'cashflow', package: 'advisory' as const, module: 'cash_flow', label: '', description: '' },
+      { key: 'accounting_breakeven', package: 'advisory' as const, module: 'profit', label: '', description: '' },
+      { key: 'tax_obligations', package: 'advisory' as const, module: 'tax_compliance', label: '', description: '' },
+    ];
+    const order = (keys: string[]) => {
+      const cat: CardCatalogue = { modules: mods(keys), cards };
+      return cards.map(c => c.key).sort((a, b) => dashboardCardMeta(a, cat).groupRank - dashboardCardMeta(b, cat).groupRank).map(k => dashboardCardMeta(k, cat).group);
+    };
+    expect(order(['tax_compliance', 'profit', 'cash_flow'])).toEqual(['tax_compliance', 'profit', 'cash_flow']);
+    expect(order(['cash_flow', 'tax_compliance', 'profit'])).toEqual(['cash_flow', 'tax_compliance', 'profit']);
   });
   it('refuses cross-module dragging but accepts within-module dragging', () => {
     const cards = [{ id: 'health', group: 'standard' }, { id: 'notes', group: 'standard' }, { id: 'cashflow', group: 'cash_flow' }];

@@ -5,6 +5,8 @@
 // client-list badge and the monthly report, so the three can never disagree.
 // The loader that gathers the stored figures is `health-checks.server.ts`.
 
+import { looksLikeAtoContact } from "@/lib/xero/ato-payables";
+
 export type CheckStatus = "green" | "watch" | "red" | "na";
 export type CheckKey = "profit" | "cash_cover" | "paying_on_time";
 
@@ -277,6 +279,36 @@ function nextPeriodEndAfter(cycle: Cycle, periodEnd: string): string {
   return new Date(Date.UTC(y, m + step, 0)).toISOString().slice(0, 10);
 }
 
+/** An open, unpaid bill to the ATO for a lodged activity statement. */
+export type LodgedAtoBill = { due: string; amount: number; reference: string; contact: string };
+
+const ACTIVITY_STATEMENT = /\b(bas|ias|activity\s+statements?)\b/i;
+
+/**
+ * Lodged activity statements still owing: open bills (AmountDue > 0) to the
+ * Australian Taxation Office whose reference, number or line text names a
+ * BAS / IAS / activity statement. Source: the `invoices_accpay_open` snapshot.
+ */
+export function lodgedAtoBills(payload: any): LodgedAtoBill[] {
+  const invoices = Array.isArray(payload) ? payload : Array.isArray(payload?.Invoices) ? payload.Invoices : [];
+  const out: LodgedAtoBill[] = [];
+  for (const inv of invoices) {
+    const amount = Number(inv?.AmountDue ?? 0);
+    if (!(amount > 0)) continue;
+    if (inv?.Type && inv.Type !== "ACCPAY") continue;
+    if (inv?.Status && !["AUTHORISED", "SUBMITTED"].includes(String(inv.Status))) continue;
+    const contact = String(inv?.Contact?.Name ?? "");
+    if (!looksLikeAtoContact(contact)) continue;
+    const lines = Array.isArray(inv?.LineItems) ? inv.LineItems.map((l: any) => String(l?.Description ?? "")) : [];
+    const text = [inv?.Reference, inv?.InvoiceNumber, ...lines].filter(Boolean).join(" ");
+    if (!ACTIVITY_STATEMENT.test(text)) continue;
+    const due = xeroDateISO(inv?.DueDateString) ?? xeroDateISO(inv?.DueDate);
+    if (!due) continue;
+    out.push({ due, amount, reference: String(inv?.Reference || inv?.InvoiceNumber || ""), contact });
+  }
+  return out.sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : 0));
+}
+
 export type NextTaxPayment = {
   due: string;
   /** Due now for the completed period; null when nothing is known to be due yet. */
@@ -289,6 +321,8 @@ export type NextTaxPayment = {
   estimate: boolean;
   /** Other completed-period payments due on a later date (e.g. quarterly GST after monthly PAYG). */
   later: { due: string; amount: number }[];
+  /** Where "due next" came from: a lodged ATO bill, or the period-end balance sheet. */
+  source?: "lodged_bill" | "balance_sheet";
 };
 
 /**
@@ -304,7 +338,30 @@ export function nextTaxPayment(i: {
   today: string;
   current: TaxBalances | null;
   periodEnd: (date: string) => TaxBalances | null;
+  /** Lodged, unpaid ATO activity-statement bills (see `lodgedAtoBills`). */
+  lodged?: LodgedAtoBill[] | null;
 }): NextTaxPayment | null {
+  const registered = (c: Cycle) => c === "monthly" || c === "quarterly";
+  if (i.lodged && i.lodged.length && (registered(i.gstCycle) || registered(i.paygCycle))) {
+    // Lodging moved the completed period off the GST / PAYG accounts, so the
+    // bill is due next and the whole current balance is still building.
+    const first = i.lodged[0]!.due;
+    const amount = i.lodged.filter((b) => b.due === first).reduce((s, b) => s + b.amount, 0);
+    const laterMap = new Map<string, number>();
+    for (const b of i.lodged) if (b.due !== first) laterMap.set(b.due, (laterMap.get(b.due) ?? 0) + b.amount);
+    const building =
+      (registered(i.gstCycle) ? Math.max(0, i.current?.gst ?? 0) : 0) +
+      (registered(i.paygCycle) ? Math.max(0, i.current?.payg ?? 0) : 0);
+    return {
+      due: first,
+      amount,
+      building,
+      periodEnd: null,
+      estimate: false,
+      later: [...laterMap].map(([due, amount]) => ({ due, amount })),
+      source: "lodged_bill",
+    };
+  }
   type Item = { due: string; amount: number | null; building: number; periodEnd: string | null; estimate: boolean };
   const items: Item[] = [];
   for (const [comp, cycle] of [["gst", i.gstCycle], ["payg", i.paygCycle]] as const) {
@@ -336,6 +393,7 @@ export function nextTaxPayment(i: {
     periodEnd: now.find((x) => x.periodEnd)?.periodEnd ?? null,
     estimate: now.some((x) => x.estimate),
     later,
+    source: "balance_sheet",
   };
 }
 
@@ -394,6 +452,9 @@ export function taxPaymentAlert(i: {
   pastDueOwing: number;
 }): TaxAlert {
   if (i.pastDueOwing > 0) return { level: "action", reason: "past_due", daysToDue: null };
+  // A lodged ATO bill past its due date and still unpaid is overdue tax.
+  if (i.next?.source === "lodged_bill" && i.next.amount && i.next.due < i.today)
+    return { level: "action", reason: "past_due", daysToDue: daysUntil(i.today, i.next.due) };
   if (!i.next || i.next.amount === null) return { level: null, reason: null, daysToDue: null };
   const days = daysUntil(i.today, i.next.due);
   if (days < 0 || days > TAX_DUE_SOON_DAYS) return { level: null, reason: null, daysToDue: days };

@@ -1,4 +1,4 @@
-import { BUSINESS_HEALTH_ENABLED } from "@/lib/config/features";
+
 /**
  * Card catalogue shapes and pure helpers. The catalogue itself lives in the
  * database (public.card_catalogue / public.card_modules); nothing here decides
@@ -96,7 +96,7 @@ export function mapCatalogue(modules: any[] | null, cards: any[] | null): CardCa
   return {
     modules: (modules ?? []).map((m) => ({ key: m.module_key, label: m.label, description: m.description ?? "" })),
     // Retired cards are kept in the database for the record and never shown.
-    cards: (cards ?? []).filter((c) => c.status !== "retired" && (BUSINESS_HEALTH_ENABLED || c.card_key !== "health")).map((c) => ({
+    cards: (cards ?? []).filter((c) => c.status !== "retired").map((c) => ({
       key: c.card_key,
       package: c.package as CardPackage,
       module: (c.module_key as string | null) ?? null,

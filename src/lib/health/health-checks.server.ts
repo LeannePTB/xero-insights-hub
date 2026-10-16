@@ -12,7 +12,7 @@ import { computeHealthChecks, monthlyCosts, normaliseName, type HealthChecks } f
 import type { SnapshotSource } from "@/lib/xero/snapshot-source";
 import { analyseBalanceSheet, countsTowardProtected, type StatutoryOverrides } from "@/lib/xero/tax-lines";
 import { applyBankClassifications, type BankClassificationRow } from "@/lib/xero/bank-classifications";
-import { nextTaxPayment, type TaxBalances } from "./health-checks";
+import { lodgedAtoBills, nextTaxPayment, type TaxBalances } from "./health-checks";
 
 /**
  * GST and PAYG withholding owed on one balance sheet, for the cycles the client
@@ -77,7 +77,7 @@ export function classifiedAccounts(accounts: any[] | null | undefined, bankRows:
 }
 
 export const MONTHLY_PNL_KEY = "profit_and_loss_monthly_last3";
-const LATEST_KEYS = ["profit_and_loss_ytd", "balance_sheet", "invoices_accrec_open", "accounts", MONTHLY_PNL_KEY];
+const LATEST_KEYS = ["profit_and_loss_ytd", "balance_sheet", "invoices_accrec_open", "invoices_accpay_open", "accounts", MONTHLY_PNL_KEY];
 /** Period-end rows are closed periods: read regardless of age. */
 const PERIOD_END_MAX_AGE_DAYS = 200;
 /** Ignore stored rows older than this: a week-old balance is not "the" balance. */
@@ -138,6 +138,8 @@ export async function loadHealthChecks(
     const ytd = use(pick("profit_and_loss_ytd"));
     const bs = use(pick("balance_sheet"));
     const inv = use(pick("invoices_accrec_open"));
+    // Payables are only read for lodged ATO bills; not part of the freshness line.
+    const ap = pick("invoices_accpay_open");
     const acc = use(pick("accounts"));
     const accounts: any[] | null = Array.isArray(acc?.payload?.Accounts) ? acc.payload.Accounts : null;
 
@@ -182,6 +184,7 @@ export async function loadHealthChecks(
         today,
         current: analysis.taxLines.status === "assessed" ? taxBalancesFromLines(analysis.taxLines.lines, gstCycle, paygCycle) : analysis.taxLines.status === "absent" ? { gst: 0, payg: 0 } : null,
         periodEnd: periodEndTaxLookup(periodRows, accs, overrides, gstCycle, paygCycle),
+        lodged: ap ? lodgedAtoBills(ap.payload) : null,
       });
     }
 

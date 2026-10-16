@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cashCoverStatus,
+  lodgedAtoBills,
   nextTaxPayment,
   nextTaxText,
   lastPeriodEnd,
@@ -190,5 +191,28 @@ describe("Next tax payment: due now vs still building", () => {
     const n = nextTaxPayment({ gstCycle: "monthly", paygCycle: "monthly", today: "2026-10-16", current: cur,
       periodEnd: () => ({ gst: 1_000, payg: 500 }) })!;
     expect(taxPaymentAlert({ next: n, today: "2026-10-16", cashAtBank: 2_000, recentDebtors: 0, pastDueOwing: 0 }).level).toBe(null);
+  });
+});
+
+describe("lodged ATO activity-statement bills", () => {
+  const bill = (o: any = {}) => ({ Type: "ACCPAY", Status: "AUTHORISED", Contact: { Name: "Australian Taxation Office" }, Reference: "Sept BAS", AmountDue: 4742, DueDateString: "2026-10-21T00:00:00", LineItems: [], ...o });
+  it("matches open ATO bills naming a BAS and ignores others", () => {
+    const got = lodgedAtoBills({ Invoices: [bill(), bill({ Contact: { Name: "Telstra" } }), bill({ Reference: "Income tax" }), bill({ AmountDue: 0 })] });
+    expect(got).toEqual([{ due: "2026-10-21", amount: 4742, reference: "Sept BAS", contact: "Australian Taxation Office" }]);
+  });
+  it("due next is the lodged bill; the whole current GST + PAYG balance is building", () => {
+    const next = nextTaxPayment({ gstCycle: "monthly", paygCycle: "monthly", today: "2026-10-16", current: { gst: 4983, payg: 1871 }, periodEnd: () => ({ gst: 5493, payg: 2437 }), lodged: lodgedAtoBills([bill()]) })!;
+    expect(next.amount).toBe(4742);
+    expect(next.due).toBe("2026-10-21");
+    expect(next.building).toBe(6854);
+    expect(next.source).toBe("lodged_bill");
+  });
+  it("falls back to the period-end balance method with no lodged bill", () => {
+    const next = nextTaxPayment({ gstCycle: "monthly", paygCycle: "monthly", today: "2026-10-16", current: { gst: 4983, payg: 1871 }, periodEnd: () => ({ gst: 5493, payg: 2437 }), lodged: [] })!;
+    expect(next.source).toBe("balance_sheet");
+  });
+  it("an unpaid lodged bill past its due date is Action", () => {
+    const next = nextTaxPayment({ gstCycle: "monthly", paygCycle: "monthly", today: "2026-10-25", current: { gst: 0, payg: 0 }, periodEnd: () => null, lodged: lodgedAtoBills([bill()]) });
+    expect(taxPaymentAlert({ next, today: "2026-10-25", cashAtBank: 100000, recentDebtors: 0, pastDueOwing: 0 }).level).toBe("action");
   });
 });

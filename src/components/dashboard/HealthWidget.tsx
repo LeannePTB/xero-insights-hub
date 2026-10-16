@@ -6,6 +6,7 @@ import { XeroErrorNotice } from "./XeroLoadState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getHealthChecks } from "@/lib/health.functions";
 import { STATUS_LABEL, type CheckStatus } from "@/lib/health/health-checks";
+import { BUSINESS_HEALTH_RELEASED_TO_CLIENTS } from "@/lib/config/features";
 
 type Props = {
   tenantId?: string;
@@ -62,6 +63,12 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
         </div>
       )}
       {!!q.error && !q.data && <XeroErrorNotice error={q.error} onRetry={() => q.refetch()} isRetrying={q.isFetching} />}
+
+      {!BUSINESS_HEALTH_RELEASED_TO_CLIENTS && (
+        <p className="mt-2 inline-flex rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+          Practice only — not visible to clients
+        </p>
+      )}
 
       {q.data && (
         <>

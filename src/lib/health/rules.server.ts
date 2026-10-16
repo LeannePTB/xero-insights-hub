@@ -16,6 +16,7 @@ import {
 } from "@/lib/xero/tax-lines";
 import {
   analyseAtoPayables,
+  looksLikeAtoContact,
   billsFromPayload,
   buildProtectedMoneySplit,
   type AtoPayablesAnalysis,
@@ -27,6 +28,7 @@ import {
   debtorAlert,
   lateSharePct,
   nextTaxPayment,
+  lodgedAtoBills,
   oldDebtsText,
   splitDebtors,
   taxPaymentAlert,
@@ -217,6 +219,9 @@ export function pastDueTaxBills(payload: any, statutoryAccountIds: string[], tod
     if (!(due > 0)) continue;
     const dueIso = xeroDateISO(inv?.DueDateString) ?? xeroDateISO(inv?.DueDate);
     if (!dueIso || dueIso >= today) continue;
+    // Only bills to the ATO are tax debts: a supplier bill with a notional-GST
+    // line (e.g. second-hand stock purchases) is not owed to the ATO.
+    if (!looksLikeAtoContact(inv?.Contact?.Name)) continue;
     const lines = Array.isArray(inv?.LineItems) ? inv.LineItems : [];
     if (lines.some((li: any) => typeof li?.AccountID === "string" && ids.has(li.AccountID))) owing += due;
   }
@@ -328,6 +333,7 @@ export function ruleProtectedMoneyVsCash(
     today: tax.today,
     current: taxBalancesFromLines(analysed.taxLines.lines, tax.gstCycle ?? null, tax.paygCycle ?? null),
     periodEnd: tax.periodEnd ?? (() => null),
+    lodged: payables ? lodgedAtoBills(payables.payload) : null,
   });
   const pastDue = payables ? pastDueTaxBills(payables.payload, statutoryAccountIds, tax.today) : 0;
   const alert = taxPaymentAlert({ next: nextTax, today: tax.today, cashAtBank: cashAmount, recentDebtors: tax.recentDebtors, pastDueOwing: pastDue });
@@ -352,13 +358,16 @@ export function ruleProtectedMoneyVsCash(
   let detail: string;
   if (alert.reason === "past_due") {
     title = "A tax payment is past its due date";
-    detail = `${money(pastDue)} of bills coded to tax accounts is past its due date and still owing, against ${money(cashAmount)} cash at bank.`;
+    const owing = pastDue > 0 ? pastDue : nextTax?.amount ?? 0;
+    detail = pastDue > 0
+      ? `${money(owing)} of bills coded to tax accounts is past its due date and still owing, against ${money(cashAmount)} cash at bank.`
+      : `A lodged activity statement of ${money(owing)} was due ${dayLabel(nextTax!.due)} and is still unpaid, against ${money(cashAmount)} cash at bank.`;
   } else if (alert.reason === "due_soon_over_available") {
     title = "Tax due now is more than cash and recent debtors";
-    detail = `About ${money(nextTax!.amount!)} of GST and PAYG withholding for the period ended ${nextTax!.periodEnd ?? "last period"} is due ${when}${nextTax!.estimate ? " (estimate, full balance)" : ""}, against ${money(cashAmount)} cash at bank and ${money(tax.recentDebtors)} of recent debtors.`;
+    detail = `About ${money(nextTax!.amount!)} ${nextTax!.source === "lodged_bill" ? "on the lodged activity statement" : `of GST and PAYG withholding for the period ended ${nextTax!.periodEnd ?? "last period"}`} is due ${when}${nextTax!.estimate ? " (estimate, full balance)" : ""}, against ${money(cashAmount)} cash at bank and ${money(tax.recentDebtors)} of recent debtors.`;
   } else {
     title = "Tax due now is more than cash at bank";
-    detail = `About ${money(nextTax!.amount!)} of GST and PAYG withholding for the period ended ${nextTax!.periodEnd ?? "last period"} is due ${when}${nextTax!.estimate ? " (estimate, full balance)" : ""}, against ${money(cashAmount)} cash at bank. Recent debtors of ${money(tax.recentDebtors)} would cover it once collected.`;
+    detail = `About ${money(nextTax!.amount!)} ${nextTax!.source === "lodged_bill" ? "on the lodged activity statement" : `of GST and PAYG withholding for the period ended ${nextTax!.periodEnd ?? "last period"}`} is due ${when}${nextTax!.estimate ? " (estimate, full balance)" : ""}, against ${money(cashAmount)} cash at bank. Recent debtors of ${money(tax.recentDebtors)} would cover it once collected.`;
   }
 
   return {

@@ -32,4 +32,5 @@
 - WIP early access (`org_early_access`) resolves only inside `client_cards_v2` for active org members, keeping one visibility path.
 
 - Period video uses separate storage, caller-scoped audited RPCs and a draft-only attachment trigger; the unchanged notes builder preserves generation snapshots.
-- Business Health is one pure builder (`src/lib/health/health-checks.ts`) fed by one stored-data loader (`health-checks.server.ts`) for card, list badge and report, so the three never disagree and opening them costs no Xero calls.
+- Business Health is practice-only (`me_can_manage_client`, server-rechecked) until `BUSINESS_HEALTH_RELEASED_TO_CLIENTS`; never an access grant.
+- Module order is `card_modules.sort_order`; never hard-code module lists.

@@ -1,4 +1,4 @@
-import { BUSINESS_HEALTH_ENABLED } from "@/lib/config/features";
+
 import { useCanManageClient } from "@/hooks/useCanManageClient";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { createContext, useContext, useEffect, useState } from "react";
@@ -869,7 +869,7 @@ function CostClassificationSection({
     allowed.has("accounting_breakeven") ||
     allowed.has("true_breakeven") ||
     allowed.has("cashflow_scenario");
-  const usesWages = BUSINESS_HEALTH_ENABLED && allowed.has("health");
+  const usesWages = allowed.has("health");
   const enabledQ = useQuery({
     queryKey: ["cost-classification-enabled", clientId],
     queryFn: () => fetchClassifications({ data: { clientId, tenantId: firstTenantId ?? "" } }),
