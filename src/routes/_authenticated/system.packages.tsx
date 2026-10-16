@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getCardCatalogue, moveCardModule, saveCardComingSoon, saveCardEntry, saveCardModule, saveCardStatus } from "@/lib/card-model.functions";
+import { getCardCatalogue, moveCardModule, saveCardComingSoon, saveCardEntry, saveCardLabel, saveCardModule, saveCardStatus } from "@/lib/card-model.functions";
 import { Switch } from "@/components/ui/switch";
 import { adminGetBusinessHealthRelease, adminSetBusinessHealthRelease } from "@/lib/admin.functions";
 import { PACKAGE_LABEL, type CardPackage, type CatalogueCard, type CatalogueModule } from "@/lib/cards/catalogue";
@@ -219,16 +219,21 @@ function StatusSelect({ card }: { card: CatalogueCard }) {
 function CardRow({ card, modules }: { card: CatalogueCard; modules: CatalogueModule[] }) {
   const qc = useQueryClient();
   const save = useServerFn(saveCardEntry);
+  const saveLabel = useServerFn(saveCardLabel);
+  const [name, setName] = useState(card.label);
+  useEffect(() => { setName(card.label); }, [card.label]);
   const [pkg, setPkg] = useState<CardPackage>(card.package);
   const [mod, setMod] = useState<string | null>(card.module);
   const [desc, setDesc] = useState(card.description);
   const [busy, setBusy] = useState(false);
   useEffect(() => { setPkg(card.package); setMod(card.module); setDesc(card.description); }, [card.package, card.module, card.description]);
-  const dirty = pkg !== card.package || (pkg === "advisory" && mod !== card.module) || desc !== card.description;
+  const entryDirty = pkg !== card.package || (pkg === "advisory" && mod !== card.module) || desc !== card.description;
+  const nameDirty = name.trim() !== card.label;
+  const dirty = entryDirty || nameDirty;
   const valid = pkg !== "advisory" || !!mod;
   return (
     <tr className="align-top">
-      <td className="p-3 font-medium">{card.label}</td>
+      <td className="p-3"><Input value={name} maxLength={60} className="w-48" onChange={(e) => setName(e.target.value)} aria-label={`Card name for ${card.key}`} /></td>
       <td className="p-3"><StatusSelect card={card} /></td>
       <td className="p-3">{card.status === "wip" ? <ComingSoonTick card={card} /> : <span className="text-muted-foreground">—</span>}</td>
       <td className="p-3">
@@ -247,9 +252,12 @@ function CardRow({ card, modules }: { card: CatalogueCard; modules: CatalogueMod
       </td>
       <td className="p-3"><Textarea value={desc} maxLength={300} rows={2} className="min-w-64" onChange={(e) => setDesc(e.target.value)} aria-label={`${card.label} description`} /></td>
       <td className="p-3">
-        <Button size="sm" disabled={!dirty || !valid || busy} onClick={async () => {
+        <Button size="sm" disabled={!dirty || !valid || busy || !name.trim()} onClick={async () => {
           setBusy(true);
-          try { await save({ data: { cardKey: card.key, package: pkg, moduleKey: pkg === "advisory" ? mod : null, description: desc } }); toast.success(`${card.label} saved`); await qc.invalidateQueries({ queryKey: KEY }); }
+          try {
+            if (nameDirty) await saveLabel({ data: { cardKey: card.key, label: name.trim() } });
+            if (entryDirty) await save({ data: { cardKey: card.key, package: pkg, moduleKey: pkg === "advisory" ? mod : null, description: desc } });
+            toast.success(`${name.trim()} saved`); await qc.invalidateQueries({ queryKey: KEY }); }
           catch (e: any) { toast.error(e?.message ?? "Could not save"); } finally { setBusy(false); }
         }}>Save</Button>
       </td>
