@@ -1882,6 +1882,6 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 
 ## 16 Oct 2026 — Business Health practice visibility
 - DONE: Business Health card/badge gated to practice users server-side (`me_can_manage_client`) until released; report section stays off. Narrows only.
-- OPEN: External-adviser Viewers cannot be distinguished from Business Owners without a new caller-scoped database predicate (migration). Viewers do not see the card yet.
-- OPEN: A System Administrator "release to clients" switch needs one audited AAL2 setting column (migration). Today it is the code constant `BUSINESS_HEALTH_RELEASED_TO_CLIENTS`.
-- OPEN: Mackay Traders' account OC700 "Notional GST" is matched as a statutory tax account; owner to confirm whether it should be excluded.
+- CLOSED (16 Oct): Viewers distinguished from Business Owners by caller-scoped `me_can_see_business_health` (migration 0063); role matrix rows prove it.
+- CLOSED (16 Oct): Release-to-clients is the audited AAL2 System Administrator setting `platform_branding.business_health_released` (default off).
+- CLOSED (16 Oct): Mackay Traders accounts OC700 "OC - Notional GST" and 821a "EasyCars - Notional GST" excluded per client as "None of these" (owner approved). Business Health definer functions registered; card set back to Available with release switch off.

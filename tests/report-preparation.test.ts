@@ -83,6 +83,7 @@ describe('unchanged notes snapshot at generation', () => {
     ];
     const filters: Array<[string,unknown]> = [];
     const sb = {rpc:async () => ({data:['notes'],error:null}),from:(table:string) => {
+      if(table==='card_catalogue'||table==='card_modules'){const c:any={select:async () => ({data:[],error:null})};return c;}
       if(table!=='client_notes') throw new Error('Unexpected read');
       const q:any={select:() => q,eq:(key:string,value:unknown) => {filters.push([key,value]);return q;},order:async () => ({data:source.filter(n=>n.include_in_report),error:null})};return q;
     }};
