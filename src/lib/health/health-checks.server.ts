@@ -10,6 +10,23 @@
 import { addMonths, endOfMonth, startOfFinancialYear, startOfMonth } from "@/lib/sydney-time";
 import { computeHealthChecks, monthlyCosts, normaliseName, type HealthChecks } from "./health-checks";
 import type { SnapshotSource } from "@/lib/xero/snapshot-source";
+import { countsTowardProtected } from "@/lib/xero/tax-lines";
+
+/**
+ * GST / PAYG withholding owed to the ATO on the balance sheet, for the cycles
+ * the client is registered for. The one definition behind "Next tax payment"
+ * on the Business Health card and the Overview tax rule.
+ */
+export function atoOwedFromTaxLines(
+  lines: { amount: number; category: string }[],
+  gstCycle: string | null,
+  paygCycle: string | null,
+): number {
+  const cats = new Set<string>(["ato-combined"]);
+  if (gstCycle && gstCycle !== "not_registered") cats.add("gst");
+  if (paygCycle && paygCycle !== "not_registered") cats.add("payg");
+  return lines.filter((l) => cats.has(l.category) && countsTowardProtected(l as any)).reduce((s, l) => s + l.amount, 0);
+}
 
 export const MONTHLY_PNL_KEY = "profit_and_loss_monthly_last3";
 const LATEST_KEYS = ["profit_and_loss_ytd", "balance_sheet", "invoices_accrec_open", "accounts", MONTHLY_PNL_KEY];
@@ -55,7 +72,7 @@ export async function loadHealthChecks(
   if (latestQ.error || priorQ.error) throw new Error("Saved figures could not be read.");
 
   const { SNAPSHOT_PAYLOAD_VERSION, STALENESS_SECONDS } = await import("@/lib/xero/snapshot-keys");
-  const { analyseBalanceSheet, statutoryOverrideMap, countsTowardProtected } = await import("@/lib/xero/tax-lines");
+  const { analyseBalanceSheet, statutoryOverrideMap } = await import("@/lib/xero/tax-lines");
   const { sydneyDate } = await import("@/lib/sydney-time");
   const rows = ((latestQ.data ?? []) as any[]).filter((r) => r.payload_version === SNAPSHOT_PAYLOAD_VERSION);
   const priorRows = ((priorQ.data ?? []) as any[]).filter((r) => r.payload_version === SNAPSHOT_PAYLOAD_VERSION);
@@ -105,10 +122,7 @@ export async function loadHealthChecks(
       const analysis = analyseBalanceSheet(bs.payload, { Accounts: accounts }, overrides, banks);
       if (analysis.cashAtBank.status === "assessed" || analysis.cashAtBank.status === "absent") cashAtBank = analysis.cashAtBank.total;
       if (analysis.taxLines.status === "assessed") {
-        const cats = new Set<string>(["ato-combined"]);
-        if (client?.gst_cycle && client.gst_cycle !== "not_registered") cats.add("gst");
-        if (client?.payg_withholding_cycle && client.payg_withholding_cycle !== "not_registered") cats.add("payg");
-        atoOwed = analysis.taxLines.lines.filter((l) => cats.has(l.category) && countsTowardProtected(l)).reduce((s, l) => s + l.amount, 0);
+        atoOwed = atoOwedFromTaxLines(analysis.taxLines.lines, client?.gst_cycle ?? null, client?.payg_withholding_cycle ?? null);
       }
     }
 
