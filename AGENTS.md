@@ -33,3 +33,6 @@
 
 - Period video uses separate storage, caller-scoped audited RPCs and a draft-only attachment trigger; the unchanged notes builder preserves generation snapshots.
 - Business Health is one pure builder (`src/lib/health/health-checks.ts`) fed by one stored-data loader (`health-checks.server.ts`) for card, list badge and report, so the three never disagree and opening them costs no Xero calls.
+- Business Health shows to practice users (`me_can_manage_client`, rechecked in `health.functions.ts`) and reaches client logins/new reports only via `BUSINESS_HEALTH_RELEASED_TO_CLIENTS`; release narrows nothing else and grants no access.
+- Dashboard/catalogue module order is `card_modules.sort_order` (catalogue.modules order); never hard-code a module list.
+- Next tax payment prefers open ATO activity-statement bills (`lodgedAtoBills`), else the period-end balance method; past-due tax bills count only when billed to the ATO.
