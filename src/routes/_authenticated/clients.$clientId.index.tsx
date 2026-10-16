@@ -1,3 +1,4 @@
+import { BUSINESS_HEALTH_ENABLED } from "@/lib/config/features";
 import { useCanManageClient } from "@/hooks/useCanManageClient";
 import { getClientCatalogue, getMyLoansAccess } from "@/lib/card-model.functions";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -241,7 +242,7 @@ function ClientDashboard() {
     if (!client) return { standardCards: standard, advancedCards: advanced, statutoryBlocks: statutory };
 
 
-    if (widgets.includes("health")) {
+    if (BUSINESS_HEALTH_ENABLED && widgets.includes("health")) {
       const healthNode = orgs.length > 0 ? (
         <HealthWidget
           clientName={client.name}

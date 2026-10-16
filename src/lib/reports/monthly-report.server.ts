@@ -1,3 +1,4 @@
+import { BUSINESS_HEALTH_ENABLED } from "@/lib/config/features";
 // Monthly Management Report — computation. Server-only.
 //
 // Access-control invariants (section 0): every identifier from the request is a
@@ -629,8 +630,11 @@ export async function computeMonthlyReport(opts: {
   if (sectionErr || !Array.isArray(sectionRows)) {
     throw new Error("The report sections for this client could not be read. Try again.");
   }
-  const includedSections = (sectionRows as unknown[]).filter((x): x is string => typeof x === "string");
-  const inc = (k: string) => includedSections.includes(k);
+  const includedSections = (sectionRows as unknown[])
+    .filter((x): x is string => typeof x === "string")
+    .filter((x) => BUSINESS_HEALTH_ENABLED || x !== "verdict");
+  // Business Health hidden: its report summary ("verdict") is left out of new drafts.
+  const inc = (k: string) => includedSections.includes(k) && (BUSINESS_HEALTH_ENABLED || k !== "verdict");
 
   const failed: FailedSection[] = [];
   let keyFigures: KeyFigure[] | null = null;
