@@ -173,13 +173,21 @@ export function DateRangeControls({
   onFromChange,
   onToChange,
   showPresets = true,
+  fullMonthPresets = false,
 }: {
   fromDate: Date;
   toDate: Date;
   onFromChange: (d: Date) => void;
   onToChange: (d: Date) => void;
   showPresets?: boolean;
+  /** Whole completed months (no scaling), with this month as a labelled running estimate. */
+  fullMonthPresets?: boolean;
 }) {
+  function setFullMonths(months: number) {
+    const now = new Date();
+    onFromChange(new Date(now.getFullYear(), now.getMonth() - months, 1));
+    onToChange(new Date(now.getFullYear(), now.getMonth(), 0));
+  }
   function setPreset(months: number) {
     const end = new Date();
     const start = new Date(end.getFullYear(), end.getMonth() - (months - 1), 1);
@@ -203,12 +211,22 @@ export function DateRangeControls({
           <Select
             onValueChange={(v) => {
               if (v === "last") setLastMonth();
+              else if (v.startsWith("full-")) setFullMonths(Number(v.slice(5)));
               else setPreset(Number(v));
             }}
           >
-            <SelectTrigger className="h-8 w-[150px] text-xs">
+            <SelectTrigger className={`h-8 text-xs ${fullMonthPresets ? "w-[230px]" : "w-[150px]"}`}>
               <SelectValue placeholder="Quick range" />
             </SelectTrigger>
+            {fullMonthPresets ? (
+            <SelectContent>
+              <SelectItem value="full-3">Last 3 full months</SelectItem>
+              <SelectItem value="last">Last month</SelectItem>
+              <SelectItem value="1">This month so far (running estimate)</SelectItem>
+              <SelectItem value="full-6">Last 6 full months</SelectItem>
+              <SelectItem value="full-12">Last 12 full months</SelectItem>
+            </SelectContent>
+            ) : (
             <SelectContent>
               <SelectItem value="last">Last Month</SelectItem>
               <SelectItem value="1">This Month</SelectItem>
@@ -216,6 +234,7 @@ export function DateRangeControls({
               <SelectItem value="6">Last 6 Months</SelectItem>
               <SelectItem value="12">Last 12 Months</SelectItem>
             </SelectContent>
+            )}
           </Select>
         </div>
       )}
