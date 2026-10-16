@@ -43,6 +43,7 @@ const TOOL_LABELS: Record<string, string> = {
   activity_statement: "Read activity statement figures",
   find_issues: "Ran bookkeeping checks",
   practice_overview: "Read the organisation Overview",
+  ask_about_client: "Read a client's saved figures",
 };
 
 type Src = { label: string; asAt: string | null; href?: string };
@@ -56,6 +57,17 @@ function friendlyError(error: Error | undefined): string {
     /* not JSON */
   }
   return "Trixie couldn't answer just now. Please try again in a moment.";
+}
+
+function quickRepliesOf(message: UIMessage): string[] {
+  const out: string[] = [];
+  for (const part of message.parts) {
+    if (!isToolUIPart(part) || part.state !== "output-available") continue;
+    for (const q of (part.output as { quickReplies?: unknown } | undefined)?.quickReplies as unknown[] ?? []) {
+      if (typeof q === "string" && q.trim() && !out.includes(q)) out.push(q.slice(0, 80));
+    }
+  }
+  return out.slice(0, 6);
 }
 
 function sourcesOf(message: UIMessage): Src[] {
@@ -374,6 +386,11 @@ function TrixieChat({ pathname, threadId, initialMessages, onThread, onHistory, 
               </Message>
             );
           })}
+          {!busy && last?.role === "assistant" && quickRepliesOf(last).length > 0 && (
+            <div className="flex flex-wrap gap-2 pl-9">
+              {quickRepliesOf(last).map((q) => <Suggestion key={q} suggestion={q} onClick={ask} className="h-auto whitespace-normal py-1.5 text-left text-xs" />)}
+            </div>
+          )}
           {thinking && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <img src={trixieIcon} alt="Trixie" className="h-7 w-7 object-contain" />

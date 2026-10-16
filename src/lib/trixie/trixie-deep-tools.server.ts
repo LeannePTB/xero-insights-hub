@@ -348,26 +348,6 @@ async function findIssues(ctx: TrixieContext) {
   });
 }
 
-async function practiceOverview(ctx: TrixieContext) {
-  if (!deepToolsFor(ctx).includes("practice_overview") || !ctx.firmId) return denied("Open your organisation's Overview to ask about all clients.");
-  const { buildOverview } = await import("@/lib/overview/overview.server");
-  // Same caller-scoped read as the Overview page; firmId is a filter only.
-  const ov = await buildOverview(ctx.supabase as any, ctx.userId, ctx.firmId);
-  audit(ctx, null, "practice_overview", "snapshot");
-  const rows = ov.rows.filter((r) => r.firmId === ctx.firmId).map((r) => ({
-    client: untrusted(r.clientName, 80),
-    health: (r.verdict as any)?.label ?? null,
-    cashAtBank: r.cash,
-    nextTax: r.taxNext,
-    building: r.taxBuilding,
-    superDue: r.superDue,
-    overdueItems: r.taxItems.filter((t) => t.overdue).map((t) => ({ label: t.label, amount: t.amount, due: t.due })),
-    debtsOver90Days: r.debtorsOldAmount ?? null,
-    figuresAsAt: r.freshAsAt,
-  }));
-  return { available: true, note: UNTRUSTED_NOTE, clientCount: rows.length, clients: rows, sources: [{ label: "Organisation Overview (saved figures)", asAt: rows.map((r) => r.figuresAsAt).filter(Boolean).sort().at(-1) ?? null, href: `/firms/${ctx.firmId}` }] };
-}
-
 export function buildDeepTools(ctx: TrixieContext): ToolSet {
   const allowed = new Set(deepToolsFor(ctx));
   const all: Partial<Record<DeepToolName, any>> = {
@@ -384,4 +364,4 @@ export function buildDeepTools(ctx: TrixieContext): ToolSet {
   return Object.fromEntries(Object.entries(all).filter(([k]) => allowed.has(k as DeepToolName))) as ToolSet;
 }
 
-export const __test = { accountTransactions, contactHistory, activityStatement, findIssues, practiceOverview, payRuns, bankActivity, comparePeriods, journals };
+export const __test = { accountTransactions, contactHistory, activityStatement, findIssues, payRuns, bankActivity, comparePeriods, journals };
