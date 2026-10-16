@@ -471,6 +471,8 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.test_accounts_posture":
     "Posture check (aal2 + super admin): Action if a test account can sign in outside a run, holds access outside the test organisation, or has a session outside the run window.",
 
+  "public.set_client_gst_method":
+    "Sets one client's GST accounting method override (xero/cash/accrual) in clients.basis_overrides. aal2, caller must pass app_private.user_can_write_client (organisation team only — never Business Owners, Viewers or support), audited with old and new value. Presentation setting; grants no access.",
   "public.business_health_released":
     "Reads the single platform switch saying whether Business Health is released to Business Owners. aal2, signed-in only (anon revoked). Returns one boolean; no organisation, client or personal data.",
   "public.admin_set_business_health_release":

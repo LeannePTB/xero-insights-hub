@@ -17,6 +17,7 @@ import { ReconAgeNotice } from "@/components/dashboard/ReconAgeNotice";
 import { CardFreshness } from "@/components/dashboard/CardFreshness";
 import { reconSource } from "@/components/dashboard/recon-source";
 import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
+import { gstMethodLabel } from "@/lib/xero/gst-activity";
 import { getGstReconciliation, type GstResponse } from "@/lib/xero/gst.functions";
 import {
   money as fmt,
@@ -160,12 +161,17 @@ export function GstReconciliationWidget({
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
-      <DashboardCardHeader label={tenantName} title="Activity statement — GST (indicative)" icon={<Percent className="h-4 w-4"/>} description="GST review aid, not a lodgement figure" source={!notRegistered ? reconSource(data, data?.periodTo) : undefined} isFetching={q.isFetching || recalculating}/>
+      <DashboardCardHeader label={tenantName} title="Activity statement — GST (indicative)" icon={<Percent className="h-4 w-4"/>} description="GST review aid, not a lodgement figure" badge={data?.method ? <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">{gstMethodLabel(data.method)}</span> : undefined} source={!notRegistered ? reconSource(data, data?.periodTo) : undefined} isFetching={q.isFetching || recalculating}/>
       {!notRegistered && <div className="mb-4 flex min-w-0 items-center gap-2">
         <Select value={periodValue} onValueChange={setPeriodValue}><SelectTrigger className="h-8 w-full sm:w-[260px] text-xs"><SelectValue/></SelectTrigger><SelectContent>{options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
         {data?.canRecalculate && <Button variant="ghost" size="icon-sm" onClick={recalculate} disabled={recalculating} title="Recalculate" aria-label="Recalculate"><RefreshCw className={`h-4 w-4 ${recalculating ? "animate-spin" : ""}`}/></Button>}
       </div>}
 
+      {data?.method && !data.method.method && (
+        <p className="mt-3 text-xs text-info">
+          Xero's GST accounting method could not be read for this file. {showWarnings ? "Choose Cash or Accrual in Client settings → Tax Reporting." : "Your adviser needs to set it."} Figures below use invoice dates until then.
+        </p>
+      )}
       {settingRequired && (
         <p className="mt-3 text-xs text-muted-foreground">
            Set how often this client lodges GST before GST figures can be shown.
@@ -190,7 +196,7 @@ export function GstReconciliationWidget({
         <>
           <div className="mt-6">
             {(() => {
-              const { net } = netGst(data);
+              const net = data.statementNet ?? netGst(data).net;
               if (net === null) {
                 return (
                   <>
@@ -230,10 +236,21 @@ export function GstReconciliationWidget({
               How it is made up
             </p>
             <div className="mt-1">
-              <Line label="GST on sales" value={data.gstOnSales} />
-              <Line label="GST on purchases" value={data.gstOnPurchases} />
-              <Line label="GST net" value={netGst(data).net} strong />
+              <Line label={data.method?.method === "cash" ? "GST on sales received this period" : "GST on sales this period"} value={data.gstOnSales} />
+              <Line label={data.method?.method === "cash" ? "GST on purchases paid this period" : "GST on purchases this period"} value={data.gstOnPurchases} />
+              {data.unfiled?.status === "estimate" && (data.unfiled.sales !== 0 || data.unfiled.purchases !== 0) && (
+                <Line label="Unfiled amounts from earlier periods (estimate)" value={Math.round((data.unfiled.sales - data.unfiled.purchases) * 100) / 100} />
+              )}
+              <Line label="GST net" value={data.statementNet ?? netGst(data).net} strong />
             </div>
+            {data.unfiled?.status === "estimate" && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Unfiled amounts: earlier-dated payments entered or changed in Xero after the last lodged activity statement (bill dated {format(new Date(`${data.unfiled.lastLodgedBillDate}T00:00:00`), "d MMM yyyy")}). Xero does not report which earlier amounts are unfiled, so this is an estimate.
+              </p>
+            )}
+            {showWarnings && data.unfiled?.status === "unavailable" && (
+              <p className="mt-2 text-xs text-muted-foreground">{data.unfiled.reason}</p>
+            )}
           </div>
 
           {/* Client view: a plain-language note when the figures don't tie. It
@@ -262,8 +279,6 @@ export function GstReconciliationWidget({
             </div>
           )}
 
-          {/* This is a figure the practice lodges from. It names the vintage of
-              each input and says plainly it must be checked in Xero first. */}
           <div className="mt-4 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs">
             <p className="font-semibold text-foreground">
               Estimate only — check against Xero before lodging.
@@ -273,32 +288,8 @@ export function GstReconciliationWidget({
               {data.vintages?.gstReadAt
                 ? ` at ${format(new Date(data.vintages.gstReadAt), "d MMM yyyy, h:mmaaa")}`
                 : ""}
-              .{" "}
-              {data.paygPayroll?.status === "available"
-                ? data.vintages?.payRunsFromSnapshot
-                  ? `PAYG withheld from the saved pay-run list${
-                      data.vintages.payRunsAsAt ? ` as at ${data.vintages.payRunsAsAt}` : ""
-                    }${
-                      data.vintages.latestPayRunDate
-                        ? `, the newest pay run being ${data.vintages.latestPayRunDate}`
-                        : ""
-                    }.`
-                  : "PAYG withheld read live from Xero payroll at the same time."
-                : "PAYG withheld is not included — see the reasons below."}
+              . PAYG withholding is on the PAYG card.
             </p>
-            {data.vintages && !data.vintages.payRunsCoverPeriodEnd && (
-              <p className="mt-1 text-info">
-                The saved pay-run list stops before this period ends, so a pay run paid after{" "}
-                {data.vintages.payRunsAsAt} is not in the PAYG figure. Nothing has been assumed or
-                added in its place.
-              </p>
-            )}
-            {data.vintages && !data.vintages.payRunsComplete && (
-              <p className="mt-1 text-info">
-                That saved list was a partial pull, so an older pay run inside this period may be
-                missing. Nothing has been estimated in its place.
-              </p>
-            )}
           </div>
 
           {/* Preparer-only: the balance-based check, and the only place any

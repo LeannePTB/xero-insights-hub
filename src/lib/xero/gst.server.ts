@@ -83,7 +83,20 @@ export type PaygPayrollSection =
 /** Why the GST figures might not tie, as a machine code. */
 export type GstTieReasonCode = "journals" | "rounding" | "timing";
 
+export type GstUnfiled =
+  | { status: "unavailable"; reason: string }
+  | { status: "estimate"; sales: number; purchases: number; lastLodgedBillDate: string; count: number };
+
 export type GstResult = {
+  /** GST accounting method used for the period figures. */
+  method: import("./gst-activity").GstMethod;
+  /** Invoice-date figures, kept for comparison when the method is cash. */
+  accrualGstOnSales: number | null;
+  accrualGstOnPurchases: number | null;
+  /** Earlier-period amounts not yet filed (estimate), shown on their own line. */
+  unfiled: GstUnfiled | null;
+  /** Period GST + unfiled estimate: what the activity statement should show. */
+  statementNet: number | null;
   asAt: string;
   window: ReconWindow;
   periodFrom: string;
@@ -228,6 +241,8 @@ export async function computeGstReconciliation(
    *  pay-run read, no issue line, and the estimated total is GST alone. */
   withholdsPayg = true,
   clientId?: string | null,
+  /** Resolved GST accounting method (adviser override, else Xero). */
+  gstMethod?: import("./gst-activity").GstMethod,
 ): Promise<GstResult> {
 
 
@@ -334,6 +349,79 @@ export async function computeGstReconciliation(
   } catch (e) {
     complete = false;
     issues.push(`GST on transactions unavailable: ${errText(e)}`);
+  }
+
+  // --- Accounting method: cash basis reports GST on payments ---------------
+  // Accrual figures above use document dates. A cash-basis file reports GST
+  // when money moves, so the period figures are rebuilt from payments.
+  const method = gstMethod ?? { method: null, source: "unset" as const, xero: null };
+  const accrualSales = gstOnSales;
+  const accrualPurchases = gstOnPurchases;
+  const {
+    paymentGst, bankTxGst, unfiledCutoff, latestBasBillDate, xeroDateTimeLiteral,
+  } = await import("./gst-activity");
+  const { looksLikeAtoContact } = await import("./ato-payables");
+  const docsFor = async (payments: any[]) => {
+    const invIds = [...new Set(payments.map((p) => p?.Invoice?.InvoiceID).filter(Boolean))] as string[];
+    const cnIds = [...new Set(payments.map((p) => p?.CreditNote?.CreditNoteID).filter(Boolean))] as string[];
+    const map = new Map<string, any>();
+    for (const i of invoices) map.set(i.InvoiceID, i);
+    for (const c of creditNotes) map.set(c.CreditNoteID, c);
+    const needInv = invIds.filter((id) => !map.has(id));
+    for (let i = 0; i < needInv.length; i += 50) {
+      for (const d of await pageAll<any>(conn, "Invoices", "Invoices", { IDs: needInv.slice(i, i + 50).join(",") })) map.set(d.InvoiceID, d);
+    }
+    const needCn = cnIds.filter((id) => !map.has(id));
+    for (let i = 0; i < needCn.length; i += 50) {
+      for (const d of await pageAll<any>(conn, "CreditNotes", "CreditNotes", { IDs: needCn.slice(i, i + 50).join(",") })) map.set(d.CreditNoteID, d);
+    }
+    return map;
+  };
+  let unfiled: GstResult["unfiled"] = null;
+  try {
+    if (method.method === "cash") {
+      const payments = await pageAll<any>(conn, "Payments", "Payments", {
+        where: `Date>=${dtFrom}&&Date<=${dtTo}&&Status=="AUTHORISED"`,
+      });
+      const pg = paymentGst(payments, await docsFor(payments));
+      const bg = bankTxGst(bankTx);
+      gstOnSales = round2(pg.sales + bg.sales);
+      gstOnPurchases = round2(pg.purchases + bg.purchases);
+      if (pg.missing) issues.push(`${pg.missing} payment(s) could not be matched to their invoice, so their GST is not included.`);
+    }
+    // Earlier-dated amounts entered after the last return was lodged.
+    const recentBills = await pageAll<any>(conn, "Invoices", "Invoices", {
+      where: `Type=="ACCPAY"&&Date>=${xeroDateLiteral(rangeFor(priorEnd, "quarter").from)}&&(Status=="AUTHORISED"||Status=="PAID")`,
+    });
+    const billDate = latestBasBillDate(recentBills.map((b) => ({ ...b, DateString: xeroDateIso(b?.Date) ?? undefined })), to, looksLikeAtoContact);
+    const cutoff = unfiledCutoff(billDate);
+    if (!cutoff) {
+      unfiled = { status: "unavailable", reason: "No lodged activity statement was found in Xero, so earlier unfiled amounts cannot be estimated." };
+    } else if (method.method !== "cash") {
+      unfiled = { status: "unavailable", reason: "Unfiled earlier amounts are only estimated for cash-basis files: on accrual, Xero updates old invoices when they are paid, so edits cannot be told apart from new entries." };
+    } else {
+      const earliest = xeroDateLiteral(rangeFor(from, "year").from.replace(/^(\d{4})/, (y) => String(Number(y) - 1)));
+      const upd = xeroDateTimeLiteral(cutoff);
+      const latePays = await pageAll<any>(conn, "Payments", "Payments", {
+        where: `Date<${dtFrom}&&Date>=${earliest}&&UpdatedDateUTC>=${upd}&&Status=="AUTHORISED"`,
+      });
+      const lateBt = await pageAll<any>(conn, "BankTransactions", "BankTransactions", {
+        where: `Date<${dtFrom}&&Date>=${earliest}&&UpdatedDateUTC>=${upd}&&Status!="DELETED"&&Status!="VOIDED"`,
+      });
+      const lp = paymentGst(latePays, await docsFor(latePays));
+      const lb = bankTxGst(lateBt);
+      unfiled = {
+        status: "estimate",
+        sales: round2(lp.sales + lb.sales),
+        purchases: round2(lp.purchases + lb.purchases),
+        lastLodgedBillDate: billDate!,
+        count: latePays.length + lateBt.length,
+      };
+    }
+  } catch (e) {
+    complete = false;
+    issues.push(`Cash-basis GST unavailable: ${errText(e)}`);
+    if (method.method === "cash") { gstOnSales = null; gstOnPurchases = null; }
   }
 
   // --- Transactions coded directly to the GST account ----------------------
@@ -532,7 +620,14 @@ export async function computeGstReconciliation(
 
 
 
+  const statementNet =
+    gstNet === null ? null : round2(gstNet + (unfiled?.status === "estimate" ? unfiled.sales - unfiled.purchases : 0));
   return {
+    method,
+    accrualGstOnSales: accrualSales,
+    accrualGstOnPurchases: accrualPurchases,
+    unfiled,
+    statementNet,
     asAt,
     window,
     periodFrom: from,

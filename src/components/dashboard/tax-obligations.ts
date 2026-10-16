@@ -40,3 +40,46 @@ export function latestCompletedPaygMonth(
   const month = data.months.find((item) => !item.incomplete);
   return month ? { month: month.month, amount: month.withheld } : null;
 }
+
+const iso = (d: Date) => d.toISOString().slice(0, 10);
+/** The GST period still running on `today` (monthly or quarterly), to its end. */
+export function currentGstPeriod(cycle: "monthly" | "quarterly" | "annual" | "not_registered" | null, today: string) {
+  const [y, m] = today.split("-").map(Number);
+  const quarterly = cycle === "quarterly";
+  const startMonth = quarterly ? Math.floor((m - 1) / 3) * 3 : m - 1;
+  const from = iso(new Date(Date.UTC(y, startMonth, 1)));
+  const to = iso(new Date(Date.UTC(y, startMonth + (quarterly ? 3 : 1), 0)));
+  return { kind: quarterly ? ("quarter" as const) : ("month" as const), from, asAt: to };
+}
+
+/** ATO due date for a BAS period end: monthly 21st of the next month;
+ *  quarterly 28th of the month after the quarter (December quarter 28 Feb). */
+export function basDueDate(kind: "month" | "quarter", periodEnd: string): string {
+  const [y, m] = periodEnd.split("-").map(Number);
+  if (kind === "month") return iso(new Date(Date.UTC(y, m, 21)));
+  if (m === 12) return `${y + 1}-02-28`;
+  return iso(new Date(Date.UTC(y, m, 28)));
+}
+
+export type ForwardTax = {
+  owing: { amount: number; reference: string; due: string; overdue: boolean }[];
+  building: { gst: number | null; payg: number | null; total: number | null; due: string; from: string; to: string };
+  instalment: { amount: number; due: string } | null;
+  totalToPlan: number | null;
+};
+
+/** One forward-looking summary from the shared inputs: unpaid lodged ATO bills,
+ *  the running period's GST (statement figure) and PAYG withheld so far. */
+export function forwardTax(input: {
+  bills: readonly LodgedAtoBill[]; today: string;
+  period: { kind: "month" | "quarter"; from: string; asAt: string };
+  gst: number | null; payg: number | null; paygRegistered: boolean;
+  instalment: { amount: number; due: string } | null;
+}): ForwardTax {
+  const owing = input.bills.map(b => ({ amount: b.amount, reference: b.reference, due: b.due, overdue: b.due < input.today }));
+  const payg = input.paygRegistered ? input.payg : 0;
+  const total = input.gst !== null && payg !== null ? Math.round((input.gst + payg) * 100) / 100 : null;
+  const instalment = input.instalment && input.instalment.due >= input.today ? input.instalment : null;
+  const totalToPlan = total === null ? null : Math.round((owing.reduce((s, o) => s + o.amount, 0) + total + (instalment?.amount ?? 0)) * 100) / 100;
+  return { owing, building: { gst: input.gst, payg: input.paygRegistered ? input.payg : null, total, due: basDueDate(input.period.kind, input.period.asAt), from: input.period.from, to: input.period.asAt }, instalment, totalToPlan };
+}

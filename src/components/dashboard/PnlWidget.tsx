@@ -82,9 +82,8 @@ export function PnlWidget({
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
-      <DashboardCardHeader label={tenantName} title="Profit & loss" icon={<LineChart className="h-4 w-4"/>} description="Income, expenses and net profit for the selected period" badge={<BasisBadge basis={basis ?? "accrual"}/>} from={fromDate} to={toDate} source={data?.current.source} isFetching={isFetching} actions={<Button variant="ghost" size="icon-sm" onClick={() => { setShouldLoad(true); forceLive.current = true; runQuery(); }} disabled={isFetching} title="Refresh" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}/></Button>}/>
+      <DashboardCardHeader label={tenantName} title="Profit & loss" icon={<LineChart className="h-4 w-4"/>} description="Income, expenses and net profit for the selected period" badge={<BasisBadge basis={basis ?? "accrual"}/>} from={fromDate} to={toDate} source={data?.current.source} isFetching={isFetching} stackActions actions={<><PeriodSelect value={period} onChange={setPeriod} monthsBack={6} className="" /><Button variant="ghost" size="icon-sm" onClick={() => { setShouldLoad(true); forceLive.current = true; runQuery(); }} disabled={isFetching} title="Refresh" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}/></Button></>}/>
 
-      <PeriodSelect value={period} onChange={setPeriod} monthsBack={6} />
       <StandardHistoryChart tenantId={tenantId} card="pnl" currency={currency} basis={basis}/>
 
       {!shouldLoad ? (
@@ -101,7 +100,7 @@ export function PnlWidget({
         <XeroErrorNotice error={error} onRetry={() => runQuery()} isRetrying={isFetching} />
       ) : current ? (
         <>
-          <p className="mt-6 text-xs text-muted-foreground">
+          <p className="mt-3 text-xs text-muted-foreground">
             Compared with the same length of time immediately before:{" "}
             {format(prior.from, "d MMM yyyy")} to {format(prior.to, "d MMM yyyy")}
           </p>

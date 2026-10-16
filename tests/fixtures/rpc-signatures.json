@@ -1406,6 +1406,14 @@
     {
         "args": [
             "_client_id",
+            "_method"
+        ],
+        "name": "set_client_gst_method",
+        "required": 2
+    },
+    {
+        "args": [
+            "_client_id",
             "_module_key",
             "_enabled"
         ],

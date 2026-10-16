@@ -231,10 +231,12 @@ export function PeriodSelect({
   value,
   onChange,
   monthsBack = 6,
+  className = "mt-4",
 }: {
   value: string;
   onChange: (v: string) => void;
   monthsBack?: number;
+  className?: string;
 }) {
   const options = [
     ...monthRangeOptions(monthsBack),
@@ -244,7 +246,7 @@ export function PeriodSelect({
     { value: "12", label: "Last 12 months" },
   ];
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-2">
+    <div className={`${className} flex flex-wrap items-center gap-2`}>
       <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Period
       </span>

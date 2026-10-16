@@ -76,7 +76,7 @@ create table public.client_access (id uuid, client_id uuid, user_id uuid, tier t
 create table public.client_bank_account_classifications (client_id uuid, tenant_id text, account_id uuid, classification text, updated_by uuid, updated_at timestamp with time zone);
 create table public.client_cards (client_id uuid, cards text[], created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_cost_classifications (id uuid, client_id uuid, tenant_id text, account_name text, classification text, created_at timestamp with time zone, updated_at timestamp with time zone, is_wages boolean);
-create table public.client_figure_history (id uuid, client_id uuid, firm_id uuid, tenant_id text, month_end date, cash numeric, net_profit numeric, source text, fetched_at timestamp with time zone);
+create table public.client_figure_history (id uuid, client_id uuid, firm_id uuid, tenant_id text, month_end date, cash numeric, net_profit numeric, source text, fetched_at timestamp with time zone, income numeric, expenses numeric);
 create table public.client_income_tax_instalments (id uuid, client_id uuid, tenant_id text, period_start date, period_end date, amount numeric(14,2), created_by uuid, updated_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_key_figures (id uuid, client_id uuid, firm_id uuid, tenant_id text, as_at date, cash numeric, debtors_total numeric, debtors_overdue numeric, creditors numeric, protected_money numeric, revenue_mtd numeric, net_profit_mtd numeric, created_at timestamp with time zone, updated_at timestamp with time zone, bank_reconciled_to date, credit_card_debt numeric, last_xero_login_at timestamp with time zone, bank_reconciliation jsonb);
 create table public.client_notes (id uuid, client_id uuid, author_id uuid, body text, created_at timestamp with time zone, updated_at timestamp with time zone, include_in_report boolean);
@@ -4136,6 +4136,39 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.set_client_gst_method(_client_id uuid, _method text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _old text; _uid uuid := auth.uid();
+begin
+  perform app_private.assert_aal2();
+  if _uid is null or _client_id is null then
+    raise exception 'NO_ACCESS' using errcode = 'insufficient_privilege';
+  end if;
+  if _method is null or _method not in ('xero', 'cash', 'accrual') then
+    raise exception 'INVALID_INPUT' using errcode = 'check_violation';
+  end if;
+  -- Organisation team only (owner/staff/practice member); never Business
+  -- Owners, Viewers or support grants.
+  if not app_private.user_can_write_client(_uid, _client_id) then
+    raise exception 'NO_ACCESS' using errcode = 'insufficient_privilege';
+  end if;
+  select coalesce(basis_overrides->>'gst_method', 'xero') into _old from public.clients where id = _client_id for update;
+  if not found then raise exception 'NO_ACCESS' using errcode = 'insufficient_privilege'; end if;
+  update public.clients
+     set basis_overrides = case when _method = 'xero'
+                                then coalesce(basis_overrides, '{}'::jsonb) - 'gst_method'
+                                else coalesce(basis_overrides, '{}'::jsonb) || jsonb_build_object('gst_method', _method) end
+   where id = _client_id;
+  insert into public.audit_log (actor_user_id, action, target_type, target_id, meta)
+  values (_uid, 'client_setting_changed', 'client', _client_id::text,
+          jsonb_build_object('field', 'gst_method', 'from', _old, 'to', _method));
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5613,4 +5646,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: cc24d8186720b36de329ff3ebabf8f5a025a0d673474a6d9a9bcb71be1d891bd
+-- catalogue-fingerprint: f481e0739975a560097ba6324fbf3262298ba7e43dbfbb50aec04d98ece7aedb

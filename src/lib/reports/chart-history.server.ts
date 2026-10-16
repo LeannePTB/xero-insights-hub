@@ -16,7 +16,9 @@ export async function loadReportCharts(sb: any, clientId: string, tenantId: stri
   charts.pnl=charts.profit.map(p=>{
     const report=reports.filter(r=>r.period_end===p.date && r.payload?.meta?.currency===currency && (r.payload?.basis??'accrual')==='accrual').sort((a,b)=>b.version-a.version)[0];
     const totals=report?.payload?.profitAndLoss?.totals;
-    return {label:p.label,values:[totals?totals.revenue+totals.otherIncome:null,totals?totals.costOfSales+totals.expenses:null,p.value]};
+    const filled=(monthEnd as any[]).find(m=>m.month_end===p.date);
+    const n=(v:any)=>v===null||v===undefined?null:Number(v);
+    return {label:p.label,values:[totals?totals.revenue+totals.otherIncome:n(filled?.income),totals?totals.costOfSales+totals.expenses:n(filled?.expenses),p.value]};
   });
   return charts;
 }

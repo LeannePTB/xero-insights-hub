@@ -54,7 +54,7 @@ fns as (
          'get_public_website_settings','save_public_website_settings',
          'client_early_access_cards','admin_org_early_access','admin_set_org_early_access',
          'coming_soon_for_client','coming_soon_for_firm','public_coming_soon','admin_coming_soon_list','admin_save_coming_soon','admin_delete_coming_soon','register_coming_soon_interest','admin_set_card_coming_soon','admin_set_firm_demo','my_firm_demo_flags',
-         'business_health_released','admin_set_business_health_release','me_can_see_business_health','me_business_health_clients'))
+         'business_health_released','admin_set_business_health_release','me_can_see_business_health','me_business_health_clients','set_client_gst_method'))
     )
 ),
 stmts as (

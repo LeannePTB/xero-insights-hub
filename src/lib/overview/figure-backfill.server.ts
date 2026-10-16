@@ -99,26 +99,34 @@ async function backfillFile(db: any, item: Item): Promise<{ cash: number; profit
   const { data: nightly } = await db.from("client_key_figures").select("as_at, cash")
     .eq("client_id", item.client_id).eq("tenant_id", item.tenant_id).in("as_at", months);
   const hasNightly = new Set(((nightly ?? []) as any[]).filter((r) => r.cash !== null).map((r) => r.as_at));
+  // Month-ends already backfilled with cash need no second Balance Sheet call,
+  // so a re-run for income/expenses costs one P&L call per file.
+  const { data: filled } = await db.from("client_figure_history").select("month_end, cash, net_profit")
+    .eq("client_id", item.client_id).eq("tenant_id", item.tenant_id).in("month_end", months);
+  const hasFilledCash = new Set(((filled ?? []) as any[]).filter((r) => r.cash !== null).map((r) => r.month_end));
+  const storedProfit = new Map<string, number>(((filled ?? []) as any[]).filter((r) => r.net_profit !== null).map((r) => [r.month_end, Number(r.net_profit)]));
+  const needBs = months.filter((d) => !hasNightly.has(d) && !hasFilledCash.has(d));
 
-  const { data: ov } = await db.from("client_statutory_accounts").select("account_name, category").eq("client_id", item.client_id);
-  const overrides = statutoryOverrideMap((ov ?? []) as any[]);
-  const accountsRaw = await paced<any>("Accounts");
-  // Same selected-accounts overlay as today's Cash at bank (current settings).
-  const accounts = await classifiedAccounts(db, item.tenant_id, accountsRaw, item.client_id);
-
-  const rows = new Map<string, { cash?: number | null; net_profit?: number | null }>();
+  const rows = new Map<string, { cash?: number | null; net_profit?: number | null; income?: number | null; expenses?: number | null }>();
   let cashCount = 0;
-  for (const date of months) {
-    if (hasNightly.has(date)) continue;
-    const bs = await paced<any>("Reports/BalanceSheet", { date });
-    const a = analyseBalanceSheet(bs, accounts, overrides);
-    if (a.cashAtBank.status === "assessed") {
-      rows.set(date, { ...(rows.get(date) ?? {}), cash: a.cashAtBank.total });
-      cashCount++;
+  if (needBs.length) {
+    const { data: ov } = await db.from("client_statutory_accounts").select("account_name, category").eq("client_id", item.client_id);
+    const overrides = statutoryOverrideMap((ov ?? []) as any[]);
+    const accountsRaw = await paced<any>("Accounts");
+    // Same selected-accounts overlay as today's Cash at bank (current settings).
+    const accounts = await classifiedAccounts(db, item.tenant_id, accountsRaw, item.client_id);
+    for (const date of needBs) {
+      const bs = await paced<any>("Reports/BalanceSheet", { date });
+      const a = analyseBalanceSheet(bs, accounts, overrides);
+      if (a.cashAtBank.status === "assessed") {
+        rows.set(date, { ...(rows.get(date) ?? {}), cash: a.cashAtBank.total });
+        cashCount++;
+      }
     }
   }
 
   let profitCount = 0;
+  const mismatches: string[] = [];
   const pnl = await paced<any>("Reports/ProfitAndLoss", {
     fromDate: `${last.slice(0, 7)}-01`, toDate: last, periods: String(months.length - 1), timeframe: "MONTH",
   });
@@ -129,7 +137,15 @@ async function backfillFile(db: any, item: Item): Promise<{ cash: number; profit
       if (!months.includes(p.monthEnd)) return;
       const t = totalsForPeriod(parsed, i);
       if (typeof t.netProfit === "number" && Number.isFinite(t.netProfit)) {
-        rows.set(p.monthEnd, { ...(rows.get(p.monthEnd) ?? {}), net_profit: t.netProfit });
+        const prior = storedProfit.get(p.monthEnd);
+        // A stored net profit is never overwritten; a disagreement is reported.
+        if (prior !== undefined && Math.abs(prior - t.netProfit) > 0.01) mismatches.push(p.monthEnd);
+        rows.set(p.monthEnd, {
+          ...(rows.get(p.monthEnd) ?? {}),
+          ...(prior === undefined ? { net_profit: t.netProfit } : {}),
+          income: t.revenue + t.otherIncome,
+          expenses: t.costOfSales + t.expenses,
+        });
         profitCount++;
       }
     });
@@ -142,6 +158,10 @@ async function backfillFile(db: any, item: Item): Promise<{ cash: number; profit
     );
     if (error) throw new Error("History could not be saved.");
   }
-  const note = hasNightly.size ? `${hasNightly.size} month-end(s) already had nightly figures` : null;
+  const notes = [
+    hasNightly.size ? `${hasNightly.size} month-end(s) already had nightly figures` : "",
+    mismatches.length ? `Net profit differed from stored for ${mismatches.join(", ")} (stored kept)` : "",
+  ].filter(Boolean);
+  const note = notes.length ? notes.join("; ") : null;
   return { cash: cashCount, profit: profitCount, note };
 }
