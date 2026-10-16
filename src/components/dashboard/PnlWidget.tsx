@@ -1,7 +1,6 @@
 import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
 import { staggered, xeroQueryRetry } from "@/lib/xero/live-load";
 import { useEffect, useRef, useState } from "react";
-import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfitAndLoss, getPaydayCounts } from "@/lib/xero/reports.functions";
