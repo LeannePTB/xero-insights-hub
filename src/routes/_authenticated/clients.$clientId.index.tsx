@@ -265,7 +265,7 @@ function ClientDashboard() {
           released={healthReleased}
         />
       ) : (
-        <HealthWidget clientName={client.name} />
+        <HealthWidget clientName={client.name} released={healthReleased} />
       );
       standard.push({ id: "health", fullWidth: true, node: healthNode });
     }

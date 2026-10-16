@@ -4,6 +4,7 @@ import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../src/lib/xero/api.server', () => ({ getConnectionByTenant: async () => ({}), xeroGet: async () => ({}) }));
 vi.mock('../src/lib/reports/chart-history.server', () => ({ loadReportCharts: async () => ({ cash: [], profit: [] }) }));
+vi.mock('../src/lib/health/health-checks.server', () => ({ loadHealthChecks: async () => new Map([[client, { source: { mode: 'stored' }, tenantId: 'synthetic', fyLabel: 'FY26–27 TO DATE' }]]) }));
 import { computeMonthlyReport } from '../src/lib/reports/monthly-report.server';
 
 const client = 'aaaaaaaa-1111-4111-8111-111111111111';
@@ -98,4 +99,18 @@ describe('unchanged notes snapshot at generation', () => {
     const notes = await asUser(business, () => db.query(`select * from public.client_notes where client_id=$1`,[client]));
     expect(notes.rows).toHaveLength(0);
   });
+});
+
+describe('Business Health in new report drafts', () => {
+  for (const released of [false, true]) {
+    it(`includes the section only when released=${released}`, async () => {
+      const sb = {
+        rpc: async (name: string) => ({ data: name === 'business_health_released' ? released : ['verdict'], error: null }),
+        from: () => ({ select: async () => ({ data: [], error: null }) }),
+      };
+      const payload = await computeMonthlyReport({supabase:sb,userId:staff,clientId:client,tenantId:'synthetic',tenantName:'Synthetic file',clientName:'Synthetic client',organisationName:'Synthetic organisation',periodEnd:'2026-09-30',currency:'AUD'});
+      expect(payload.includedSections.includes('verdict')).toBe(released);
+      expect(payload.healthChecks !== null).toBe(released);
+    });
+  }
 });

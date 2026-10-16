@@ -123,11 +123,12 @@ function BusinessHealthRelease() {
         <Switch
           id="bh-release"
           checked={released}
+          className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted-foreground/30 disabled:opacity-100"
           disabled={saving || q.isLoading || !!q.error}
           onCheckedChange={(v) => change(v === true)}
           aria-label="Release Business health to clients"
         />
-        <label htmlFor="bh-release" className="text-sm">{released ? "Released" : "Practice only"}</label>
+        <label htmlFor="bh-release" className={`text-sm font-semibold ${released ? "text-emphasis" : "text-muted-foreground"}`}>{q.isLoading ? "Loading…" : q.error ? "Unavailable" : released ? "Released to clients" : "Practice only"}</label>
       </div>
       {q.error ? <p className="w-full text-sm text-destructive">The setting could not be read.</p> : null}
     </section>

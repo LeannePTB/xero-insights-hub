@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { usePlatformBranding } from "@/hooks/usePlatformBranding";
+import { postAuthDestination } from "@/lib/session-cutoff";
 
 export const Route = createFileRoute("/auth_/mfa-enroll")({
   staticData: { sitemap: false },
@@ -90,7 +91,7 @@ function MfaEnrollPage() {
         /* audit is best-effort */
       }
       toast.success("Two-factor enabled");
-      navigate({ to: "/dashboard", replace: true });
+      await navigate({ to: postAuthDestination(), replace: true });
     } catch (e: any) {
       const raw = e?.message ?? "Could not verify code";
       const msg = /invalid/i.test(raw)

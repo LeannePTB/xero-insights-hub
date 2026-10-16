@@ -21,7 +21,7 @@
 - Protected money % is display-only (`protected-money-share.ts`); tax/debtor alerts come only from `health-checks.ts` rules shared by Overview and Business Health, so they never disagree.
 - Viewer is one read-only login type whose scope (All clients via firm_viewer_access, Selected via client_access external_adviser rows) is changed only through `set_viewer_scope`, because the two storage paths must switch atomically without a new predicate.
 - Login labels use `LOGIN_TYPE_LABEL`; DB keys stay unchanged, preserving access.
-- Auth/public logos share display-only rendering and official fallback; auth logic stays route-owned.
+- Auth/public logos share display-only rendering. Auth routing defers events outside the session lock and retains idle/MFA guards.
 
 - Charts share pure vector geometry between accessible SVG and jsPDF; history is caller-scoped and frozen only into new report drafts, so charts never widen access or refresh final/sent documents.
 - Standard charts use card gates and resolved files; never infer unknown bases/scores. Enquiries use database eligibility and atomic scope/rate/audit checks; promotion grants no client access.
