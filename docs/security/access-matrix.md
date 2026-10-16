@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **2737**. Known failures: **0**.
+Rows: **2763**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -209,6 +209,9 @@ None.
 | ca: shown manual entry overrides the auto teaser | execute | ALLOW | pglite | The per-card opt-out, Available status and a shown manual entry each remove the automatic teaser; listing never grants the card |  |
 | ca: auto teaser never makes the card visible | execute | ALLOW | pglite | The per-card opt-out, Available status and a shown manual entry each remove the automatic teaser; listing never grants the card |  |
 | ca: admin_set_card_coming_soon | execute | DENY | pglite | Nobody else changes the per-card Coming soon opt-out |  |
+| bh: me_can_see_business_health (not released) | execute | ALLOW | pglite | Practice (owner, staff) and Viewers (incl. external advisers) see Business Health on clients they can read, released or not (aal2, caller-scoped) |  |
+| bh: me_can_see_business_health (released) | execute | ALLOW | pglite | Practice (owner, staff) and Viewers (incl. external advisers) see Business Health on clients they can read, released or not (aal2, caller-scoped) |  |
+| bh: admin_set_business_health_release | execute | DENY | pglite | Nobody else changes the Business Health release setting |  |
 | demo: admin_set_firm_demo | execute | DENY | pglite | Nobody else marks an organisation as a demo organisation |  |
 | demo: my_firm_demo_flags | execute | DENY | pglite | An organisation's own owner or staff, an adviser, a business owner, a support grant, an aal1 session or a signed-out caller never receives a demo marking — the database answers false for every organisation, or refuses |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -481,6 +484,9 @@ None.
 | wip: assert_widget_access(Work-in-progress card) | execute | DENY | pglite | card_catalogue.status = 'wip' removes the card from app_private.client_available_cards, so client_cards_v2 (and every reader through assert_widget_access) refuses it; a System Administrator without access to the client still gets nothing |  |
 | cs: admin_save_coming_soon | execute | ALLOW | pglite | Only a System Administrator (aal2, audited) edits Coming soon entries |  |
 | ca: admin_set_card_coming_soon | execute | ALLOW | pglite | Only a System Administrator (aal2, audited) changes the per-card Coming soon opt-out |  |
+| bh: me_can_see_business_health (not released) | execute | DENY | pglite | Without read access to the client (other organisation, System Administrator alone, aal1, signed out) Business Health is never shown — the release switch grants no access (PK 3, 4) |  |
+| bh: me_can_see_business_health (released) | execute | DENY | pglite | Without read access to the client (other organisation, System Administrator alone, aal1, signed out) Business Health is never shown — the release switch grants no access (PK 3, 4) |  |
+| bh: admin_set_business_health_release | execute | ALLOW | pglite | Only a System Administrator (aal2, audited old to new) releases Business Health to clients |  |
 | demo: admin_set_firm_demo | execute | ALLOW | pglite | Only a System Administrator (aal2, audited) marks an organisation as a demo organisation; the flag is display only and grants no access |  |
 | demo: my_firm_demo_flags | execute | ALLOW | pglite | The marking follows the System Administrator role alone (aal2). The support-grant accounts hold that role in this fixture, so they read it through the role — the support grant itself grants nothing |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -1179,6 +1185,8 @@ None.
 | cs: register_coming_soon_interest | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ca: auto teaser lists the Work-in-progress card | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ca: interest on the auto teaser | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| bh: me_can_see_business_health (not released) | execute | DENY | pglite | Without read access to the client (other organisation, System Administrator alone, aal1, signed out) Business Health is never shown — the release switch grants no access (PK 3, 4) |  |
+| bh: me_can_see_business_health (released) | execute | DENY | pglite | Without read access to the client (other organisation, System Administrator alone, aal1, signed out) Business Health is never shown — the release switch grants no access (PK 3, 4) |  |
 | demo: my_firm_demo_flags | execute | DENY | pglite | An organisation's own owner or staff, an adviser, a business owner, a support grant, an aal1 session or a signed-out caller never receives a demo marking — the database answers false for every organisation, or refuses |  |
 | ea: granted — client_visible_cards shows the WIP card | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
 | ea: granted — assert_widget_access(WIP card) | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
@@ -1377,6 +1385,9 @@ None.
 | cs: register_coming_soon_interest | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ca: auto teaser lists the Work-in-progress card | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ca: interest on the auto teaser | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| bh: me_can_see_business_health (not released) | execute | DENY | pglite | Without read access to the client (other organisation, System Administrator alone, aal1, signed out) Business Health is never shown — the release switch grants no access (PK 3, 4) |  |
+| bh: me_can_see_business_health (released) | execute | DENY | pglite | Without read access to the client (other organisation, System Administrator alone, aal1, signed out) Business Health is never shown — the release switch grants no access (PK 3, 4) |  |
+| bh: admin_set_business_health_release | execute | DENY | pglite | Nobody else changes the Business Health release setting |  |
 | demo: my_firm_demo_flags | execute | DENY | pglite | An organisation's own owner or staff, an adviser, a business owner, a support grant, an aal1 session or a signed-out caller never receives a demo marking — the database answers false for every organisation, or refuses |  |
 | ea: granted — client_visible_cards shows the WIP card | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
 | ea: granted — assert_widget_access(WIP card) | execute | DENY | pglite | Early access never reaches Business Owners, Viewers, other organisations, a System Administrator who cannot read the client, aal1 or signed-out callers |  |
@@ -1617,6 +1628,9 @@ None.
 | ca: auto teaser lists the Work-in-progress card | execute | ALLOW | pglite | Every Work-in-progress card is automatically a Coming soon teaser for practice users, and accepts interest through the same guarded recorder |  |
 | ca: interest on the auto teaser | execute | ALLOW | pglite | Every Work-in-progress card is automatically a Coming soon teaser for practice users, and accepts interest through the same guarded recorder |  |
 | ca: admin_set_card_coming_soon | execute | DENY | pglite | Nobody else changes the per-card Coming soon opt-out |  |
+| bh: me_can_see_business_health (not released) | execute | ALLOW | pglite | Practice (owner, staff) and Viewers (incl. external advisers) see Business Health on clients they can read, released or not (aal2, caller-scoped) |  |
+| bh: me_can_see_business_health (released) | execute | ALLOW | pglite | Practice (owner, staff) and Viewers (incl. external advisers) see Business Health on clients they can read, released or not (aal2, caller-scoped) |  |
+| bh: admin_set_business_health_release | execute | DENY | pglite | Nobody else changes the Business Health release setting |  |
 | demo: admin_set_firm_demo | execute | DENY | pglite | Nobody else marks an organisation as a demo organisation |  |
 | demo: my_firm_demo_flags | execute | DENY | pglite | An organisation's own owner or staff, an adviser, a business owner, a support grant, an aal1 session or a signed-out caller never receives a demo marking — the database answers false for every organisation, or refuses |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -1844,6 +1858,9 @@ None.
 | ca: auto teaser lists the Work-in-progress card | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ca: interest on the auto teaser | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ca: admin_set_card_coming_soon | execute | DENY | pglite | Nobody else changes the per-card Coming soon opt-out |  |
+| bh: me_can_see_business_health (not released) | execute | DENY | pglite | Without read access to the client (other organisation, System Administrator alone, aal1, signed out) Business Health is never shown — the release switch grants no access (PK 3, 4) |  |
+| bh: me_can_see_business_health (released) | execute | DENY | pglite | Without read access to the client (other organisation, System Administrator alone, aal1, signed out) Business Health is never shown — the release switch grants no access (PK 3, 4) |  |
+| bh: admin_set_business_health_release | execute | DENY | pglite | Nobody else changes the Business Health release setting |  |
 | demo: admin_set_firm_demo | execute | DENY | pglite | Nobody else marks an organisation as a demo organisation |  |
 | demo: my_firm_demo_flags | execute | DENY | pglite | An organisation's own owner or staff, an adviser, a business owner, a support grant, an aal1 session or a signed-out caller never receives a demo marking — the database answers false for every organisation, or refuses |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -2123,6 +2140,9 @@ None.
 | ca: auto teaser lists the Work-in-progress card | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ca: interest on the auto teaser | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ca: admin_set_card_coming_soon | execute | DENY | pglite | Nobody else changes the per-card Coming soon opt-out |  |
+| bh: me_can_see_business_health (not released) | execute | ALLOW | pglite | Practice (owner, staff) and Viewers (incl. external advisers) see Business Health on clients they can read, released or not (aal2, caller-scoped) |  |
+| bh: me_can_see_business_health (released) | execute | ALLOW | pglite | Practice (owner, staff) and Viewers (incl. external advisers) see Business Health on clients they can read, released or not (aal2, caller-scoped) |  |
+| bh: admin_set_business_health_release | execute | DENY | pglite | Nobody else changes the Business Health release setting |  |
 | demo: admin_set_firm_demo | execute | DENY | pglite | Nobody else marks an organisation as a demo organisation |  |
 | demo: my_firm_demo_flags | execute | DENY | pglite | An organisation's own owner or staff, an adviser, a business owner, a support grant, an aal1 session or a signed-out caller never receives a demo marking — the database answers false for every organisation, or refuses |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |
@@ -2226,6 +2246,9 @@ None.
 | cs: register_coming_soon_interest | execute | DENY | pglite | Coming soon is never shown to Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ca: auto teaser lists the Work-in-progress card | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ca: interest on the auto teaser | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
+| bh: me_can_see_business_health (not released) | execute | ALLOW | pglite | Practice (owner, staff) and Viewers (incl. external advisers) see Business Health on clients they can read, released or not (aal2, caller-scoped) |  |
+| bh: me_can_see_business_health (released) | execute | ALLOW | pglite | Practice (owner, staff) and Viewers (incl. external advisers) see Business Health on clients they can read, released or not (aal2, caller-scoped) |  |
+| bh: admin_set_business_health_release | execute | DENY | pglite | Nobody else changes the Business Health release setting |  |
 | set_client_module(a client) | execute | DENY | pglite | app_private.assert_card_manager: Staff, Viewers, Business Owners, support grants, other organisations and aal1 sessions cannot change a client's modules or cards |  |
 | set_client_card_enabled(a client) | execute | DENY | pglite | app_private.assert_card_manager: Staff, Viewers, Business Owners, support grants, other organisations and aal1 sessions cannot change a client's modules or cards |  |
 | start_figure_backfill(the history fill) | execute | DENY | pglite | History fill: everyone except a System Administrator at aal2 is refused (anon has no execute) |  |
@@ -2392,6 +2415,9 @@ None.
 | ca: auto teaser lists the Work-in-progress card | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ca: interest on the auto teaser | execute | DENY | pglite | Automatic teasers follow the same practice-only rule: never Business Owners, Viewers, other organisations, aal1 or signed-out callers |  |
 | ca: admin_set_card_coming_soon | execute | DENY | pglite | Nobody else changes the per-card Coming soon opt-out |  |
+| bh: me_can_see_business_health (not released) | execute | DENY | pglite | Business Owners do not see Business Health until a System Administrator releases it |  |
+| bh: me_can_see_business_health (released) | execute | ALLOW | pglite | Once released, Business Owners see Business Health on their own client |  |
+| bh: admin_set_business_health_release | execute | DENY | pglite | Nobody else changes the Business Health release setting |  |
 | demo: admin_set_firm_demo | execute | DENY | pglite | Nobody else marks an organisation as a demo organisation |  |
 | demo: my_firm_demo_flags | execute | DENY | pglite | An organisation's own owner or staff, an adviser, a business owner, a support grant, an aal1 session or a signed-out caller never receives a demo marking — the database answers false for every organisation, or refuses |  |
 | ea: no early access — client_visible_cards shows the WIP card | execute | DENY | pglite | Without an org_early_access row a Work-in-progress card stays hidden and refused for every role |  |

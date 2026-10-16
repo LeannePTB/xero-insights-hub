@@ -136,6 +136,13 @@
     },
     {
         "args": [
+            "_released"
+        ],
+        "name": "admin_set_business_health_release",
+        "required": 1
+    },
+    {
+        "args": [
             "_card_key",
             "_hidden"
         ],
@@ -339,6 +346,12 @@
         "args": [
         ],
         "name": "begin_enquiry_alert_test",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "business_health_released",
         "required": 0
     },
     {
@@ -852,6 +865,13 @@
     },
     {
         "args": [
+            "_client_ids"
+        ],
+        "name": "me_business_health_clients",
+        "required": 1
+    },
+    {
+        "args": [
             "_firm_id"
         ],
         "name": "me_can_manage_cards",
@@ -890,6 +910,13 @@
             "_firm_id"
         ],
         "name": "me_can_open_consolidations",
+        "required": 1
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "me_can_see_business_health",
         "required": 1
     },
     {
