@@ -10,26 +10,76 @@
 import { addMonths, endOfMonth, startOfFinancialYear, startOfMonth } from "@/lib/sydney-time";
 import { computeHealthChecks, monthlyCosts, normaliseName, type HealthChecks } from "./health-checks";
 import type { SnapshotSource } from "@/lib/xero/snapshot-source";
-import { countsTowardProtected } from "@/lib/xero/tax-lines";
+import { analyseBalanceSheet, countsTowardProtected, type StatutoryOverrides } from "@/lib/xero/tax-lines";
+import { applyBankClassifications, type BankClassificationRow } from "@/lib/xero/bank-classifications";
+import { nextTaxPayment, type TaxBalances } from "./health-checks";
 
 /**
- * GST / PAYG withholding owed to the ATO on the balance sheet, for the cycles
- * the client is registered for. The one definition behind "Next tax payment"
- * on the Business Health card and the Overview tax rule.
+ * GST and PAYG withholding owed on one balance sheet, for the cycles the client
+ * is registered for. A combined ATO account counts with GST when registered,
+ * else with PAYG. The one definition behind "Next tax payment" on the Business
+ * Health card, the Overview tooltip and the Overview tax rule.
  */
-export function atoOwedFromTaxLines(
+export function taxBalancesFromLines(
   lines: { amount: number; category: string }[],
   gstCycle: string | null,
   paygCycle: string | null,
-): number {
-  const cats = new Set<string>(["ato-combined"]);
-  if (gstCycle && gstCycle !== "not_registered") cats.add("gst");
-  if (paygCycle && paygCycle !== "not_registered") cats.add("payg");
-  return lines.filter((l) => cats.has(l.category) && countsTowardProtected(l as any)).reduce((s, l) => s + l.amount, 0);
+): TaxBalances {
+  const gstOn = !!gstCycle && gstCycle !== "not_registered";
+  const paygOn = !!paygCycle && paygCycle !== "not_registered";
+  const out: TaxBalances = { gst: 0, payg: 0 };
+  for (const l of lines) {
+    if (!countsTowardProtected(l as any)) continue;
+    if (l.category === "gst" && gstOn) out.gst += l.amount;
+    else if (l.category === "payg" && paygOn) out.payg += l.amount;
+    else if (l.category === "ato-combined") {
+      if (gstOn) out.gst += l.amount;
+      else if (paygOn) out.payg += l.amount;
+    }
+  }
+  return out;
+}
+
+/** Report keys that can hold a lodgement period-end balance sheet. */
+export const PERIOD_END_BS_KEYS = ["balance_sheet_prior", "balance_sheet_period_end"] as const;
+
+/**
+ * Period-end tax balances by date, from stored period-end balance sheets
+ * (`params.date` is the period end). Same tax-line extraction as today's.
+ */
+export function periodEndTaxLookup(
+  rows: { report_key: string; params: any; payload: any; complete?: boolean; fetched_at: string }[],
+  accountsPayload: any,
+  overrides: StatutoryOverrides | undefined,
+  gstCycle: string | null,
+  paygCycle: string | null,
+): (date: string) => TaxBalances | null {
+  const sorted = rows
+    .filter((r) => (PERIOD_END_BS_KEYS as readonly string[]).includes(r.report_key) && r.complete !== false)
+    .sort((a, b) => (a.fetched_at < b.fetched_at ? 1 : -1));
+  return (date: string) => {
+    const row = sorted.find((r) => r.params?.date === date);
+    if (!row) return null;
+    const a = analyseBalanceSheet(row.payload, accountsPayload, overrides);
+    if (a.taxLines.status !== "assessed") return a.taxLines.status === "absent" ? { gst: 0, payg: 0 } : null;
+    return taxBalancesFromLines(a.taxLines.lines, gstCycle, paygCycle);
+  };
+}
+
+/**
+ * Cash at bank for one balance sheet: the client's bank-account
+ * classifications applied to the accounts first, so credit cards and excluded
+ * accounts never count as cash. The Overview "Cash at bank" column, the
+ * Overview tax rule and Business Health all read cash through this.
+ */
+export function classifiedAccounts(accounts: any[] | null | undefined, bankRows: BankClassificationRow[]): { Accounts: any[] } | undefined {
+  return Array.isArray(accounts) ? { Accounts: applyBankClassifications(accounts, bankRows) } : undefined;
 }
 
 export const MONTHLY_PNL_KEY = "profit_and_loss_monthly_last3";
 const LATEST_KEYS = ["profit_and_loss_ytd", "balance_sheet", "invoices_accrec_open", "accounts", MONTHLY_PNL_KEY];
+/** Period-end rows are closed periods: read regardless of age. */
+const PERIOD_END_MAX_AGE_DAYS = 200;
 /** Ignore stored rows older than this: a week-old balance is not "the" balance. */
 const MAX_AGE_DAYS = 7;
 
@@ -61,18 +111,19 @@ export async function loadHealthChecks(
   const since = new Date(Date.now() - MAX_AGE_DAYS * 86_400_000).toISOString();
   const cols = "client_id, tenant_id, report_key, params, payload, payload_version, fetched_at, as_at, complete";
 
-  const [latestQ, priorQ, bankQ, overrideQ, clientQ, wageQ] = await Promise.all([
+  const [latestQ, priorQ, bankQ, overrideQ, clientQ, wageQ, periodQ] = await Promise.all([
     supabase.from("xero_snapshots").select(cols).in("client_id", clientIds).in("report_key", LATEST_KEYS).gte("fetched_at", since).order("fetched_at", { ascending: false }),
     supabase.from("xero_snapshots").select(cols).in("client_id", clientIds).eq("report_key", "profit_and_loss_prior").in("params->>fromDate", months.map((m) => m.from)).order("fetched_at", { ascending: false }),
     supabase.from("client_bank_account_classifications").select("client_id, tenant_id, account_id, classification").in("client_id", clientIds),
     supabase.from("client_statutory_accounts").select("client_id, account_name, category").in("client_id", clientIds),
     supabase.from("clients").select("id, gst_cycle, payg_withholding_cycle").in("id", clientIds),
     supabase.from("client_cost_classifications").select("client_id, tenant_id, account_name, classification, is_wages").in("client_id", clientIds),
+    supabase.from("xero_snapshots").select(cols).in("client_id", clientIds).in("report_key", PERIOD_END_BS_KEYS as unknown as string[]).gte("fetched_at", new Date(Date.now() - PERIOD_END_MAX_AGE_DAYS * 86_400_000).toISOString()).order("fetched_at", { ascending: false }),
   ]);
   if (latestQ.error || priorQ.error) throw new Error("Saved figures could not be read.");
 
   const { SNAPSHOT_PAYLOAD_VERSION, STALENESS_SECONDS } = await import("@/lib/xero/snapshot-keys");
-  const { analyseBalanceSheet, statutoryOverrideMap } = await import("@/lib/xero/tax-lines");
+  const { statutoryOverrideMap } = await import("@/lib/xero/tax-lines");
   const { sydneyDate } = await import("@/lib/sydney-time");
   const rows = ((latestQ.data ?? []) as any[]).filter((r) => r.payload_version === SNAPSHOT_PAYLOAD_VERSION);
   const priorRows = ((priorQ.data ?? []) as any[]).filter((r) => r.payload_version === SNAPSHOT_PAYLOAD_VERSION);
