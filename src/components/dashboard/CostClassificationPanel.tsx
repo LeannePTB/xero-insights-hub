@@ -21,6 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { GATE_WAIT_MESSAGE, isGateWait, xeroQueryRetry } from "@/lib/xero/live-load";
 
 type AccountOverride = { classification?: ClassificationChoice; isWages?: boolean };
 
@@ -67,15 +68,16 @@ export function CostClassificationPanel({
           basis: "accrual",
         },
       }),
-    retry: false,
+    ...xeroQueryRetry,
   });
 
   const accountsQ = useQuery({
     queryKey: ["xero-expense-accounts", clientId, tenantId],
     queryFn: () => fetchAccounts({ data: { clientId, tenantId } }),
     staleTime: 30 * 60 * 1000,
-    retry: false,
+    ...xeroQueryRetry,
   });
+  const waiting = isGateWait(pnlQ.failureReason) || isGateWait(pnlQ.error) || isGateWait(accountsQ.failureReason);
 
   const classQ = useQuery({
     queryKey: ["cost-classifications", clientId, tenantId],
@@ -223,9 +225,16 @@ export function CostClassificationPanel({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => {
+          onClick={async () => {
+            // Explicit Refresh: go live for the account list (clears the short
+            // shared cache for this file), then re-read the P&L.
+            try {
+              const fresh = await fetchAccounts({ data: { clientId, tenantId, refresh: true } });
+              qc.setQueryData(["xero-expense-accounts", clientId, tenantId], fresh);
+            } catch (e) {
+              toast.error(isGateWait(e) ? GATE_WAIT_MESSAGE : "The account list could not be refreshed from Xero.");
+            }
             pnlQ.refetch();
-            accountsQ.refetch();
           }}
           disabled={pnlQ.isFetching || accountsQ.isFetching}
           title="Refresh account list from Xero"
@@ -234,9 +243,9 @@ export function CostClassificationPanel({
         </Button>
       </div>
 
-      {pnlQ.isLoading || classQ.isLoading ? (
+      {pnlQ.isLoading || classQ.isLoading || waiting ? (
         <div className="flex items-center py-6 text-sm text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading accounts…
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {waiting ? GATE_WAIT_MESSAGE : "Loading accounts…"}
         </div>
       ) : pnlQ.error ? (
         <p className="py-4 text-sm text-destructive">

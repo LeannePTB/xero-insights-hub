@@ -4,6 +4,8 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { GATE_WAIT_MESSAGE, isGateWait, xeroQueryRetry } from "@/lib/xero/live-load";
 import {
   listStatutoryAccounts,
   setStatutoryAccount,
@@ -46,6 +48,13 @@ export function StatutoryAccountsSection({
     queryKey: ["statutory-accounts", clientId, tenantId],
     enabled: Boolean(tenantId),
     queryFn: () => list({ data: { clientId, tenantId: tenantId as string } }),
+    ...xeroQueryRetry,
+  });
+  const waiting = isGateWait(q.failureReason) || isGateWait(q.error);
+  const refresh = useMutation({
+    mutationFn: () => list({ data: { clientId, tenantId: tenantId as string, refresh: true } }),
+    onSuccess: (d) => qc.setQueryData(["statutory-accounts", clientId, tenantId], d),
+    onError: (e: any) => toast.error(isGateWait(e) ? GATE_WAIT_MESSAGE : "The accounts could not be refreshed from Xero."),
   });
 
   const mut = useMutation({
@@ -99,8 +108,17 @@ export function StatutoryAccountsSection({
         because nothing in the file says how much of it is which.
       </p>
 
-      {q.isLoading ? (
-        <p className="text-sm text-muted-foreground">Reading the accounts on this file…</p>
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={() => refresh.mutate()} disabled={refresh.isPending || q.isFetching}>
+          {refresh.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
+          Refresh from Xero
+        </Button>
+      </div>
+      {q.isLoading || waiting ? (
+        <p className="flex items-center text-sm text-muted-foreground">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          {waiting ? GATE_WAIT_MESSAGE : "Reading the accounts on this file…"}
+        </p>
       ) : q.error ? (
         <p className="text-sm text-destructive">
           The accounts could not be read from Xero, so nothing can be set here right now.
