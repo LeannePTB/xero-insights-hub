@@ -17,6 +17,8 @@ import { Tool, ToolContent, ToolHeader } from "@/components/ai-elements/tool";
 import { Source, Sources, SourcesContent, SourcesTrigger } from "@/components/ai-elements/sources";
 import { isKnownAppPath } from "@/lib/trixie/trixie-pagemap";
 import { trixieSuggestions } from "@/lib/trixie/trixie-suggestions";
+import { TRIXIE_JOBS, type TrixieJobKey } from "@/lib/trixie/trixie-jobs";
+import { useCanManageClient } from "@/hooks/useCanManageClient";
 import { ArrowLeft, History, Loader2, Plus, Trash2, X } from "lucide-react";
 
 const GREETING =
@@ -32,6 +34,15 @@ const TOOL_LABELS: Record<string, string> = {
   readPayables: "Read payables",
   readBreakeven: "Read break-even",
   readHealthVerdict: "Read business health",
+  account_transactions: "Read account transactions",
+  journals: "Read manual journals",
+  contact_history: "Read contact history",
+  bank_activity: "Read bank activity",
+  pay_runs: "Read pay runs",
+  compare_periods: "Compared two periods",
+  activity_statement: "Read activity statement figures",
+  find_issues: "Ran bookkeeping checks",
+  practice_overview: "Read the organisation Overview",
 };
 
 type Src = { label: string; asAt: string | null; href?: string };
@@ -241,6 +252,10 @@ function TrixieHistory({ activeId, onBack, onClose, onOpen, onDeleted }: { activ
 function TrixieChat({ pathname, threadId, initialMessages, onThread, onHistory, onNewChat, onClose }: { pathname: string; threadId: string | null; initialMessages: UIMessage[]; onThread: (id: string) => void; onHistory: () => void; onNewChat: () => void; onClose: () => void }) {
   const navigate = useNavigate();
   const threadRef = useRef<string | null>(threadId);
+  const jobRef = useRef<TrixieJobKey | null>(null);
+  // Presentation only: the server re-checks staff access for every job.
+  const clientId = /^\/clients\/([0-9a-f-]{36})/i.exec(pathname)?.[1] ?? null;
+  const { canManage } = useCanManageClient(clientId);
   const onThreadRef = useRef(onThread);
   onThreadRef.current = onThread;
   const transport = useMemo(() => new DefaultChatTransport({
@@ -257,7 +272,7 @@ function TrixieChat({ pathname, threadId, initialMessages, onThread, onHistory, 
       }
       return response;
     },
-    body: () => ({ pathname: window.location.pathname, threadId: threadRef.current }),
+    body: () => { const job = jobRef.current; jobRef.current = null; return { pathname: window.location.pathname, threadId: threadRef.current, job }; },
   }), []);
   const { messages, sendMessage, status, stop, error, clearError } = useChat({
     transport,
@@ -274,6 +289,13 @@ function TrixieChat({ pathname, threadId, initialMessages, onThread, onHistory, 
   const toolRunning = status === "streaming" && last?.role === "assistant" && last.parts.some((p) => isToolUIPart(p) && p.state !== "output-available" && p.state !== "output-error");
   const thinking = status === "submitted" || toolRunning || (status === "streaming" && last?.role === "assistant" && !last.parts.some((p) => p.type === "text" && p.text));
   const suggestions = trixieSuggestions(pathname);
+  const runJob = (key: TrixieJobKey) => {
+    if (busy) return;
+    if (error) clearError();
+    jobRef.current = key;
+    void sendMessage({ text: TRIXIE_JOBS[key].label });
+  };
+  const copy = (text: string) => { void navigator.clipboard?.writeText(text).then(() => toast.success("Copied")); };
 
   // Links Trixie gives open inside the app, and only when the page exists.
   const onLinkClick = (event: MouseEvent<HTMLDivElement>) => {
@@ -302,6 +324,14 @@ function TrixieChat({ pathname, threadId, initialMessages, onThread, onHistory, 
           {messages.length === 0 && (
             <div className="flex flex-wrap gap-2 pl-9">
               {suggestions.map((item) => <Suggestion key={item} suggestion={item} onClick={ask} className="h-auto whitespace-normal py-1.5 text-left text-xs" />)}
+            </div>
+          )}
+          {messages.length === 0 && clientId && canManage && (
+            <div className="pl-9">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">Ready-made jobs</p>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(TRIXIE_JOBS) as TrixieJobKey[]).map((key) => <Button key={key} variant="outline" size="sm" className="h-auto py-1.5 text-xs" onClick={() => runJob(key)}>{TRIXIE_JOBS[key].label}</Button>)}
+              </div>
             </div>
           )}
           {messages.map((message) => {
@@ -335,6 +365,9 @@ function TrixieChat({ pathname, threadId, initialMessages, onThread, onHistory, 
                           ))}
                         </SourcesContent>
                       </Sources>
+                    )}
+                    {message.role === "assistant" && !busy && message.parts.some((p) => p.type === "text" && p.text.trim()) && (
+                      <Button variant="ghost" size="sm" className="mt-1 h-7 px-2 text-xs text-muted-foreground" onClick={() => copy(message.parts.map((p) => (p.type === "text" ? p.text : "")).join("\n").trim())}>Copy</Button>
                     )}
                   </MessageContent>
                 </div>
