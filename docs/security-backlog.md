@@ -1922,3 +1922,7 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 ## Trixie deeper tools (2026-10-16)
 - Added nine read-only Trixie tools, an Australian rules pack and three staff-only jobs. Scope bound from the verified route; per-file `assert_widget_access` as the caller; reads via caller RLS snapshots or the shared Xero GET client; `logClientDataRead` for every read. No new tables, grants or service-role data reads. Tests: `src/lib/trixie/trixie-deep-tools.test.ts`.
 - OPEN: live account/journal/contact reads only fetch Xero's first page (100 documents); answers say so.
+
+## 2026-10-16 — Trixie organisation-level answers (no access change)
+- `practice_overview` and new `ask_about_client` are offered to active organisation members on organisation pages and on signed-in pages outside a client/System Admin ("general"). Both read only the caller-scoped Overview list; a typed client name is matched against that list, then re-verified with `trixie_access_context` as the caller, and card gates (`assert_widget_access`) apply per Xero file. No IDs in tool schemas.
+- OPEN (pre-existing, not changed): `trixie_access_context` "general" mode still selects the caller's earliest active membership for allowance counting and audience. The new tools do not use that organisation as a filter, but the fallback itself conflicts with the "no first organisation fallback" rule and should be reviewed by the owner.
