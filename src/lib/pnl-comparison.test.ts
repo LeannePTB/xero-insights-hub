@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 import { sameDaysPreviousMonth, paydayNote } from "./pnl-comparison";
 const d = (s: string) => new Date(`${s}T00:00:00`);
 const iso = (x: Date) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
