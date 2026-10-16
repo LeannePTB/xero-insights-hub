@@ -1870,3 +1870,6 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 
 ## 16 Oct 2026 — Closed: Business Health wage tags read with supabaseAdmin
 `src/lib/health.functions.ts` now reads `client_cost_classifications` through the caller's session after `assertWidgetAccess`; RLS (`has_client_read_access` / `user_can_manage_client`) applies. Register row removed. New guard `tests/admin-client-tables.test.ts` requires every (file, client table) pair reached with `supabaseAdmin` to be listed in the register. Sweep: no other unregistered use found.
+
+## 16 Oct 2026 — Closed: Advisory module reordering
+`public.admin_move_card_module` (System Administrator only via assert_super_admin, direction-validated, audited as `card_module_moved`) swaps a module's `sort_order` with its neighbour. Display order only — no policy, grant or access change. Registered in definer-purposes; RPC signature snapshot refreshed; security:check green (331 tests, 18 live checks).

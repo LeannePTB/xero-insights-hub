@@ -629,6 +629,23 @@ export const saveCardModule = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const moveCardModule = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) =>
+    z.object({ moduleKey: z.string().regex(/^[a-z][a-z_]{1,39}$/), direction: z.enum(["up", "down"]) }).strict().parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase as any).rpc("admin_move_card_module", {
+      _module_key: data.moduleKey,
+      _direction: data.direction,
+    });
+    if (error) {
+      if (/Forbidden|NO_ACCESS|insufficient/i.test(error.message)) throw new Error("Forbidden");
+      throw new Error("The module could not be moved.");
+    }
+    return { ok: true };
+  });
+
 export const setClientModuleTick = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: unknown) =>
