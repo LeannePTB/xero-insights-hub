@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   cashCoverStatus,
   lodgedAtoBills,
-  taxPaymentAlert,
   nextTaxPayment,
   nextTaxText,
   lastPeriodEnd,
