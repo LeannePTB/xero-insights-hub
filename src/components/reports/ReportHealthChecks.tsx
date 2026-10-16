@@ -10,25 +10,25 @@ const PILL: Record<CheckStatus, string> = {
 /** Business Health in a monthly report. Only frozen payload strings. */
 export function ReportHealthChecks({ checks }: { checks: HealthChecks }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-6">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Business health</p>
-      <h3 className="mt-2 font-display text-lg font-semibold">{checks.headline}</h3>
-      <ul className="mt-3 space-y-2">
+    <section className="rounded-2xl border border-border bg-card p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Business health</p>
+        <h3 className="font-display text-base font-semibold">{checks.headline}</h3>
+      </div>
+      <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
         {checks.checks.map((c) => (
-          <li key={c.key} className="rounded-xl border border-border/60 p-3">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">{c.question}</p>
-                <p className="text-base font-semibold tabular-nums">{c.figure}</p>
-              </div>
+          <li key={c.key} className="rounded-xl border border-border/60 p-2.5">
+            <div className="flex items-start justify-between gap-2">
+              <p className="min-w-0 text-sm font-medium">{c.question}</p>
               <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${PILL[c.status]}`}>{STATUS_LABEL[c.status]}</span>
             </div>
+            <p className="text-base font-semibold tabular-nums">{c.figure}</p>
             {c.detail && <p className="mt-1 text-xs text-muted-foreground">{c.detail}</p>}
-            <p className="mt-1 text-sm text-muted-foreground">{c.meaning}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{c.meaning}</p>
           </li>
         ))}
       </ul>
-      {checks.info.map((l) => <p key={l.key} className="mt-2 text-sm text-muted-foreground">{l.text}</p>)}
+      {checks.info.length > 0 && <p className="mt-2 text-xs text-muted-foreground">{checks.info.map((l) => l.text).join(" · ")}</p>}
       <p className="mt-3 text-xs text-muted-foreground">Figures from Xero as saved on {checks.asOf} ({checks.fyLabel}).</p>
     </section>
   );
