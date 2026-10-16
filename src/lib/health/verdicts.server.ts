@@ -100,6 +100,8 @@ export async function computeClientVerdicts(supabase: any, clientIdsIn: string[]
           statutoryOverrides: statutoryOverrideMap(overridesByClient.get(clientId) ?? []),
           gstRegistered: cyclesByClient.get(clientId)?.gst !== "not_registered",
           withholdsPayg: cyclesByClient.get(clientId)?.payg !== "not_registered",
+          gstCycle: (cyclesByClient.get(clientId)?.gst ?? null) as any,
+          paygCycle: (cyclesByClient.get(clientId)?.payg ?? null) as any,
         },
       );
     }

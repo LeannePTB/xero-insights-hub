@@ -8,7 +8,7 @@ import { atoOwedFromTaxLines } from "@/lib/health/health-checks.server";
 import { bankReconWarning, parseStored, statementPosition } from "./bank-reconciliation";
 import { addDays, addMonths, endOfMonth, startOfFinancialYear, sydneyDate } from "@/lib/sydney-time";
 import { VERDICT_REPORT_KEYS } from "@/lib/health/rule-thresholds";
-import { evaluateClient, type SnapshotRow, type Verdict } from "@/lib/health/rules.server";
+import { debtorBook, evaluateClient, type SnapshotRow, type Verdict } from "@/lib/health/rules.server";
 import { analyseBalanceSheet, buildProtectedMoney, statutoryOverrideMap } from "@/lib/xero/tax-lines";
 import { parsePnl, totalsForPeriod } from "@/lib/reports/monthly-report.server";
 import { bucketOf, evaluateMove, verdictRank, type MoveResult } from "./changes";
@@ -328,13 +328,7 @@ export async function buildOverview(
       const split = splitDebtors(invs, ctx.today);
       debtorsOverduePct = lateSharePct(split);
       debtorsOldAmount = split.old > 0 ? split.old : null;
-      const cutoff = new Date(`${ctx.today}T00:00:00Z`).getTime() - 60 * 86_400_000;
-      debtorsOver60 = invs.reduce((sum: number, inv: any) => {
-        const due = Number(inv?.AmountDue ?? 0);
-        const m = typeof inv?.DueDate === "string" ? inv.DueDate.match(/\/Date\((\d+)/) : null;
-        const t = m ? Number(m[1]) : typeof inv?.DueDate === "string" ? new Date(inv.DueDate).getTime() : NaN;
-        return due > 0 && Number.isFinite(t) && t < cutoff ? sum + due : sum;
-      }, 0);
+      debtorsOver60 = debtorBook(ar.payload, new Date(ar.as_at).getTime()).over60;
     }
     const all = [...(ctx.rowsByClient.get(c.client_id) ?? []), ...(ctx.datedByClient.get(c.client_id) ?? [])];
     const freshAsAt = all.reduce<string | null>((m, r) => (!m || r.fetched_at > m ? r.fetched_at : m), null);

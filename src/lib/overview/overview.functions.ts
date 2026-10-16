@@ -12,7 +12,6 @@ import { requireAal2 } from "@/lib/auth/require-aal2";
 export type FeedEvent = import("./feed.server").FeedEvent;
 
 const Input = z.object({ firmId: z.string().uuid().optional() }).strict().optional();
-const HiddenInput = z.object({}).strict().optional();
 
 export type OverviewRow = {
   clientId: string;
@@ -32,11 +31,13 @@ export type OverviewRow = {
   /** Protected money as a share of cash at bank (shared rule); null when no cash at bank. */
   protectedMoney?: number | null;
   protectedPctOfCash: number | null;
-  protectedLevel: "critical" | "warning" | "watch" | null;
   /** Tooltip from the shared rule; null when protected money or cash is unavailable. */
   protectedTooltip: string | null;
   netProfitMtd: number | null;
+  /** Late share of recent invoices (due ≤ 90 days ago or not yet due), as %. */
   debtorsOverduePct: number | null;
+  /** Debts more than 90 days past due — neutral, never an alert. */
+  debtorsOldAmount?: number | null;
   /** Receivables more than 60 days past due (stored snapshot); null when unknown. */
   debtorsOver60?: number | null;
   /** A linked Xero file is not connected. */
@@ -109,71 +110,4 @@ export const setOverviewAlert = createServerFn({ method: "POST" })
       throw new Error("That alert could not be updated.");
     }
     return { ok: true };
-  });
-
-const HideInput = z.object({ clientId: z.string().uuid(), hidden: z.boolean() });
-const HideFirmInput = z.object({ firmId: z.string().uuid(), hidden: z.boolean() });
-
-/**
- * Hide or restore a client on the overview. Authorisation is entirely in the
- * database (aal2 + user_can_write_client, audited); the caller-supplied id is
- * a filter the function re-checks, never a grant.
- */
-export const setClientOverviewHidden = createServerFn({ method: "POST" })
-  .middleware([requireAal2])
-  .inputValidator((i: unknown) => HideInput.parse(i))
-  .handler(async ({ data, context }) => {
-    const { error } = await (context.supabase as any).rpc("set_client_overview_hidden", {
-      _client_id: data.clientId,
-      _hidden: data.hidden,
-    });
-    if (error) {
-      console.warn("[overview] hide client refused", error.message);
-      throw new Error("That client could not be updated.");
-    }
-    return { ok: true };
-  });
-
-/** Hide or restore a whole organisation on the overview. Same shape as above. */
-export const setFirmOverviewHidden = createServerFn({ method: "POST" })
-  .middleware([requireAal2])
-  .inputValidator((i: unknown) => HideFirmInput.parse(i))
-  .handler(async ({ data, context }) => {
-    const { error } = await (context.supabase as any).rpc("set_firm_overview_hidden", {
-      _firm_id: data.firmId,
-      _hidden: data.hidden,
-    });
-    if (error) {
-      console.warn("[overview] hide organisation refused", error.message);
-      throw new Error("That organisation could not be updated.");
-    }
-    return { ok: true };
-  });
-
-export type HiddenItem = {
-  kind: "client" | "organisation";
-  id: string;
-  name: string;
-  firmId: string;
-  firmName: string;
-};
-
-/** What the caller has hidden and could bring back (caller-scoped in the DB). */
-export const getHiddenOverviewItems = createServerFn({ method: "POST" })
-  .middleware([requireAal2])
-  .inputValidator((i: unknown) => HiddenInput.parse(i))
-  .handler(async ({ context }): Promise<{ items: HiddenItem[] }> => {
-    const { data, error } = await (context.supabase as any).rpc("overview_hidden_items");
-    if (error) {
-      console.warn("[overview] hidden items refused", error.message);
-      throw new Error("Hidden items could not be loaded.");
-    }
-    const items = ((data ?? []) as any[]).map((r) => ({
-      kind: r.kind as "client" | "organisation",
-      id: r.id as string,
-      name: r.name as string,
-      firmId: r.firm_id as string,
-      firmName: r.firm_name as string,
-    }));
-    return { items };
   });
