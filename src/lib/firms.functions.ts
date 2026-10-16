@@ -12,6 +12,7 @@ export type FirmOverviewCard = {
   clientCount: number;
   clientLimit: number;
   isAlwaysFree: boolean;
+  /** System Administrator display aid only: resolved per caller in the database. */
   isDemo: boolean;
   trialEndsAt: string | null;
   currentPeriodEnd: string | null;
@@ -95,10 +96,26 @@ export const listMyFirms = createServerFn({ method: "GET" })
     if (myIds.length === 0) return { firms: [] };
     const { data: firmRows, error: fErr } = await context.supabase
       .from("firms")
-      .select("id, name, is_demo")
+      .select("id, name")
       .in("id", myIds);
     if (fErr) throw new Error(fErr.message);
-    const firms = ((firmRows ?? []) as any[]).map((f) => ({ id: f.id as string, name: f.name as string, isDemo: !!f.is_demo }));
+    // The demo marking is a System Administrator display aid only. The database
+    // resolves it per caller, so a member of a demo organisation only ever
+    // receives "not a demo" — the label never reaches their browser.
+    const { data: flagRows, error: flagErr } = await (context.supabase as any).rpc(
+      "my_firm_demo_flags",
+    );
+    if (flagErr) throw new Error(flagErr.message);
+    const demoIds = new Set(
+      ((flagRows ?? []) as any[])
+        .filter((r) => r.is_demo === true)
+        .map((r) => r.firm_id as string),
+    );
+    const firms = ((firmRows ?? []) as any[]).map((f) => ({
+      id: f.id as string,
+      name: f.name as string,
+      isDemo: demoIds.has(f.id as string),
+    }));
     if (firms.length === 0) return { firms: [] };
 
     const firmIds = firms.map((f) => f.id);
@@ -165,7 +182,9 @@ export const getMyFirm = createServerFn({ method: "POST" })
       db = (await import("@/integrations/supabase/client.server")).supabaseAdmin;
     }
     const [{ data: firm, error }, { data: option }, { count: clientCount }] = await Promise.all([
-      db.from("firms").select("id, name, is_always_free, is_demo").eq("id", data.firmId).maybeSingle(),
+      // No demo marking here: this read serves the organisation's own people, and
+      // the marking is a System Administrator display aid (see my_firm_demo_flags).
+      db.from("firms").select("id, name, is_always_free").eq("id", data.firmId).maybeSingle(),
       db.from("org_subscription_options").select("client_limit").eq("firm_id", data.firmId).maybeSingle(),
       db.from("clients").select("id", { count: "exact", head: true }).eq("firm_id", data.firmId),
     ]);
@@ -180,7 +199,7 @@ export const getMyFirm = createServerFn({ method: "POST" })
       clientCount: clientCount ?? 0,
       clientLimit: (option as any)?.client_limit ?? 0,
       isAlwaysFree,
-      isDemo: !!(firm as any).is_demo,
+      isDemo: false,
       trialEndsAt: null,
       currentPeriodEnd: null,
       isOwn: true,

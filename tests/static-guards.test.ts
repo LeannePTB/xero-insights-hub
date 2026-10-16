@@ -725,3 +725,24 @@ describe("12f. payroll calls honour the client's explicit setting", () => {
     expect(widget).toContain("s.data && f ?");
   });
 });
+
+describe("the demo marking stays a System Administrator display aid", () => {
+  it("is read from the firms table only by System Admin's own detail screen", () => {
+    // The column itself may only be read directly by the System Administrator
+    // organisation detail (admin.functions.ts, assert_super_admin + aal2).
+    // Anything that feeds an organisation's own people must call the
+    // caller-scoped database reader instead, which answers false for them.
+    const ALLOWED = ["src/lib/admin.functions.ts"];
+    const offenders = FILES.filter(
+      ({ path, text }) =>
+        !ALLOWED.includes(path) && /\.select\([^)]*\bis_demo\b[^)]*\)/s.test(text),
+    ).map(({ path }) => path);
+    expect(offenders, report("Files reading the demo flag directly:", offenders)).toEqual([]);
+  });
+
+  it("the workspace list asks the database who may see the marking", () => {
+    const f = readFileSync(join(ROOT, "src/lib/firms.functions.ts"), "utf8");
+    expect(f).toContain("my_firm_demo_flags");
+    expect(f).not.toMatch(/\.select\([^)]*\bis_demo\b[^)]*\)/s);
+  });
+});

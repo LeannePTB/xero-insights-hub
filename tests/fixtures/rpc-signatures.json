@@ -931,6 +931,12 @@
     {
         "args": [
         ],
+        "name": "my_firm_demo_flags",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
         "name": "my_firm_ids",
         "required": 0
     },

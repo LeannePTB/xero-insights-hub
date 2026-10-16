@@ -428,6 +428,13 @@
       "when": 1792052185486,
       "tag": "0060_bank_classification_overdraft",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1792110734028,
+      "tag": "0061_demo_flag_reader",
+      "breakpoints": true
     }
   ]
 }

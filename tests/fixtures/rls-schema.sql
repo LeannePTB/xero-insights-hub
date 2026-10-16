@@ -4059,6 +4059,17 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.my_firm_demo_flags()
+ RETURNS TABLE(firm_id uuid, is_demo boolean)
+ LANGUAGE sql
+ STABLE
+ SET search_path TO 'public'
+AS $function$
+  select f.id,
+         case when public.me_is_super_admin() then coalesce(f.is_demo, false) else false end
+  from public.firms f
+$function$
+;
 CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -5536,4 +5547,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: fad02df1d3c0a806d308aeb851d288d5004f2b6337bda6a15ac5c9d8dacd6ec0
+-- catalogue-fingerprint: 502333038045c3f97bee4e4e917b333025c351904d0f21f957056ac1cf30955f

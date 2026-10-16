@@ -1102,6 +1102,31 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       await db.query(`update public.card_catalogue set status = 'available'`).catch(() => {});
     }
   }
+  if (r === "demo: my_firm_demo_flags") {
+    // The marking is System Administrator display only. The database resolves it
+    // per caller, so a true value must reach a System Administrator and nobody
+    // else — not the organisation's own owner or staff, not an adviser, not a
+    // signed-out or aal1 caller.
+    await db.exec("set local role postgres");
+    await db.exec(
+      `update public.firms set is_demo = true where id in ('${ORG_A}'::uuid, '${ORG_B}'::uuid)`,
+    );
+    const ctx = CONTEXT[row.role];
+    await db.query(`select set_config('request.jwt.claims', $1, true)`, [claims(ctx)]);
+    await db.exec(`set local role ${ctx.dbRole}`);
+    try {
+      const res = await db.query<{ is_demo: boolean }>(
+        `select firm_id, is_demo from public.my_firm_demo_flags()`,
+      );
+      const marked = res.rows.filter((x) => x.is_demo === true).length;
+      if (process.env.MATRIX_DEBUG)
+        console.log("DEMO reader", row.role, "rows", res.rows.length, "marked", marked);
+      return marked > 0 ? "allow" : "deny";
+    } catch (e) {
+      if (process.env.MATRIX_DEBUG) console.log("DEMO reader", row.role, (e as Error).message);
+      return "deny";
+    }
+  }
   if (r.startsWith("demo:")) {
     // Demo flag: only a System Administrator (aal2) may set it; display only.
     const p = await probe(`select public.admin_set_firm_demo('${ORG_A}'::uuid, true)`);
