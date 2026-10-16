@@ -61,6 +61,14 @@
     },
     {
         "args": [
+            "_module_key",
+            "_direction"
+        ],
+        "name": "admin_move_card_module",
+        "required": 2
+    },
+    {
+        "args": [
             "_pending_id"
         ],
         "name": "admin_onboard_candidates",
