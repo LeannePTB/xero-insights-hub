@@ -435,6 +435,13 @@
       "when": 1792110734028,
       "tag": "0061_demo_flag_reader",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1792114471424,
+      "tag": "0062_wip_cards_follow_ticks_for_system_admin",
+      "breakpoints": true
     }
   ]
 }

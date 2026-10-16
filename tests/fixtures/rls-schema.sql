@@ -2205,13 +2205,6 @@ begin
     early := app_private.client_early_access_for_caller(_client_id);
     result := coalesce(array(select distinct x from unnest(result || array(select e from unnest(early) e where e = any(ticked))) x order by x), '{}'::text[]);
   end if;
-
-  -- Testing exception: a System Administrator sees purchased Work-in-progress
-  -- cards only on a client they can already read. Never anyone else.
-  if auth.uid() is not null and app_private.me_is_super_admin()
-     and app_private.user_can_read_client(auth.uid(), _client_id) then
-    result := coalesce(array(select distinct x from unnest(result || app_private.client_purchasable_cards(_client_id, true)) x order by x), '{}'::text[]);
-  end if;
   return result;
 end;
 $function$
@@ -5547,4 +5540,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: 502333038045c3f97bee4e4e917b333025c351904d0f21f957056ac1cf30955f
+-- catalogue-fingerprint: a7f0b396ecfe88431d1a2c4edae29bc6332d8f913e9ba5312b20e7a192a62556
