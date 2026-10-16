@@ -138,7 +138,7 @@ export function DemoGroup() {
 export function DemoTrixie() {
   return <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
     <div className="rounded-lg border border-border bg-card p-4 shadow-soft sm:p-5">
-      <h3 className="flex items-center gap-2 font-display text-base font-semibold"><img src={trixieIcon} alt="" className="h-5 w-5" />Trixie</h3>
+      <h3 className="flex items-center gap-2 font-display text-base font-semibold"><img src={trixieIcon} alt="Trixie" className="h-5 w-5 object-contain" />Trixie</h3>
       <div className="mt-4 space-y-4">
         <div className="ml-auto w-fit max-w-[85%] rounded-lg bg-primary px-4 py-2.5 text-sm text-primary-foreground">{DEMO_TRIXIE.question}</div>
         <div className="max-w-[92%] space-y-2 rounded-lg border border-border bg-background px-4 py-3 text-sm leading-relaxed">{DEMO_TRIXIE.answer.map((a) => <p key={a}>{a}</p>)}</div>
