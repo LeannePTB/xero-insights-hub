@@ -16,17 +16,12 @@ import type { Verdict } from "./rules.server";
  */
 const BADGE_TITLES: Record<string, Partial<Record<string, string>>> = {
   R01: {
-    critical: "Protected money over cash",
-    warning: "Protected money near cash",
-    watch: "Protected money over half cash",
-  },
-  R05: {
-    warning: "Statutory balances large",
-    watch: "Statutory balances building",
+    critical: "Tax payment at risk",
+    warning: "Tax due soon — tight cash",
   },
   R06: {
-    critical: "Debtors 90+ days",
-    warning: "Debtor book overdue",
+    critical: "Recent invoices mostly late",
+    warning: "Recent invoices running late",
     watch: "Debtors concentrated",
   },
 };

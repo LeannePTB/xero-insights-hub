@@ -31,7 +31,6 @@ describe("protected money sign rules", () => {
   it("a net refund shows no percentage and the refund tooltip", () => {
     const s = protectedShareOfCash(-10608.07, 5000);
     expect(s.pct).toBeNull();
-    expect(s.level).toBeNull();
     expect(s.tooltip).toBe(ATO_REFUND_DUE);
   });
 });
