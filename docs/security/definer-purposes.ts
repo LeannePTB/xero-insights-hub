@@ -470,6 +470,15 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "List the recorded human confirmations with the sign-in address of the person who made each one (aal2 + super admin), so the posture card can name who confirmed what and when.",
   "public.test_accounts_posture":
     "Posture check (aal2 + super admin): Action if a test account can sign in outside a run, holds access outside the test organisation, or has a session outside the run window.",
+
+  "public.business_health_released":
+    "Reads the single platform switch saying whether Business Health is released to Business Owners. aal2, signed-in only (anon revoked). Returns one boolean; no organisation, client or personal data.",
+  "public.admin_set_business_health_release":
+    "Turns the Business Health release-to-clients switch on or off. aal2 + System Administrator via public.assert_super_admin, audited with old and new value. Changes visibility only; never grants client access or entitlement.",
+  "public.me_can_see_business_health":
+    "Caller-scoped visibility narrowing for one client's Business Health card: aal2, requires existing read access to that client, then admits practice members and Viewers, and Business Owners only once released. Narrows only; entitlement is still checked separately.",
+  "public.me_business_health_clients":
+    "Batch form of public.me_can_see_business_health for the client list: aal2, returns only the supplied client IDs the caller may see Business Health for. Caller IDs are a filter, never a grant.",
 };
 
 /**
