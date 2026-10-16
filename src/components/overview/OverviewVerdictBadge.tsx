@@ -46,7 +46,7 @@ export function OverviewVerdictBadge({ verdict }: { verdict: Verdict | undefined
         style={OK_STYLE}
         icon={<CheckCircle2 className="h-3 w-3" />}
         label={badgeLabel(verdict)}
-        tip={verdict.detail}
+        tip={<>{verdict.detail}<Notes notes={verdict.notes} /></>}
       />
     );
   }
@@ -60,6 +60,7 @@ export function OverviewVerdictBadge({ verdict }: { verdict: Verdict | undefined
         <AlertTriangle className="h-3 w-3" />
       );
     const tip = (
+      <>
       <ol className="space-y-1.5">
         {verdict.findings.map((f) => (
           <li key={f.ruleId}>
@@ -70,6 +71,8 @@ export function OverviewVerdictBadge({ verdict }: { verdict: Verdict | undefined
           </li>
         ))}
       </ol>
+      <Notes notes={verdict.notes} />
+      </>
     );
     return (
       <Badge
@@ -89,6 +92,16 @@ export function OverviewVerdictBadge({ verdict }: { verdict: Verdict | undefined
       label={verdict.label}
       tip={verdict.detail}
     />
+  );
+}
+
+/** Neutral info lines (e.g. old debts) — listed, never counted as a warning. */
+function Notes({ notes }: { notes?: string[] }) {
+  if (!notes?.length) return null;
+  return (
+    <ul className="mt-2 space-y-0.5 border-t border-border/50 pt-1.5 opacity-80">
+      {notes.map((n) => <li key={n}>{n} <span className="opacity-70">(info)</span></li>)}
+    </ul>
   );
 }
 

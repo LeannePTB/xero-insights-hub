@@ -5,8 +5,8 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Eye, EyeOff, Loader2, Search } from "lucide-react";
-import { getClientOverview, setOverviewAlert, setClientOverviewHidden, setFirmOverviewHidden, getHiddenOverviewItems, type OverviewRow, type FeedEvent } from "@/lib/overview/overview.functions";
+import { AlertTriangle, Loader2, Search } from "lucide-react";
+import { getClientOverview, setOverviewAlert, type OverviewRow, type FeedEvent } from "@/lib/overview/overview.functions";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -47,28 +47,6 @@ export function OverviewView({ firmId, title }: { firmId?: string; title?: strin
   const [search, setSearch] = useState("");
   const [grouped, setGrouped] = useState(false);
   const navigate = useNavigate();
-  const qc = useQueryClient();
-  const hideClient = useServerFn(setClientOverviewHidden);
-  const hideFirm = useServerFn(setFirmOverviewHidden);
-  const fetchHidden = useServerFn(getHiddenOverviewItems);
-  const hiddenQ = useQuery({ queryKey: ["overview-hidden"], queryFn: () => fetchHidden({ data: {} }) });
-  const [busyHide, setBusyHide] = useState<string | null>(null);
-
-  async function toggleHide(kind: "client" | "organisation", id: string, hidden: boolean) {
-    setBusyHide(id);
-    try {
-      if (kind === "client") await hideClient({ data: { clientId: id, hidden } });
-      else await hideFirm({ data: { firmId: id, hidden } });
-      toast.success(hidden ? "Hidden from the overview" : "Back on the overview");
-      await qc.invalidateQueries({ queryKey: ["client-overview"] });
-      await qc.invalidateQueries({ queryKey: ["overview-hidden"] });
-    } catch (e: any) {
-      toast.error(e?.message ?? "That could not be updated.");
-    } finally {
-      setBusyHide(null);
-    }
-  }
-
   const rows = q.data?.rows ?? [];
   const queue = useResyncQueue();
   const resyncIds = rows.filter((r) => r.canResync).map((r) => r.clientId);
@@ -195,47 +173,18 @@ export function OverviewView({ firmId, title }: { firmId?: string; title?: strin
             </thead>
             <tbody>
               {groups.map((g) => (
-                <GroupRows key={g.name ?? "all"} name={g.name} rows={g.rows} onOpen={(id) => navigate({ to: "/clients/$clientId", params: { clientId: id } })} onHideClient={(id) => toggleHide("client", id, true)} onHideFirm={(id) => toggleHide("organisation", id, true)} busyHide={busyHide} queue={queue} />
+                <GroupRows key={g.name ?? "all"} name={g.name} rows={g.rows} onOpen={(id) => navigate({ to: "/clients/$clientId", params: { clientId: id } })} queue={queue} />
               ))}
             </tbody>
           </table>
         </div>
       )}
 
-      {(hiddenQ.data?.items.length ?? 0) > 0 && (
-        <div className="rounded-lg border p-4">
-          <h2 className="text-sm font-semibold">Hidden from this overview</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            These are not monitored here. Their data still refreshes and their own pages are unchanged.
-          </p>
-          <ul className="mt-3 space-y-2">
-            {hiddenQ.data!.items.map((item) => (
-              <li key={`${item.kind}-${item.id}`} className="flex items-center justify-between gap-3 text-sm">
-                <span>
-                  <span className="font-medium">{item.name}</span>
-                  <span className="ml-2 text-xs text-muted-foreground">
-                    {item.kind === "organisation" ? "Organisation" : `Client · ${item.firmName}`}
-                  </span>
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={busyHide === item.id}
-                  onClick={() => toggleHide(item.kind, item.id, false)}
-                >
-                  {busyHide === item.id ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Eye className="mr-1.5 h-3.5 w-3.5" />}
-                  Bring back
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </PageContainer>
   );
 }
 
-function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide, queue }: { name: string | null; rows: OverviewRow[]; onOpen: (id: string) => void; onHideClient: (id: string) => void; onHideFirm: (id: string) => void; busyHide: string | null; queue: ReturnType<typeof useResyncQueue> }) {
+function GroupRows({ name, rows, onOpen, queue }: { name: string | null; rows: OverviewRow[]; onOpen: (id: string) => void; queue: ReturnType<typeof useResyncQueue> }) {
   return (
     <>
       {name && (
@@ -246,15 +195,6 @@ function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide, que
               <span className="text-xs text-muted-foreground">
                 {rows.length} {rows.length === 1 ? "client" : "clients"}
               </span>
-              <button
-                type="button"
-                className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                title="Stop monitoring this organisation on the overview"
-                disabled={busyHide === rows[0]?.firmId}
-                onClick={() => rows[0] && onHideFirm(rows[0].firmId)}
-              >
-                <EyeOff className="h-3.5 w-3.5" /> Hide organisation
-              </button>
             </div>
           </td>
         </tr>
@@ -308,31 +248,22 @@ function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide, que
           <td className="p-3 text-right tabular-nums" onClick={e => e.stopPropagation()}>
             <Popover><PopoverTrigger asChild><Button variant="ghost" size="sm" aria-label={`Tax and super owed for ${r.clientName}`}>{r.protectedMoney == null || r.protectedMoney < 0 ? '—' : money(r.protectedMoney)}</Button></PopoverTrigger><PopoverContent className="max-w-sm whitespace-pre-line text-xs">{r.protectedTooltip ?? (r.protectedMoney != null && r.protectedMoney < 0 ? 'ATO refund due — nothing to protect' : 'Protected money details unavailable.')}</PopoverContent></Popover>
           </td>
-          <td className={`p-3 text-right tabular-nums ${r.protectedLevel === "critical" && r.protectedPctOfCash !== null ? "font-semibold text-destructive" : r.protectedLevel && r.protectedPctOfCash !== null ? "font-medium text-info" : r.protectedPctOfCash !== null ? "font-medium text-success" : ""}`} title={staleTitle ? staleTitle : (r.protectedTooltip ?? undefined)}>
+          <td className="p-3 text-right tabular-nums" title={staleTitle ? staleTitle : (r.protectedTooltip ?? undefined)}>
             <span className="inline-flex items-center justify-end gap-1">
               {staleMark}
               {pct(r.protectedPctOfCash)}
             </span>
           </td>
           <td className="p-3 text-right tabular-nums">{money(r.netProfitMtd)}</td>
-          <td className="p-3 text-right tabular-nums">{pct(r.debtorsOverduePct)}</td>
+          <td className="p-3 text-right tabular-nums" title="Share of invoices due in the last 90 days (or not yet due) that are more than 14 days late">
+            {pct(r.debtorsOverduePct)}
+            {r.debtorsOldAmount ? <div className="mt-0.5 text-xs font-normal text-muted-foreground">Old debts {money(r.debtorsOldAmount)}</div> : null}
+          </td>
           <td className="p-3">{date(r.lastReportSentAt)}</td>
           <td className="p-3 text-muted-foreground">{date(r.freshAsAt)}</td>
           <td className="p-3">
             <div className="flex items-center gap-3">
             {r.canResync && <ResyncRowControl clientId={r.clientId} queue={queue} />}
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-              title="Stop monitoring this client on the overview"
-              disabled={busyHide === r.clientId}
-              onClick={(e) => {
-                e.stopPropagation();
-                onHideClient(r.clientId);
-              }}
-            >
-              <EyeOff className="h-3.5 w-3.5" />
-            </button>
             </div>
           </td>
         </tr>

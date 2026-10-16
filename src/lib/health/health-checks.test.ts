@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   cashCoverStatus,
+  taxPaymentAlert,
+  debtorAlert,
   computeHealthChecks,
   monthlyCosts,
   nextAtoDueDate,
@@ -115,3 +117,29 @@ function base(over: Partial<HealthInputs>): HealthInputs {
     ...over,
   };
 }
+
+describe("Overview alert rules (shared with Business Health)", () => {
+  const next = { due: "2026-10-21", amount: 6_205 };
+  it("tax due in 5 days and more than cash + recent debtors → Action", () => {
+    expect(taxPaymentAlert({ next, today: "2026-10-16", cashAtBank: 1_000, recentDebtors: 2_000, pastDueOwing: 0 }).level).toBe("action");
+  });
+  it("tax due within 7 days, over cash but covered by recent debtors → Warn", () => {
+    expect(taxPaymentAlert({ next, today: "2026-10-16", cashAtBank: 4_600, recentDebtors: 11_600, pastDueOwing: 0 }).level).toBe("warn");
+  });
+  it("7-day boundary: 7 days counts, 8 days does not", () => {
+    expect(taxPaymentAlert({ next, today: "2026-10-14", cashAtBank: 0, recentDebtors: 0, pastDueOwing: 0 }).level).toBe("action");
+    expect(taxPaymentAlert({ next, today: "2026-10-13", cashAtBank: 0, recentDebtors: 0, pastDueOwing: 0 }).level).toBe(null);
+  });
+  it("past-due tax still owing → Action even when far from the next due date", () => {
+    expect(taxPaymentAlert({ next: null, today: "2026-10-16", cashAtBank: 1e6, recentDebtors: 0, pastDueOwing: 1 }).level).toBe("action");
+  });
+  it("cash covers the payment → no alert", () => {
+    expect(taxPaymentAlert({ next, today: "2026-10-16", cashAtBank: 7_000, recentDebtors: 0, pastDueOwing: 0 }).level).toBe(null);
+  });
+  it("debtor alert: same thresholds as Paying on time", () => {
+    expect(debtorAlert(1_999, 2_000)).toBe(null);
+    expect(debtorAlert(3_492, 11_600)).toBe("warn");
+    expect(debtorAlert(6_000, 10_000)).toBe("action");
+    expect(debtorAlert(1_900, 10_000)).toBe(null);
+  });
+});

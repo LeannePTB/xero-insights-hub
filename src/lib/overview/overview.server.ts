@@ -3,6 +3,8 @@
 // `@/lib/xero/api.server`.
 
 import { protectedShareOfCash } from "@/lib/health/protected-money-share";
+import { lateSharePct, nextTaxPayment, splitDebtors, taxSetAsideTooltip } from "@/lib/health/health-checks";
+import { atoOwedFromTaxLines } from "@/lib/health/health-checks.server";
 import { bankReconWarning, parseStored, statementPosition } from "./bank-reconciliation";
 import { addDays, addMonths, endOfMonth, startOfFinancialYear, sydneyDate } from "@/lib/sydney-time";
 import { VERDICT_REPORT_KEYS } from "@/lib/health/rule-thresholds";
@@ -20,6 +22,8 @@ export type DayFigures = {
   cash: number | null;
   creditCardDebt: number | null;
   protectedMoney: number | null;
+  /** GST / PAYG withholding owed (the next tax payment amount). */
+  atoOwed?: number | null;
   /** Per-account breakdown of protected money, for the tooltip. */
   protectedAccounts?: { name: string; amount: number; counted: boolean }[];
   revenueMtd: number | null;
@@ -202,6 +206,8 @@ export function verdictFor(ctx: OverviewContext, clientId: string, bsDate?: stri
       statutoryOverrides: statutoryOverrideMap(ctx.overrides.get(clientId) ?? []),
       gstRegistered: ctx.cycles.get(clientId)?.gst !== "not_registered",
       withholdsPayg: ctx.cycles.get(clientId)?.payg !== "not_registered",
+      gstCycle: (ctx.cycles.get(clientId)?.gst ?? null) as any,
+      paygCycle: (ctx.cycles.get(clientId)?.payg ?? null) as any,
     },
   );
 }
@@ -231,6 +237,8 @@ export function seriesFor(ctx: OverviewContext, clientId: string): ClientSeries 
       if (a.taxLines.status === "assessed") {
         const pm = buildProtectedMoney(d, a.taxLines.lines);
         f.protectedMoney = pm.total;
+        const cy = ctx.cycles.get(clientId);
+        f.atoOwed = atoOwedFromTaxLines(a.taxLines.lines, cy?.gst ?? null, cy?.payg ?? null);
         f.protectedAccounts = pm.components.flatMap((c) => (c.status === "resolved" ? c.accounts : []));
       }
     } else if (row.report_key === "profit_and_loss_mtd") {
@@ -264,7 +272,7 @@ export function seriesFor(ctx: OverviewContext, clientId: string): ClientSeries 
   return { anchor, byDate, avgMonthlyRevenue };
 }
 
-export type FigureKey = Exclude<keyof DayFigures, "protectedAccounts">;
+export type FigureKey = Exclude<keyof DayFigures, "protectedAccounts" | "atoOwed">;
 
 /** A move of one figure over `days` ending at the anchor, with the prior-month routine check. */
 export function moveFor(s: ClientSeries, key: FigureKey, days: number): MoveResult {
@@ -310,12 +318,17 @@ export async function buildOverview(
     const today = s.anchor ? s.byDate.get(s.anchor) : undefined;
     const m7 = moveFor(s, "cash", 7);
     const ar = latest(ctx.rowsByClient.get(c.client_id) ?? [], "invoices_accrec_open");
+    // Same split as "Customers paying on time?": recent late share only;
+    // debts over 90 days past due are shown neutrally, never as overdue.
     let debtorsOverduePct: number | null = null;
     let debtorsOver60: number | null = null;
+    let debtorsOldAmount: number | null = null;
     if (ar?.complete) {
-      const book = debtorBook(ar.payload, new Date(ar.as_at).getTime());
-      debtorsOverduePct = book.total > 0 ? (book.overdue / book.total) * 100 : null;
-      debtorsOver60 = book.over60;
+      const invs = Array.isArray(ar.payload) ? ar.payload : (ar.payload?.Invoices ?? []);
+      const split = splitDebtors(invs, ctx.today);
+      debtorsOverduePct = lateSharePct(split);
+      debtorsOldAmount = split.old > 0 ? split.old : null;
+      debtorsOver60 = debtorBook(ar.payload, new Date(ar.as_at).getTime()).over60;
     }
     const all = [...(ctx.rowsByClient.get(c.client_id) ?? []), ...(ctx.datedByClient.get(c.client_id) ?? [])];
     const freshAsAt = all.reduce<string | null>((m, r) => (!m || r.fetched_at > m ? r.fetched_at : m), null);
@@ -354,12 +367,15 @@ export async function buildOverview(
         const lines = (today?.protectedAccounts ?? []).map(
           (a) => `${a.name}: ${money(a.amount)}${a.counted ? "" : " (debit balance, not a refund — not counted)"}`,
         );
-        const tooltip = share ? [share.tooltip, ...(prot !== null ? [`Protected money: ${money(prot)}`] : []), ...lines].join("\n") : null;
-        return { protectedPctOfCash: share?.pct ?? null, protectedLevel: share?.level ?? null, protectedTooltip: tooltip };
+        const cy = ctx.cycles.get(c.client_id);
+        const next = nextTaxPayment((cy?.gst ?? null) as any, (cy?.payg ?? null) as any, ctx.today, today?.atoOwed ?? null);
+        const tooltip = share ? [taxSetAsideTooltip(next), ...(prot !== null ? [`Protected money: ${money(prot)}`] : []), ...lines].join("\n") : null;
+        return { protectedPctOfCash: share?.pct ?? null, protectedTooltip: tooltip };
       })(),
       netProfitMtd: today?.netProfitMtd ?? null,
       debtorsOverduePct,
       debtorsOver60,
+      debtorsOldAmount,
       xeroNeedsAttention: (ctx.connections.get(c.client_id) ?? []).some((k) => k.status !== "connected"),
       lastReportSentAt: ctx.lastSent.get(c.client_id) ?? null,
       freshAsAt,
