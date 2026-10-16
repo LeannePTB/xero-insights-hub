@@ -354,13 +354,16 @@ export function ruleProtectedMoneyVsCash(
   let detail: string;
   if (alert.reason === "past_due") {
     title = "A tax payment is past its due date";
-    detail = `${money(pastDue)} of bills coded to tax accounts is past its due date and still owing, against ${money(cashAmount)} cash at bank.`;
+    const owing = pastDue > 0 ? pastDue : nextTax?.amount ?? 0;
+    detail = pastDue > 0
+      ? `${money(owing)} of bills coded to tax accounts is past its due date and still owing, against ${money(cashAmount)} cash at bank.`
+      : `A lodged activity statement of ${money(owing)} was due ${dayLabel(nextTax!.due)} and is still unpaid, against ${money(cashAmount)} cash at bank.`;
   } else if (alert.reason === "due_soon_over_available") {
     title = "Tax due now is more than cash and recent debtors";
-    detail = `About ${money(nextTax!.amount!)} of GST and PAYG withholding for the period ended ${nextTax!.periodEnd ?? "last period"} is due ${when}${nextTax!.estimate ? " (estimate, full balance)" : ""}, against ${money(cashAmount)} cash at bank and ${money(tax.recentDebtors)} of recent debtors.`;
+    detail = `About ${money(nextTax!.amount!)} ${nextTax!.source === "lodged_bill" ? "on the lodged activity statement" : `of GST and PAYG withholding for the period ended ${nextTax!.periodEnd ?? "last period"}`} is due ${when}${nextTax!.estimate ? " (estimate, full balance)" : ""}, against ${money(cashAmount)} cash at bank and ${money(tax.recentDebtors)} of recent debtors.`;
   } else {
     title = "Tax due now is more than cash at bank";
-    detail = `About ${money(nextTax!.amount!)} of GST and PAYG withholding for the period ended ${nextTax!.periodEnd ?? "last period"} is due ${when}${nextTax!.estimate ? " (estimate, full balance)" : ""}, against ${money(cashAmount)} cash at bank. Recent debtors of ${money(tax.recentDebtors)} would cover it once collected.`;
+    detail = `About ${money(nextTax!.amount!)} ${nextTax!.source === "lodged_bill" ? "on the lodged activity statement" : `of GST and PAYG withholding for the period ended ${nextTax!.periodEnd ?? "last period"}`} is due ${when}${nextTax!.estimate ? " (estimate, full balance)" : ""}, against ${money(cashAmount)} cash at bank. Recent debtors of ${money(tax.recentDebtors)} would cover it once collected.`;
   }
 
   return {
