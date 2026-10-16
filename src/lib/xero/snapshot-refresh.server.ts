@@ -225,6 +225,9 @@ export async function refreshTenant(
   trigger: "scheduled" | "manual" | "backfill",
   budget: CallBudget = new CallBudget(MAX_XERO_CALLS_PER_RUN),
 ): Promise<TenantRefreshResult> {
+  // A refresh must store fresh figures, never the short shared cache.
+  const { sharedCacheClearTenant } = await import("./shared-cache.server");
+  sharedCacheClearTenant(target.tenantId);
   const { data: runId, error: claimError } = await (supabaseAdmin as any).rpc(
     "claim_xero_snapshot_run",
     {

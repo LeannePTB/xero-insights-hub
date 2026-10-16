@@ -1,5 +1,4 @@
 - Overview uses stored snapshots, `evaluateClient` status and caller-scoped `overview_clients()`; never duplicate access rules in TypeScript.
-- Bank/card extraction is shared in `tax-lines.ts`; the ID-keyed bank-classification overlay applies explicit client/file/account overrides before Xero BankAccountType, never name guesses, so stored and live figures agree without rewriting Xero metadata.
 - Sidebar spacer never shrinks; inset: flex-1 min-w-0, not w-full (clipping).
 - AppShell owns the sole menu header; AppHeader registers actions there and renders standalone only outside, avoiding duplicate branding/lost actions.
 - Client income tax instalments use one period-history table and audited caller-scoped save; history and organisation-team-only editing stay explicit.

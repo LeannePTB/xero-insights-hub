@@ -16,10 +16,15 @@
 // earlier in-process throttle did not).
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-export const XERO_FILE_HOUR_CEILING = 200;
+// Raised from 200: one person working through one client's settings reached
+// 200 in under an hour. 1,500/hour still stops a runaway caller well inside
+// Xero's 5,000/day; Xero's real 60/minute and 5-concurrent limits are enforced
+// by the request gate in api.server.ts.
+export const XERO_FILE_HOUR_CEILING = 1500;
 
-export const XERO_FILE_CEILING_MESSAGE =
-  "Xero has paused requests for this organisation because too many were sent in the last hour. Figures already saved still show. Try again shortly.";
+// Our own hold, not a Xero refusal: the same wording as the request gate, so
+// the UI waits and retries instead of blaming Xero.
+export const XERO_FILE_CEILING_MESSAGE = "Waiting for Xero — loading shortly.";
 
 /**
  * Count one outbound call for `tenantId` and refuse it when the file has

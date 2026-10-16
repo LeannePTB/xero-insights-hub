@@ -499,11 +499,21 @@ export async function xeroGet<T = unknown>(
 ): Promise<T> {
   const { memoiseXeroGet, xeroMemoKey } = await import("./request-memo.server");
   const key = xeroMemoKey("accounting", conn.tenant_id, path, params);
+  const shared = await import("./shared-cache.server");
+  const cacheable = shared.isSharedCacheable(path);
+  if (cacheable) {
+    const hit = shared.sharedCacheGet<T>(key);
+    if (hit !== undefined) {
+      const { logXeroRead } = await import("@/lib/audit.server");
+      await logXeroRead(conn, path);
+      return hit;
+    }
+  }
   return memoiseXeroGet<T>(key, async () => {
-    // Identical calls within one request are already shared by the memo.
-    // Cross-request sharing is deliberately NOT done: the server runtime does
-    // not allow one request to await I/O started by another.
+    // Identical calls within one request are shared by the memo; reference
+    // reads are also kept briefly in the shared cache (resolved values only).
     const result = await xeroGetUncached<T>(conn, path, params, retries, rateRetries);
+    if (cacheable) shared.sharedCacheSet(key, conn.tenant_id, result);
     const { logXeroRead } = await import("@/lib/audit.server");
     await logXeroRead(conn, path);
     return result;
