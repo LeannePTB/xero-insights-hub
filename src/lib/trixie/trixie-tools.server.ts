@@ -1,3 +1,4 @@
+import { BUSINESS_HEALTH_ENABLED } from "@/lib/config/features";
 import { protectedShareOfCash } from "@/lib/health/protected-money-share";
 import { parseStored } from "@/lib/overview/bank-reconciliation";
 import { tool, type ToolSet } from "ai";
@@ -257,6 +258,7 @@ async function readHealth(ctx: TrixieContext) {
   const blocked = needClient(ctx);
   if (blocked) return { available: false, reason: blocked, sources: [] as Source[] };
   // The health verdict is a staff-only signal (see health/verdicts.functions.ts).
+  if (!BUSINESS_HEALTH_ENABLED) return { available: false, reason: UNAVAILABLE, sources: [] as Source[] };
   if (ctx.audience !== "staff") return { available: false, reason: UNAVAILABLE, sources: [] as Source[] };
   // Same single rule as the Business health card.
   const { data: visible } = await (ctx.supabase as any).rpc("client_visible_cards", { _client_id: ctx.clientId });
