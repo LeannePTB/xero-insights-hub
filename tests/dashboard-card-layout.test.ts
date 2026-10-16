@@ -15,8 +15,12 @@ describe('dashboard catalogue ordering', () => {
     const keys = ['gst_reconciliation', 'superannuation', 'payg_withholding', 'tax_obligations'];
     const cat: CardCatalogue = { modules: [{ key: 'tax_compliance', label: 'Tax & compliance', description: '' }], cards: keys.map(key => ({ key, package: 'advisory', module: 'tax_compliance', label: key, description: '' })) };
     const cards = keys.map(key => ({ id: `file:${key}`, group: 'tax_compliance' })).sort((a,b) => dashboardCardMeta(a.id, cat).rank - dashboardCardMeta(b.id,cat).rank);
-    expect(groupedCardIds(cards, [])).toEqual(['file:tax_obligations','file:gst_reconciliation','file:superannuation','file:payg_withholding']);
+    // Default: obligations full width; GST + PAYG side by side; super full width.
+    expect(groupedCardIds(cards, [])).toEqual(['file:tax_obligations','file:gst_reconciliation','file:payg_withholding','file:superannuation']);
     expect(dashboardCardMeta('file:tax_obligations',cat).fullWidth).toBe(true);
+    expect(dashboardCardMeta('file:superannuation',cat).fullWidth).toBe(true);
+    expect(dashboardCardMeta('file:gst_reconciliation',cat).fullWidth).toBe(false);
+    expect(dashboardCardMeta('file:payg_withholding',cat).fullWidth).toBe(false);
     expect(groupedCardIds(cards, ['file:payg_withholding','file:gst_reconciliation'])).toEqual(['file:tax_obligations','file:payg_withholding','file:gst_reconciliation','file:superannuation']);
     const explicit = ['file:payg_withholding','file:tax_obligations','file:gst_reconciliation','file:superannuation'];
     expect(groupedCardIds(cards, explicit)).toEqual(explicit);
