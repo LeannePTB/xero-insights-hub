@@ -18,6 +18,32 @@ export function threadPathname(thread: { workspace: string; firm_id: string | nu
   return "/overview";
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** The scope a page asks for, from its path only (the server still verifies it). */
+export function pageScope(pathname: string): ThreadScope {
+  const path = (pathname || "/").split(/[?#]/)[0];
+  const client = /^\/clients\/([0-9a-f-]{36})(?:\/|$)/i.exec(path)?.[1];
+  if (client && UUID.test(client)) return { workspace: "client", firmId: null, clientId: client.toLowerCase() };
+  const firm = /^\/firms\/([0-9a-f-]{36})(?:\/|$)/i.exec(path)?.[1];
+  if (firm && UUID.test(firm)) return { workspace: "organisation", firmId: firm.toLowerCase(), clientId: null };
+  if (path === "/system" || path.startsWith("/system/")) return { workspace: "system", firmId: null, clientId: null };
+  return { workspace: "general", firmId: null, clientId: null };
+}
+
+/**
+ * Whether a saved chat belongs to the page the person is on now. A chat from
+ * another workspace (e.g. an old "general" chat while a client is open) is
+ * never continued there: it would silently drop the open client's tools.
+ */
+export function threadMatchesPage(thread: { workspace: string; firm_id: string | null; client_id: string | null }, pathname: string): boolean {
+  const page = pageScope(pathname);
+  if (thread.workspace !== page.workspace) return false;
+  if (page.workspace === "client") return (thread.client_id ?? "").toLowerCase() === page.clientId;
+  if (page.workspace === "organisation") return (thread.firm_id ?? "").toLowerCase() === page.firmId;
+  return true;
+}
+
 /** Auto-title like CoCo: the first question, tidied and shortened. */
 export function autoTitle(question: string): string {
   const clean = question.replace(/\s+/g, " ").trim();

@@ -31,7 +31,7 @@ export const getMyTrixieThread = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => idInput.parse(input))
   .handler(async ({ context, data }) => {
     const sb = context.supabase as any;
-    const { data: thread } = await sb.from("trixie_threads").select("id, title").eq("id", data.id).maybeSingle();
+    const { data: thread } = await sb.from("trixie_threads").select("id, title, workspace, firm_id, client_id").eq("id", data.id).maybeSingle();
     if (!thread) return null;
     const { data: rows, error } = await sb
       .from("trixie_messages")
@@ -43,6 +43,7 @@ export const getMyTrixieThread = createServerFn({ method: "GET" })
     return {
       id: thread.id as string,
       title: thread.title as string,
+      scope: { workspace: thread.workspace as string, firm_id: (thread.firm_id ?? null) as string | null, client_id: (thread.client_id ?? null) as string | null },
       messages: (rows ?? []).map((m: any): TrixieStoredMessage => ({ id: m.id, role: m.role, content: m.content, sources: Array.isArray(m.sources) ? m.sources : [] })),
     };
   });
