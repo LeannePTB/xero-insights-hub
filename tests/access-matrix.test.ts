@@ -1102,6 +1102,37 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       await db.query(`update public.card_catalogue set status = 'available'`).catch(() => {});
     }
   }
+  if (r.startsWith("bh: me_can_see_business_health")) {
+    // Business Health visibility (owner 16 Oct): practice and Viewers always;
+    // Business Owners only once released; nobody without client read access.
+    const released = r.endsWith("(released)");
+    await db.exec("set local role postgres");
+    await db.exec(`insert into public.platform_branding (id) values (true) on conflict (id) do nothing`);
+    await db.exec(`update public.platform_branding set business_health_released = ${released} where id = true`);
+    const ctx = CONTEXT[row.role];
+    await db.query(`select set_config('request.jwt.claims', $1, true)`, [claims(ctx)]);
+    await db.exec(`set local role ${ctx.dbRole}`);
+    try {
+      const res = await db.query<{ ok: boolean }>(`select public.me_can_see_business_health('${CLIENT_A}'::uuid) as ok`);
+      const batch = await db.query<{ ids: string[] }>(`select public.me_business_health_clients(array['${CLIENT_A}'::uuid]) as ids`);
+      const single = res.rows[0]?.ok === true;
+      const inBatch = (batch.rows[0]?.ids ?? []).includes(CLIENT_A);
+      if (single !== inBatch) return "inconclusive" as any;
+      return single ? "allow" : "deny";
+    } catch (e) {
+      if (process.env.MATRIX_DEBUG) console.log("BH", row.role, (e as Error).message);
+      return "deny";
+    }
+  }
+  if (r === "bh: admin_set_business_health_release") {
+    await db.exec("set local role postgres");
+    await db.exec(`insert into public.platform_branding (id) values (true) on conflict (id) do nothing`);
+    const ctx = CONTEXT[row.role];
+    await db.query(`select set_config('request.jwt.claims', $1, true)`, [claims(ctx)]);
+    await db.exec(`set local role ${ctx.dbRole}`);
+    const p = await probe(`select public.admin_set_business_health_release(true)`);
+    return p.ok ? "allow" : "deny";
+  }
   if (r === "demo: my_firm_demo_flags") {
     // The marking is System Administrator display only. The database resolves it
     // per caller, so a true value must reach a System Administrator and nobody

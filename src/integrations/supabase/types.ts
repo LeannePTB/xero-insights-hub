@@ -2245,6 +2245,7 @@ export type Database = {
       }
       platform_branding: {
         Row: {
+          business_health_released: boolean
           email_sender_name: string | null
           enquiry_alert_email: string | null
           favicon: string | null
@@ -2257,6 +2258,7 @@ export type Database = {
           website_settings: Json
         }
         Insert: {
+          business_health_released?: boolean
           email_sender_name?: string | null
           enquiry_alert_email?: string | null
           favicon?: string | null
@@ -2269,6 +2271,7 @@ export type Database = {
           website_settings?: Json
         }
         Update: {
+          business_health_released?: boolean
           email_sender_name?: string | null
           enquiry_alert_email?: string | null
           favicon?: string | null
@@ -4277,6 +4280,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_set_business_health_release: {
+        Args: { _released: boolean }
+        Returns: undefined
+      }
       admin_set_card_coming_soon: {
         Args: { _card_key: string; _hidden: boolean }
         Returns: undefined
@@ -4459,6 +4466,7 @@ export type Database = {
         Returns: boolean
       }
       begin_enquiry_alert_test: { Args: never; Returns: string }
+      business_health_released: { Args: never; Returns: boolean }
       can_manage_client_income_tax_instalments: {
         Args: { _client_id: string }
         Returns: boolean
@@ -4861,6 +4869,10 @@ export type Database = {
         Returns: undefined
       }
       mark_trixie_alert_emailed: { Args: { _id: string }; Returns: boolean }
+      me_business_health_clients: {
+        Args: { _client_ids: string[] }
+        Returns: string[]
+      }
       me_can_manage_cards: { Args: { _firm_id: string }; Returns: boolean }
       me_can_manage_client: { Args: { _client_id: string }; Returns: boolean }
       me_can_manage_client_viewers: {
@@ -4877,6 +4889,10 @@ export type Database = {
       }
       me_can_open_consolidations: {
         Args: { _firm_id: string }
+        Returns: boolean
+      }
+      me_can_see_business_health: {
+        Args: { _client_id: string }
         Returns: boolean
       }
       me_has_role: {

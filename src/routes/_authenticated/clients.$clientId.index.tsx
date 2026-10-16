@@ -1,4 +1,4 @@
-import { canSeeBusinessHealth } from "@/lib/config/features";
+import { getBusinessHealthVisibility } from "@/lib/health.functions";
 import { useCanManageClient } from "@/hooks/useCanManageClient";
 import { getClientCatalogue, getMyLoansAccess } from "@/lib/card-model.functions";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -105,6 +105,15 @@ function ClientDashboard() {
   const orgSearchQ = useQuery({
     queryKey: ["can-search-organisation", clientId],
     queryFn: () => canSearchOrgFn({ data: { clientId } }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Business Health visibility comes from the database rule
+  // (me_can_see_business_health); the server functions re-check it.
+  const healthVisFn = useServerFn(getBusinessHealthVisibility);
+  const healthVisQ = useQuery({
+    queryKey: ["business-health-visibility", clientId],
+    queryFn: () => healthVisFn({ data: { clientId } }),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -242,14 +251,18 @@ function ClientDashboard() {
     if (!client) return { standardCards: standard, advancedCards: advanced, statutoryBlocks: statutory };
 
 
-    // Practice users see Business Health; client logins only once released.
-    if (canSeeBusinessHealth(isAdvisor) && widgets.includes("health")) {
+    // Practice and Viewers see Business Health; Business Owners only once released.
+    // A client preview shows what a Business Owner would get.
+    const healthReleased = healthVisQ.data?.released === true;
+    const canSeeHealth = previewing ? healthReleased : healthVisQ.data?.canSee === true;
+    if (canSeeHealth && widgets.includes("health")) {
       const healthNode = orgs.length > 0 ? (
         <HealthWidget
           clientName={client.name}
           clientId={clientId}
           tenantId={orgs[0]?.xero_connections?.tenant_id}
           tenantName={orgs[0]?.xero_connections?.tenant_name}
+          released={healthReleased}
         />
       ) : (
         <HealthWidget clientName={client.name} />
@@ -369,7 +382,7 @@ function ClientDashboard() {
     return { standardCards: standard, advancedCards: advanced, statutoryBlocks: statutory };
 
 
-  }, [client, clientId, orgs, widgets, reportBasis, gstBasis, isAdvisor, orgSearchQ.data?.allowed, capabilityKey]);
+  }, [client, clientId, orgs, widgets, reportBasis, gstBasis, isAdvisor, orgSearchQ.data?.allowed, capabilityKey, healthVisQ.data, previewing]);
 
   // Business Health defaults to the top; a saved order is honoured for it only
   // when the person has explicitly placed it (the saved list contains it).

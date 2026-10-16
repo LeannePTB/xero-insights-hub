@@ -1,14 +1,8 @@
 /**
- * Code-level release settings (presentation and generation only — never an
- * access grant; entitlement stays `client_can_use_widget('health')`).
- *
- * Business Health is shown to practice users (anyone `me_can_manage_client`
- * returns true for) and stays hidden from client logins and from newly
- * generated monthly reports until it is released to clients here.
+ * Business Health visibility is decided in the database:
+ * `me_can_see_business_health(client)` (practice and Viewers always; Business
+ * Owners only once a System Administrator releases it via
+ * `admin_set_business_health_release`). Never an access grant — entitlement
+ * stays `client_can_use_widget('health')`.
  */
-export const BUSINESS_HEALTH_RELEASED_TO_CLIENTS = false;
-
-/** Whether a caller may see the Business Health card for a client. */
-export function canSeeBusinessHealth(isPractice: boolean): boolean {
-  return isPractice || BUSINESS_HEALTH_RELEASED_TO_CLIENTS;
-}
+export {};

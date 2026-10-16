@@ -1,4 +1,3 @@
-import { BUSINESS_HEALTH_RELEASED_TO_CLIENTS } from "@/lib/config/features";
 // Monthly Management Report — computation. Server-only.
 //
 // Access-control invariants (section 0): every identifier from the request is a
@@ -630,11 +629,21 @@ export async function computeMonthlyReport(opts: {
   if (sectionErr || !Array.isArray(sectionRows)) {
     throw new Error("The report sections for this client could not be read. Try again.");
   }
-  const includedSections = (sectionRows as unknown[])
-    .filter((x): x is string => typeof x === "string")
-    .filter((x) => BUSINESS_HEALTH_RELEASED_TO_CLIENTS || x !== "verdict");
-  // Business Health not yet released to clients: its report summary ("verdict") is left out of new drafts.
-  const inc = (k: string) => includedSections.includes(k) && (BUSINESS_HEALTH_RELEASED_TO_CLIENTS || k !== "verdict");
+  // Business Health goes into new drafts only once a System Administrator has
+  // released it to clients (reports are read by the Business Owner).
+  const { data: released } = await opts.supabase.rpc("business_health_released");
+  const healthReleased = released === true;
+  const { orderReportSections } = await import("@/lib/reports/report-section-order");
+  const { data: catCards } = await opts.supabase.from("card_catalogue").select("card_key, package, module_key, sort_order, report_sections");
+  const { data: catModules } = await opts.supabase.from("card_modules").select("module_key, sort_order");
+  const includedSections = orderReportSections(
+    (sectionRows as unknown[])
+      .filter((x): x is string => typeof x === "string")
+      .filter((x) => healthReleased || x !== "verdict"),
+    (catCards ?? []) as any[],
+    (catModules ?? []) as any[],
+  );
+  const inc = (k: string) => includedSections.includes(k);
 
   const failed: FailedSection[] = [];
   let keyFigures: KeyFigure[] | null = null;

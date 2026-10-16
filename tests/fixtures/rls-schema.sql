@@ -110,7 +110,7 @@ create table public.org_early_access (firm_id uuid, card_key text, granted_by uu
 create table public.org_subscription_options (firm_id uuid, client_limit integer, advisory_enabled boolean, consolidation_enabled boolean, billing_mode text, created_at timestamp with time zone, updated_at timestamp with time zone, trial_advisory_enabled boolean, trial_consolidation_enabled boolean, trial_ends_at timestamp with time zone, branding_enabled boolean, trial_branding_enabled boolean, white_label_enabled boolean, trial_white_label_enabled boolean);
 create table public.overview_alert_states (id uuid, client_id uuid, event_key text, severity_at_ack smallint, acknowledged_by uuid, acknowledged_at timestamp with time zone, snoozed_by uuid, snoozed_at timestamp with time zone, snoozed_until timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.plan_levels (id uuid, scope text, key text, label text, description text, client_limit integer, xero_org_limit integer, allows_multi_org boolean, widgets text[], sort_order integer, enabled boolean, created_at timestamp with time zone, updated_at timestamp with time zone, allowed_tiers text[], is_free boolean);
-create table public.platform_branding (id boolean, product_name text, logo_light text, logo_dark text, favicon text, email_sender_name text, updated_at timestamp with time zone, updated_by uuid, website_settings jsonb, enquiry_alert_email text);
+create table public.platform_branding (id boolean, product_name text, logo_light text, logo_dark text, favicon text, email_sender_name text, updated_at timestamp with time zone, updated_by uuid, website_settings jsonb, enquiry_alert_email text, business_health_released boolean);
 create table public.practice_team (user_id uuid, added_by uuid, created_at timestamp with time zone);
 create table public.profiles (id uuid, email text, display_name text, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.rate_limit_buckets (key text, window_start timestamp with time zone, count integer);
@@ -5540,4 +5540,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: 112c74c5b671bedabded318f6a612d6be1e3351b292e168a077ce6159133586e
+-- catalogue-fingerprint: cc24d8186720b36de329ff3ebabf8f5a025a0d673474a6d9a9bcb71be1d891bd

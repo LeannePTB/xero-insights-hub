@@ -6,13 +6,14 @@ import { XeroErrorNotice } from "./XeroLoadState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getHealthChecks } from "@/lib/health.functions";
 import { STATUS_LABEL, type CheckStatus } from "@/lib/health/health-checks";
-import { BUSINESS_HEALTH_RELEASED_TO_CLIENTS } from "@/lib/config/features";
 
 type Props = {
   tenantId?: string;
   tenantName?: string;
   clientName?: string;
   clientId?: string;
+  /** Released to Business Owners (System Admin setting). */
+  released?: boolean;
 };
 
 const PILL: Record<CheckStatus, string> = {
@@ -23,7 +24,7 @@ const PILL: Record<CheckStatus, string> = {
 };
 
 /** Business Health: three plain checks from last night's saved Xero figures. */
-export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Props) {
+export function HealthWidget({ tenantId, tenantName, clientName, clientId, released }: Props) {
   const fetchChecks = useServerFn(getHealthChecks);
   const q = useQuery({
     queryKey: ["health-checks", tenantId, clientId],
@@ -64,7 +65,7 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
       )}
       {!!q.error && !q.data && <XeroErrorNotice error={q.error} onRetry={() => q.refetch()} isRetrying={q.isFetching} />}
 
-      {!BUSINESS_HEALTH_RELEASED_TO_CLIENTS && (
+      {!released && (
         <p className="mt-2 inline-flex rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
           Practice only — not visible to clients
         </p>

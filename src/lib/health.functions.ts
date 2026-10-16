@@ -8,15 +8,27 @@ export type { HealthChecksResult } from "@/lib/health/health-checks.server";
 const uuid = z.string().uuid();
 
 /**
- * Release gate (narrows only): until Business Health is released to clients,
- * only practice users (me_can_manage_client, the database's rule) get it.
+ * Visibility gate (narrows only): the database's caller-scoped rule
+ * `me_can_see_business_health` — practice and Viewers always, Business Owners
+ * only once a System Administrator releases it. Fails closed.
  */
-async function practiceOrReleased(db: any, clientId: string): Promise<boolean> {
-  const { BUSINESS_HEALTH_RELEASED_TO_CLIENTS } = await import("@/lib/config/features");
-  if (BUSINESS_HEALTH_RELEASED_TO_CLIENTS) return true;
-  const { data, error } = await db.rpc("me_can_manage_client", { _client_id: clientId });
+async function canSeeHealth(db: any, clientId: string): Promise<boolean> {
+  const { data, error } = await db.rpc("me_can_see_business_health", { _client_id: clientId });
   return !error && data === true;
 }
+
+/** Dashboard signal: may the caller see the card, and is it released to clients? */
+export const getBusinessHealthVisibility = createServerFn({ method: "GET" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) => z.object({ clientId: uuid }).strict().parse(i))
+  .handler(async ({ data, context }) => {
+    const db = context.supabase as any;
+    const [canSee, released] = await Promise.all([
+      canSeeHealth(db, data.clientId),
+      db.rpc("business_health_released").then((r: any) => !r.error && r.data === true),
+    ]);
+    return { canSee, released };
+  });
 
 /**
  * Business Health card: three checks from stored figures only (never a live
@@ -29,7 +41,7 @@ export const getHealthChecks = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<HealthChecksResult> => {
     const { assertWidgetAccess } = await import("./xero/access.server");
     await assertWidgetAccess(context.supabase, data.tenantId, "health");
-    if (!(await practiceOrReleased(context.supabase, data.clientId))) throw new Error("Business health is not available.");
+    if (!(await canSeeHealth(context.supabase, data.clientId))) throw new Error("Business health is not available.");
     const { loadHealthChecks } = await import("@/lib/health/health-checks.server");
     const { sydneyDate } = await import("@/lib/sydney-time");
     const res = (await loadHealthChecks(context.supabase, [{ clientId: data.clientId, tenantId: data.tenantId }], sydneyDate())).get(data.clientId);
@@ -51,7 +63,8 @@ export const listClientHealthChecks = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ results: Record<string, HealthBadgeSummary> }> => {
     const { loadHealthChecks } = await import("@/lib/health/health-checks.server");
     const { sydneyDate } = await import("@/lib/sydney-time");
-    const allowed = (await Promise.all(data.clientIds.map(async (id) => ((await practiceOrReleased(context.supabase, id)) ? id : null)))).filter((id): id is string => !!id);
+    const { data: ids, error } = await (context.supabase as any).rpc("me_business_health_clients", { _client_ids: data.clientIds });
+    const allowed = error || !Array.isArray(ids) ? [] : (ids as string[]);
     const map = await loadHealthChecks(context.supabase, allowed.map((clientId) => ({ clientId })), sydneyDate());
     const results: Record<string, HealthBadgeSummary> = {};
     for (const [id, r] of map) {
