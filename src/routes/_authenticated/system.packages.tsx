@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getCardCatalogue, moveCardModule, saveCardComingSoon, saveCardEntry, saveCardModule, saveCardStatus } from "@/lib/card-model.functions";
+import { Switch } from "@/components/ui/switch";
+import { adminGetBusinessHealthRelease, adminSetBusinessHealthRelease } from "@/lib/admin.functions";
 import { PACKAGE_LABEL, type CardPackage, type CatalogueCard, type CatalogueModule } from "@/lib/cards/catalogue";
 
 export const Route = createFileRoute("/_authenticated/system/packages")({
@@ -42,6 +44,7 @@ function PackagesPage() {
         title="Packages & modules"
         description="Moving a card changes what every organisation's purchase includes, immediately. Each change is recorded in the audit log."
       />
+      <BusinessHealthRelease />
       {q.isLoading ? (
         <p className="text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-3.5 w-3.5 animate-spin" />Loading…</p>
       ) : !catalogue ? (
@@ -76,13 +79,58 @@ function PackagesPage() {
               </table>
             </div>
             <p className="text-xs text-muted-foreground">
-              Work in progress: not offered anywhere — hidden from dashboards, menus, reports, Trixie, upgrade offers and the website, and not tickable. Existing client ticks are kept and come back when it is switched to Available. System Administrators see it, labelled, on clients they can already open.
+              Work in progress: not offered anywhere — hidden from dashboards, menus, reports, Trixie, upgrade offers and the website, and not tickable. Existing client ticks are kept and come back when it is switched to Available. Organisations with early access see it, labelled, on clients they tick.
             </p>
           </section>
           <ComingSoonAdmin catalogue={catalogue} />
         </>
       )}
     </PageContainer>
+  );
+}
+
+function BusinessHealthRelease() {
+  const qc = useQueryClient();
+  const get = useServerFn(adminGetBusinessHealthRelease);
+  const set = useServerFn(adminSetBusinessHealthRelease);
+  const q = useQuery({ queryKey: ["business-health-release"], queryFn: () => get(), retry: false });
+  const [saving, setSaving] = useState(false);
+  const released = q.data?.released === true;
+  const change = async (v: boolean) => {
+    setSaving(true);
+    try {
+      await set({ data: { released: v } });
+      toast.success(v ? "Business health released to clients" : "Business health is practice only again");
+      await qc.invalidateQueries({ queryKey: ["business-health-release"] });
+      await qc.invalidateQueries({ queryKey: ["business-health-visibility"] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not save that.");
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <section className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-border bg-card p-4">
+      <div className="min-w-0 max-w-2xl space-y-1">
+        <h2 className="text-base font-semibold">Business health — release to clients</h2>
+        <p className="text-sm text-muted-foreground">
+          Off: the card and client-list badge show to the practice and Viewers only, labelled "Practice only", and new monthly reports leave it out.
+          On: Business Owners see it too, and new monthly reports include it. Reports already finalised or sent never change. Each change is recorded in the audit log.
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        {saving || q.isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : null}
+        <Switch
+          id="bh-release"
+          checked={released}
+          disabled={saving || q.isLoading || !!q.error}
+          onCheckedChange={(v) => change(v === true)}
+          aria-label="Release Business health to clients"
+        />
+        <label htmlFor="bh-release" className="text-sm">{released ? "Released" : "Practice only"}</label>
+      </div>
+      {q.error ? <p className="w-full text-sm text-destructive">The setting could not be read.</p> : null}
+    </section>
   );
 }
 
