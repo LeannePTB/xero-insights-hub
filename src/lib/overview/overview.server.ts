@@ -366,6 +366,7 @@ export async function buildOverview(
       canResync: manageable.has(c.client_id),
       bankReconciledTo,
       bankReconWarning: bankRecon?.text ?? null,
+      cashNote,
       lastXeroLoginAt: kfRows.find((k: any) => k.last_xero_login_at != null)?.last_xero_login_at ?? null,
       cashSpark: (ctx.keyFigures.get(c.client_id) ?? [])
         .filter((k) => k.as_at >= addDays(ctx.today, -30) && k.cash !== null)

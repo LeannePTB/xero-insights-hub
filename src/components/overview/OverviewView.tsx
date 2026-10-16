@@ -284,6 +284,7 @@ function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide, que
               <Sparkline values={r.cashSpark} />
               {money(r.cash)}
             </div>
+            {r.cashNote && <div className="mt-0.5 text-right text-xs font-normal text-muted-foreground">{r.cashNote}</div>}
           </td>
           <td
             className="p-3 text-right tabular-nums"
