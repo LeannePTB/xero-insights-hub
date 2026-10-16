@@ -3,8 +3,9 @@ import type { CardCatalogue } from '@/lib/cards/catalogue';
 // Presentation only: callers pass the cards already granted by the database.
 // Advisory module order is card_modules.sort_order: catalogue.modules arrives
 // already ordered by it, so no module list is hard-coded here.
-/** Default Tax & compliance layout: obligations, then GST + PAYG side by side, then super. */
+/** Fixed Tax & compliance layout; saved preferences never override it. */
 export const TAX_ORDER = ['tax_obligations', 'gst_reconciliation', 'payg_withholding', 'superannuation'];
+export const isFixedCardGroup = (group?: string) => group === 'tax_compliance';
 export const STANDARD_ORDER = ['health', 'pnl', 'receivables', 'payables', 'notes'];
 const WIDE_CARDS = new Set(['health', 'pnl', 'cashflow', 'cashflow_scenario', 'accounting_breakeven', 'transaction_search', 'tax_obligations', 'superannuation', 'notes', 'loan_consolidation']);
 
@@ -47,7 +48,7 @@ export function orderedCardIds(ids: readonly string[], saved: readonly string[])
 }
 
 /**
- * Saved preferences reorder within modules, never between them. Groups keep
+ * Saved preferences reorder within non-fixed modules, never between them. Groups keep
  * the order they arrive in (callers sort by moduleGroupRank first).
  */
 export function groupedCardIds(cards: readonly { id: string; group?: string }[], saved: readonly string[]) {
@@ -56,13 +57,19 @@ export function groupedCardIds(cards: readonly { id: string; group?: string }[],
   const rank = (id: string) => groupOrder.indexOf(groups.get(id) ?? 'cards');
   // New default-first cards stay first until explicitly included in a save.
   const defaults = cards.filter(c => (c.id === 'health' || c.id.endsWith(':tax_obligations') || c.id === 'tax_obligations') && !saved.includes(c.id)).map(c => c.id);
-  return orderedCardIds(cards.map(c => c.id), [...defaults, ...saved]).sort((a, b) => rank(a) - rank(b));
+  const taxRank = (id: string) => {
+    const key = id.includes(':') ? id.slice(id.indexOf(':') + 1) : id;
+    const index = TAX_ORDER.indexOf(key);
+    return index < 0 ? TAX_ORDER.length : index;
+  };
+  return orderedCardIds(cards.map(c => c.id), [...defaults, ...saved]).sort((a, b) =>
+    rank(a) - rank(b) || (isFixedCardGroup(groups.get(a)) ? taxRank(a) - taxRank(b) : 0));
 }
 
 export function canReorderCards(cards: readonly { id: string; group?: string }[], active: string, over: string) {
   const source = cards.find(c => c.id === active);
   const target = cards.find(c => c.id === over);
-  return !!source && !!target && source.group === target.group;
+  return !!source && !!target && !isFixedCardGroup(source.group) && source.group === target.group;
 }
 
 // Split runs into balanced twos/threes without moving cards past a wide card.

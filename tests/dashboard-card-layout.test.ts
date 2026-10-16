@@ -11,7 +11,7 @@ const catalogue: CardCatalogue = {
 };
 
 describe('dashboard catalogue ordering', () => {
-  it('defaults Tax obligations first and full width without changing explicit saved order', () => {
+  it('fixes Tax obligations, GST, PAYG and Super order despite the September saved order', () => {
     const keys = ['gst_reconciliation', 'superannuation', 'payg_withholding', 'tax_obligations'];
     const cat: CardCatalogue = { modules: [{ key: 'tax_compliance', label: 'Tax & compliance', description: '' }], cards: keys.map(key => ({ key, package: 'advisory', module: 'tax_compliance', label: key, description: '' })) };
     const cards = keys.map(key => ({ id: `file:${key}`, group: 'tax_compliance' })).sort((a,b) => dashboardCardMeta(a.id, cat).rank - dashboardCardMeta(b.id,cat).rank);
@@ -21,9 +21,21 @@ describe('dashboard catalogue ordering', () => {
     expect(dashboardCardMeta('file:superannuation',cat).fullWidth).toBe(true);
     expect(dashboardCardMeta('file:gst_reconciliation',cat).fullWidth).toBe(false);
     expect(dashboardCardMeta('file:payg_withholding',cat).fullWidth).toBe(false);
-    expect(groupedCardIds(cards, ['file:payg_withholding','file:gst_reconciliation'])).toEqual(['file:tax_obligations','file:payg_withholding','file:gst_reconciliation','file:superannuation']);
+    expect(groupedCardIds(cards, ['file:gst_reconciliation','file:superannuation','file:payg_withholding'])).toEqual(['file:tax_obligations','file:gst_reconciliation','file:payg_withholding','file:superannuation']);
     const explicit = ['file:payg_withholding','file:tax_obligations','file:gst_reconciliation','file:superannuation'];
-    expect(groupedCardIds(cards, explicit)).toEqual(explicit);
+    expect(groupedCardIds(cards, explicit)).toEqual(['file:tax_obligations','file:gst_reconciliation','file:payg_withholding','file:superannuation']);
+    expect(explicit).toEqual(['file:payg_withholding','file:tax_obligations','file:gst_reconciliation','file:superannuation']);
+  });
+  it('keeps only visible tax cards and preserves saved order elsewhere', () => {
+    const cards = [{ id: 'pnl', group: 'standard' }, { id: 'receivables', group: 'standard' },
+      ...['superannuation', 'payg_withholding', 'tax_obligations'].map(id => ({ id, group: 'tax_compliance' }))];
+    expect(groupedCardIds(cards, ['receivables','pnl','superannuation','payg_withholding'])).toEqual(['receivables','pnl','tax_obligations','payg_withholding','superannuation']);
+  });
+  it('refuses any dragging inside Tax & compliance', () => {
+    const cards = ['tax_obligations','gst_reconciliation','payg_withholding','superannuation'].map(id => ({ id, group: 'tax_compliance' }));
+    for (const source of cards) for (const target of cards) {
+      expect(canReorderCards(cards, source.id, target.id)).toBe(false);
+    }
   });
   it('groups all saved module permutations once in the incoming order without changing saved data', () => {
     const GROUP_ORDER = ['standard', 'tax_compliance', 'profit', 'cash_flow', 'bookkeeping_checks', 'rental_properties', 'consolidation'];
