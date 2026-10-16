@@ -1308,8 +1308,8 @@ export const MATRIX: MatrixRow[] = [
     ["support_grant_active"],
     ["wip: client_visible_cards shows a ticked Work-in-progress card", "wip: assert_widget_access(Work-in-progress card)"],
     ["execute"],
-    "allow",
-    "Testing exception: a System Administrator sees a purchased Work-in-progress card, labelled, only on a client they can already read (here through an approved read-only support grant)",
+    "deny",
+    "No System Administrator testing exception (removed 16 Oct 2026): a Work-in-progress card shows only through a live early-access grant plus a client tick, even on a client the System Administrator can read",
     ["pglite"],
   ),
   ...rows(
