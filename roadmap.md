@@ -1,4 +1,6 @@
 # Roadmap
+- [x] 16 Oct fixed Tax & compliance: ignores saved order, disables dragging, top-aligns GST/PAYG; 286 app + 367 regression tests pass, automatic compilation OK; shared grid rendered desktop/mobile with September order, no database changes.
+- [ ] Fixed tax layout on actual Positive Traction desktop/mobile — renewed requesting-user session still redirects to /auth with session-ended; owner sign-in required before final publishing assurance.
 - [x] 16 Oct owner changes: payday rows/deadline tests, automatic idle/MFA-guarded auth routing, enrol return path and clear live-on Health release display; all tests/security pass, automatic compilation OK.
 - [x] 16 Oct follow-up: one set of tax figures, super wording, three-across Health, Tax & compliance layout, Overview amounts, break-even full months, editable card names.
 - [ ] 16 Oct owner verification: actual Positive Traction/Business Owner dashboard and MFA completion blocked by session-ended /auth; security_posture tooling denied; explicit manual tsgo/full build prohibited by environment (automatic compilation passed).

@@ -19,12 +19,12 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { groupedCardIds, canReorderCards, smallCardRowSizes } from "./dashboard-card-layout";
+import { groupedCardIds, canReorderCards, smallCardRowSizes, isFixedCardGroup } from "./dashboard-card-layout";
 
 export type SortableCard = { id: string; node: ReactNode; fullWidth?: boolean; group?: string; groupLabel?: string };
 
-function SortableItem({ id, children, stretch }: { id: string; children: ReactNode; stretch?: boolean }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+function SortableItem({ id, children, stretch, fixed }: { id: string; children: ReactNode; stretch?: boolean; fixed?: boolean }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: fixed });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -39,7 +39,7 @@ function SortableItem({ id, children, stretch }: { id: string; children: ReactNo
       // always grows to fit its content so nothing below can overlap it.
       className={`relative min-w-0 ${stretch ? "flex flex-col [&>div:last-child]:flex-1 [&>section:last-child]:flex-1" : ""}`}
     >
-      <Button
+      {!fixed && <Button
         variant="ghost" size="icon-sm"
         type="button"
         {...attributes}
@@ -48,7 +48,7 @@ function SortableItem({ id, children, stretch }: { id: string; children: ReactNo
         className="absolute right-3 top-3 z-10 grid h-7 w-7 cursor-grab touch-none place-items-center rounded-md bg-muted/70 text-muted-foreground opacity-60 transition-opacity hover:bg-muted hover:opacity-100 active:cursor-grabbing focus:opacity-100"
       >
         <GripVertical className="h-4 w-4" />
-      </Button>
+      </Button>}
       {children}
     </div>
   );
@@ -130,8 +130,9 @@ export function SortableCardGrid({
                 return sizes.map((size, rowIndex) => {
                   const row = run.slice(offset, offset + size); offset += size;
                   const columns = size === 3 ? 'lg:grid-cols-3' : size === 2 ? 'lg:grid-cols-2' : '';
-                  return <div key={`${index}:${rowIndex}`} className={`grid grid-cols-1 items-stretch gap-4 ${columns}`}>
-                    {row.map(card => <SortableItem key={card.id} id={card.id} stretch={row.length > 1}>{card.node}</SortableItem>)}
+                  const fixed = isFixedCardGroup(section.key);
+                  return <div key={`${index}:${rowIndex}`} className={`grid grid-cols-1 ${fixed ? 'items-start' : 'items-stretch'} gap-4 ${columns}`}>
+                    {row.map(card => <SortableItem key={card.id} id={card.id} fixed={fixed} stretch={!fixed && row.length > 1}>{card.node}</SortableItem>)}
                   </div>;
                 });
               })}
