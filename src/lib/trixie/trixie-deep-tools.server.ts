@@ -348,29 +348,10 @@ async function findIssues(ctx: TrixieContext) {
   });
 }
 
-async function practiceOverview(ctx: TrixieContext) {
-  if (!deepToolsFor(ctx).includes("practice_overview") || !ctx.firmId) return denied("Open your organisation's Overview to ask about all clients.");
-  const { buildOverview } = await import("@/lib/overview/overview.server");
-  // Same caller-scoped read as the Overview page; firmId is a filter only.
-  const ov = await buildOverview(ctx.supabase as any, ctx.userId, ctx.firmId);
-  audit(ctx, null, "practice_overview", "snapshot");
-  const rows = ov.rows.filter((r) => r.firmId === ctx.firmId).map((r) => ({
-    client: untrusted(r.clientName, 80),
-    health: (r.verdict as any)?.label ?? null,
-    cashAtBank: r.cash,
-    nextTax: r.taxNext,
-    building: r.taxBuilding,
-    superDue: r.superDue,
-    overdueItems: r.taxItems.filter((t) => t.overdue).map((t) => ({ label: t.label, amount: t.amount, due: t.due })),
-    debtsOver90Days: r.debtorsOldAmount ?? null,
-    figuresAsAt: r.freshAsAt,
-  }));
-  return { available: true, note: UNTRUSTED_NOTE, clientCount: rows.length, clients: rows, sources: [{ label: "Organisation Overview (saved figures)", asAt: rows.map((r) => r.figuresAsAt).filter(Boolean).sort().at(-1) ?? null, href: `/firms/${ctx.firmId}` }] };
-}
-
 export function buildDeepTools(ctx: TrixieContext): ToolSet {
   const allowed = new Set(deepToolsFor(ctx));
-  const all: Record<DeepToolName, any> = {
+  const all: Partial<Record<DeepToolName, any>> = {
+    // practice_overview and ask_about_client live in trixie-org-tools.server.ts.
     account_transactions: tool({ description: "Staff only. Lines posted to ONE account (by code or name) in a date range: date, contact, description, amount, tax code; newest first, up to 200, with totals.", inputSchema: range.extend({ account: z.string().min(1).max(80).describe("Account code or name"), limit: z.number().int().min(1).max(200).optional() }), execute: (i) => accountTransactions(ctx, i) }),
     journals: tool({ description: "Staff only. Posted manual journals/adjustments in a date range, optionally for one account.", inputSchema: range.extend({ account: z.string().max(80).optional().describe("Optional account code or name") }), execute: (i) => journals(ctx, i) }),
     contact_history: tool({ description: "One customer's invoices or one supplier's bills over the last 12 months: payments, average days to pay, amounts overdue by age.", inputSchema: z.object({ contact: z.string().min(1).max(100).describe("Contact name exactly as in Xero"), side: z.enum(["customer", "supplier"]) }), execute: (i) => contactHistory(ctx, i) }),
@@ -379,9 +360,8 @@ export function buildDeepTools(ctx: TrixieContext): ToolSet {
     compare_periods: tool({ description: "Profit & Loss for two periods side by side (prior defaults to the same days last month), the accounts that moved most, and the paydays in each. Use for any 'why did X change' question.", inputSchema: range.extend({ priorFrom: z.string().regex(ISO_DATE).optional(), priorTo: z.string().regex(ISO_DATE).optional() }), execute: (i) => comparePeriods(ctx, i) }),
     activity_statement: tool({ description: "The GST card's figures for a BAS period: 1A, 1B, W1, W2, unfiled amounts, cash or accrual method, GST account tie-out, lodged ATO bills and due date.", inputSchema: z.object({ period: z.enum(["current", "previous", "same_last_year"]) }), execute: (i) => activityStatement(ctx, i) }),
     find_issues: tool({ description: "Staff only. Bookkeeping checks: suspense/clearing balances, possible duplicate bills (same contact and amount within 14 days), debts over 90 days, uncoded bank lines, unusual one-off bills.", inputSchema: z.object({}), execute: () => findIssues(ctx) }),
-    practice_overview: tool({ description: "Staff only, organisation workspace. Every client in this organisation: health, cash at bank, next tax due and date, super due, overdue items.", inputSchema: z.object({}), execute: () => practiceOverview(ctx) }),
   };
   return Object.fromEntries(Object.entries(all).filter(([k]) => allowed.has(k as DeepToolName))) as ToolSet;
 }
 
-export const __test = { accountTransactions, contactHistory, activityStatement, findIssues, practiceOverview, payRuns, bankActivity, comparePeriods, journals };
+export const __test = { accountTransactions, contactHistory, activityStatement, findIssues, payRuns, bankActivity, comparePeriods, journals };

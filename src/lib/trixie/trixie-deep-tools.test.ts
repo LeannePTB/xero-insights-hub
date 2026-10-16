@@ -31,7 +31,8 @@ describe("Trixie deeper tools — who gets what", () => {
     expect(jobsAllowed(ctx({ mode: "platform", audience: "platform" }))).toBe(false);
   });
   it("practice overview only in the organisation workspace, staff only", () => {
-    expect(deepToolsFor(ctx({ mode: "organisation", clientId: null }))).toEqual(["practice_overview"]);
+    expect(deepToolsFor(ctx({ mode: "organisation", clientId: null }))).toEqual(["practice_overview", "ask_about_client"]);
+    expect(deepToolsFor(ctx({ mode: "general", clientId: null }))).toEqual(["practice_overview", "ask_about_client"]);
     expect(deepToolsFor(ctx({ mode: "organisation", clientId: null, audience: "viewer" }))).toEqual([]);
   });
   it("no tool schema accepts an organisation, client, tenant or user id", () => {

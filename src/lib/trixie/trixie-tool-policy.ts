@@ -27,6 +27,7 @@ export const DEEP_TOOL_POLICY = {
   activity_statement: { staffOnly: false, cards: ["tax_obligations" as WidgetKey], workspace: "client" },
   find_issues: { staffOnly: true, cards: ["pnl"], workspace: "client" },
   practice_overview: { staffOnly: true, cards: [], workspace: "organisation" },
+  ask_about_client: { staffOnly: true, cards: [], workspace: "organisation" },
 } as const satisfies Record<string, DeepToolPolicy>;
 
 export type DeepToolName = keyof typeof DEEP_TOOL_POLICY;
@@ -40,7 +41,10 @@ export function deepToolsFor(ctx: ToolAudience): DeepToolName[] {
     const p: DeepToolPolicy = DEEP_TOOL_POLICY[name];
     if (p.staffOnly && ctx.audience !== "staff") return false;
     if (p.workspace === "client") return ctx.mode === "client" && !!ctx.clientId;
-    return ctx.mode === "organisation";
+    // Organisation pages, and signed-in pages outside any client or System Admin
+    // ("general": e.g. the all-organisations Overview). Both read only the
+    // caller-scoped Overview client list; nothing is chosen for the caller.
+    return ctx.mode === "organisation" || ctx.mode === "general";
   });
 }
 
