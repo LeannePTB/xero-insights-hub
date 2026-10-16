@@ -10,7 +10,17 @@ import { addDays } from "@/lib/sydney-time";
 import { applyBankClassifications, type BankClassificationRow } from "@/lib/xero/bank-classifications";
 import { BANK_NOT_RECONCILED } from "./thresholds";
 
-export type AccountReconciliation = { accountId: string; name: string; reconciledTo: string | null };
+export type AccountReconciliation = {
+  accountId: string;
+  name: string;
+  reconciledTo: string | null;
+  /**
+   * Net of the unreconciled lines counted on this account inside the window
+   * (money in positive, money out negative). Set only when both pulls were
+   * complete; otherwise null so a partial pull never becomes a figure.
+   */
+  unreconciledNet?: number | null;
+};
 export type BankReconciliation = { scope: "selected" | "all_active"; windowFrom: string; accounts: AccountReconciliation[] };
 
 /** Lines older than this are treated as leftovers and ignored. */
