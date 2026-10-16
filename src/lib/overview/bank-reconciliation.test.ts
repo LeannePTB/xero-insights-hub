@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert";
-import { bankReconWarning, computeBankReconciliation, oldestReconciledTo } from "./bank-reconciliation";
+import { bankReconWarning, computeBankReconciliation, oldestReconciledTo, parseStored, statementPosition } from "./bank-reconciliation";
 
 const asAt = "2026-10-11";
 const acct = (id: string, name: string, extra: Record<string, string> = {}) => ({ AccountID: id, Name: name, Type: "BANK", BankAccountType: "BANK", Class: "ASSET", Status: "ACTIVE", ...extra });
