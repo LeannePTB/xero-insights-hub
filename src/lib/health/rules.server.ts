@@ -218,6 +218,9 @@ export function pastDueTaxBills(payload: any, statutoryAccountIds: string[], tod
     if (!(due > 0)) continue;
     const dueIso = xeroDateISO(inv?.DueDateString) ?? xeroDateISO(inv?.DueDate);
     if (!dueIso || dueIso >= today) continue;
+    // Only bills to the ATO are tax debts: a supplier bill with a notional-GST
+    // line (e.g. second-hand stock purchases) is not owed to the ATO.
+    if (!looksLikeAtoContact(inv?.Contact?.Name)) continue;
     const lines = Array.isArray(inv?.LineItems) ? inv.LineItems : [];
     if (lines.some((li: any) => typeof li?.AccountID === "string" && ids.has(li.AccountID))) owing += due;
   }
