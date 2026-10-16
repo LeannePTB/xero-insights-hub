@@ -5,7 +5,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Loader2, Search } from "lucide-react";
+import { AlertTriangle, ArrowDownWideNarrow, Loader2, Search } from "lucide-react";
 import { getClientOverview, setOverviewAlert, type OverviewRow, type FeedEvent } from "@/lib/overview/overview.functions";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,12 @@ function money(n: number | null) {
 function pct(n: number | null) {
   return n === null ? "—" : `${n.toFixed(0)}%`;
 }
+function dayMonth(d: string) {
+  return new Date(`${d}T00:00:00`).toLocaleDateString("en-AU", { day: "numeric", month: "short" });
+}
+function monthShort(d: string) {
+  return new Date(`${d}T00:00:00`).toLocaleDateString("en-AU", { month: "short" });
+}
 function date(s: string | null) {
   return s ? new Date(s).toLocaleDateString("en-AU", { day: "numeric", month: "short" }) : "—";
 }
@@ -46,6 +52,7 @@ export function OverviewView({ firmId, title }: { firmId?: string; title?: strin
   const [attention, setAttention] = useState<AttentionKey | null>(null);
   const [search, setSearch] = useState("");
   const [grouped, setGrouped] = useState(false);
+  const [taxSort, setTaxSort] = useState(false);
   const navigate = useNavigate();
   const rows = q.data?.rows ?? [];
   const queue = useResyncQueue();
@@ -57,7 +64,7 @@ export function OverviewView({ firmId, title }: { firmId?: string; title?: strin
     return c;
   }, [rows]);
   const attn = useMemo(() => attentionCounts(rows), [rows]);
-  const shown = rows.filter(
+  const filtered = rows.filter(
     (r) =>
       (!filter || r.bucket === filter) &&
       (!attention || matchesAttention(r, attention)) &&
@@ -65,6 +72,7 @@ export function OverviewView({ firmId, title }: { firmId?: string; title?: strin
         r.clientName.toLowerCase().includes(search.toLowerCase()) ||
         r.firmName.toLowerCase().includes(search.toLowerCase())),
   );
+  const shown = taxSort ? [...filtered].sort((a, b) => (b.taxNext?.amount ?? -1) - (a.taxNext?.amount ?? -1)) : filtered;
   const groups = grouped
     ? [...new Set(shown.map((r) => r.firmName))].sort().map((name) => ({
         name,
@@ -192,7 +200,7 @@ function GroupRows({ name, rows, onOpen, queue }: { name: string | null; rows: O
     <>
       {name && (
         <tr className="border-y bg-muted/60">
-          <td colSpan={12} className="px-3 py-2.5">
+          <td colSpan={11} className="px-3 py-2.5">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold uppercase tracking-wide">{name}</span>
               <span className="text-xs text-muted-foreground">
