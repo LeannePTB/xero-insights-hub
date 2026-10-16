@@ -1427,6 +1427,24 @@ export const MATRIX: MatrixRow[] = [
     "Nobody else marks an organisation as a demo organisation",
     ["pglite"],
   ),
+  // The marking itself is System Administrator display only: the database
+  // resolves it per caller, so an organisation's own people never receive it.
+  ...rows(
+    ["super_admin_no_membership"],
+    ["demo: my_firm_demo_flags"],
+    ["execute"],
+    "allow",
+    "A System Administrator (aal2) reads the real demo marking for the organisations they may list",
+    ["pglite"],
+  ),
+  ...rows(
+    ["org_owner", "org_staff", "client_viewer", "business_owner", "other_org_member", "support_grant_active", "aal1_member", "anonymous"],
+    ["demo: my_firm_demo_flags"],
+    ["execute"],
+    "deny",
+    "An organisation's own owner or staff, an adviser, a business owner, a support grant, an aal1 session or a signed-out caller never receives a demo marking — the database answers false for every organisation, or refuses",
+    ["pglite"],
+  ),
   // ------------------------- Early access to Work-in-progress cards (14 Oct 2026)
   ...rows(
     ["org_owner", "org_staff", "client_viewer", "business_owner", "other_org_member", "super_admin_no_membership"],
