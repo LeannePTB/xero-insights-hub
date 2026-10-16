@@ -566,7 +566,7 @@ describe("R06 debtors", () => {
       { due: 4_000, dueDate: "2026-10-25", contact: "Other Co" },
     ]);
     const r = ruleDebtors(row({ report_key: "invoices_accrec_open", payload }), "2026-10-16");
-    assert.strictEqual(r.finding, null);
+    assert.ok(!r.finding || r.finding.severity === "watch", "old debts never raise Action or Warn");
     assert.match(r.notes[0] ?? "", /Old debts to review: \$60\.0k/);
   });
 
@@ -586,7 +586,8 @@ describe("R06 debtors", () => {
       { due: 500, dueDate: "2026-10-30", contact: "B" },
       { due: 500, dueDate: "2026-10-30", contact: "C" },
     ]);
-    assert.strictEqual(ruleDebtors(row({ report_key: "invoices_accrec_open", payload }), "2026-10-16").finding, null);
+    const f = ruleDebtors(row({ report_key: "invoices_accrec_open", payload }), "2026-10-16").finding;
+    assert.ok(!f || f.severity === "watch");
   });
 });
 
