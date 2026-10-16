@@ -9,16 +9,10 @@ export function AuthLayout({ children }: { children: ReactNode }) {
   const brand = usePlatformBranding();
   return (
     <div className="auth-layout">
-      <aside className="auth-brand-panel">
-        <Link to="/" aria-label={`${brand.productName} home`} className="auth-logo-link">
-          <PublicPanelLogo brand={brand} navy />
-        </Link>
-        <div className="auth-brand-message">
-          <h2>Better client conversations.<br />Backed by their numbers.</h2>
-          <p>Clear Xero dashboards and monthly reports for practices and their clients.</p>
-        </div>
-      </aside>
       <div className="auth-form-panel">
+        <Link to="/" aria-label={`${brand.productName} home`} className="auth-logo-link">
+          <PublicPanelLogo brand={brand} />
+        </Link>
         <Link to="/" className="auth-home-link"><ArrowLeft className="size-3.5" aria-hidden="true" /> Back to tractionadvisory.com.au</Link>
         <div className="auth-form-content">{children}</div>
         <footer className="auth-footer">
