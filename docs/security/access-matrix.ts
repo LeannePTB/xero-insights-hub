@@ -1430,15 +1430,15 @@ export const MATRIX: MatrixRow[] = [
   // The marking itself is System Administrator display only: the database
   // resolves it per caller, so an organisation's own people never receive it.
   ...rows(
-    ["super_admin_no_membership"],
+    ["super_admin_no_membership", "support_grant_active", "support_grant_expired", "support_grant_revoked"],
     ["demo: my_firm_demo_flags"],
     ["execute"],
     "allow",
-    "A System Administrator (aal2) reads the real demo marking for the organisations they may list",
+    "The marking follows the System Administrator role alone (aal2). The support-grant accounts hold that role in this fixture, so they read it through the role — the support grant itself grants nothing",
     ["pglite"],
   ),
   ...rows(
-    ["org_owner", "org_staff", "client_viewer", "business_owner", "other_org_member", "support_grant_active", "aal1_member", "anonymous"],
+    ["org_owner", "org_staff", "client_viewer", "business_owner", "other_org_member", "aal1_member", "anonymous"],
     ["demo: my_firm_demo_flags"],
     ["execute"],
     "deny",
