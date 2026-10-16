@@ -565,11 +565,11 @@ describe("12b. every iframe src comes from the approved builder", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("keeps both approved iframes sandboxed", () => {
+  it("keeps every approved iframe sandboxed", () => {
     const frames = FILES.flatMap((f) =>
       (f.text.match(/<iframe[\s\S]*?\/>/g) ?? []).map((frame) => ({ path: f.path, frame })),
     );
-    expect(frames.length).toBe(2);
+    expect(frames.length).toBe(1);
     const offenders = frames
       .filter(({ frame }) => !/sandbox=/.test(frame) || !/referrerPolicy=/.test(frame))
       .map(({ path }) => path);
