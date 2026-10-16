@@ -444,6 +444,8 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Latest history fill's progress for System Admin → Xero: organisation, client and Xero file names, status, months filled and a generic reason. public.assert_super_admin (aal2). Path C metadata — no figures, no tokens.",
   "public.admin_set_card_module":
     "Renames or redescribes one Advisory module. aal2 + System Administrator via public.assert_super_admin, length-validated, audited. Product catalogue copy only.",
+  "public.admin_move_card_module":
+    "Moves one Advisory module up or down in display order by swapping sort_order with its neighbour. aal2 + System Administrator via public.assert_super_admin, direction-validated, audited. Display order only — no access effect.",
   "app_private.assert_card_manager":
     "The single gate for card and module writes: aal2, then allows only a System Administrator or the Organisation Owner of that organisation (app_private.is_org_owner, caller-scoped). Execute revoked from PUBLIC and anon.",
   "app_private.card_group_cards":
