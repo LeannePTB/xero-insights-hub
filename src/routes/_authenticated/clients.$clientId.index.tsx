@@ -1,4 +1,4 @@
-import { BUSINESS_HEALTH_ENABLED } from "@/lib/config/features";
+import { canSeeBusinessHealth } from "@/lib/config/features";
 import { useCanManageClient } from "@/hooks/useCanManageClient";
 import { getClientCatalogue, getMyLoansAccess } from "@/lib/card-model.functions";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -242,7 +242,8 @@ function ClientDashboard() {
     if (!client) return { standardCards: standard, advancedCards: advanced, statutoryBlocks: statutory };
 
 
-    if (BUSINESS_HEALTH_ENABLED && widgets.includes("health")) {
+    // Practice users see Business Health; client logins only once released.
+    if (canSeeBusinessHealth(isAdvisor) && widgets.includes("health")) {
       const healthNode = orgs.length > 0 ? (
         <HealthWidget
           clientName={client.name}
@@ -370,7 +371,10 @@ function ClientDashboard() {
 
   }, [client, clientId, orgs, widgets, reportBasis, gstBasis, isAdvisor, orgSearchQ.data?.allowed, capabilityKey]);
 
-  const savedOrder = orderQ.data?.order ?? [];
+  // Business Health defaults to the top; a saved order is honoured for it only
+  // when the person has explicitly placed it (the saved list contains it).
+  const rawSavedOrder = orderQ.data?.order ?? [];
+  const savedOrder = rawSavedOrder.length > 0 && !rawSavedOrder.includes("health") ? ["health", ...rawSavedOrder] : rawSavedOrder;
   const dashboardCards = [...standardCards, ...advancedCards];
   for (const block of statutoryBlocks) {
     if (block.taxObligations) dashboardCards.push({ id: `${block.orgId}:tax_obligations`, node: block.taxObligations });
