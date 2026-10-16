@@ -19,17 +19,18 @@ export async function readFigureHistory(sb: any, ids: string[], from: string, to
   return out;
 }
 
-export type MonthEndRow = { client_id: string; tenant_id: string; month_end: string; cash: number | null; net_profit: number | null };
+export type MonthEndRow = { client_id: string; tenant_id: string; month_end: string; cash: number | null; net_profit: number | null; income?: number | null; expenses?: number | null };
 /** Backfilled month-end points, through the caller's own session (same RLS as key figures). */
 export async function readMonthEndHistory(sb: any, ids: string[], from: string, to: string, tenantId?: string): Promise<MonthEndRow[]> {
   const out: MonthEndRow[] = [];
+  const n = (v: any) => (v === null || v === undefined ? null : Number(v));
   for (let i = 0; i < ids.length; i += 25) {
-    let query = sb.from('client_figure_history').select('client_id, tenant_id, month_end, cash, net_profit')
+    let query = sb.from('client_figure_history').select('client_id, tenant_id, month_end, cash, net_profit, income, expenses')
       .in('client_id', ids.slice(i, i + 25)).gte('month_end', from).lte('month_end', to).order('month_end').range(0, 999);
     if (tenantId) query = query.eq('tenant_id', tenantId);
     const { data, error } = await query;
     if (error) throw new Error('Month-end history could not be read.');
-    out.push(...((data ?? []) as MonthEndRow[]).map(r => ({ ...r, cash: r.cash === null ? null : Number(r.cash), net_profit: r.net_profit === null ? null : Number(r.net_profit) })));
+    out.push(...((data ?? []) as MonthEndRow[]).map(r => ({ ...r, cash: n(r.cash), net_profit: n(r.net_profit), income: n(r.income), expenses: n(r.expenses) })));
   }
   return out;
 }

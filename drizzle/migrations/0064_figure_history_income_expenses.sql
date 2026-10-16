@@ -1,0 +1,3 @@
+ALTER TABLE public.client_figure_history ADD COLUMN IF NOT EXISTS income numeric NULL, ADD COLUMN IF NOT EXISTS expenses numeric NULL;
+COMMENT ON COLUMN public.client_figure_history.income IS 'Month total income (revenue + other income), accrual, from Xero P&L backfill. NULL = unavailable.';
+COMMENT ON COLUMN public.client_figure_history.expenses IS 'Month total cost of sales + operating expenses, accrual, from Xero P&L backfill. NULL = unavailable.';

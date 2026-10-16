@@ -20,6 +20,7 @@ import { BankAccountsSection } from "@/components/clients/BankAccountsSection";
 import { ClientSetupSection } from "@/components/clients/ClientSetupSection";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { basisLabel } from "@/lib/report-basis";
+import { getClientGstMethod, setClientGstMethod } from "@/lib/xero/gst-method.functions";
 import { getXeroSalesTaxBasis } from "@/lib/xero/org-basis.functions";
 import { getMyContext } from "@/lib/roles.functions";
 
@@ -373,6 +374,16 @@ export function ClientSettingsPage({ clientId, section }: { clientId: string; se
             clientId={clientId}
             gstCycle={(client.gst_cycle as GstCycle | null) ?? null}
             paygCycle={(client.payg_withholding_cycle as PaygCycle | null) ?? null}
+            tenantId={
+              linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
+                ?.tenant_id
+            }
+          />
+        </Section>
+
+        <Section title="GST accounting method" id="gst-method" collapsible>
+          <GstMethodSection
+            clientId={clientId}
             tenantId={
               linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
                 ?.tenant_id
@@ -1356,5 +1367,54 @@ function CashCommitmentsSection({
         </div>
       )}
     </Section>
+  );
+}
+
+/** GST accounting method for the activity statement card: Xero's own setting
+ *  by default, or an adviser override. Saved through an audited, MFA-checked
+ *  database function limited to the organisation team. */
+function GstMethodSection({ clientId, tenantId }: { clientId: string; tenantId?: string }) {
+  const qc = useQueryClient();
+  const readFn = useServerFn(getClientGstMethod);
+  const saveFn = useServerFn(setClientGstMethod);
+  const salesTaxBasisFn = useServerFn(getXeroSalesTaxBasis);
+  const q = useQuery({ queryKey: ["client-gst-method", clientId], queryFn: () => readFn({ data: { clientId } }) });
+  const xeroQ = useQuery({
+    queryKey: ["xero-sales-tax-basis", tenantId],
+    enabled: !!tenantId,
+    staleTime: 30 * 60 * 1000,
+    queryFn: () => salesTaxBasisFn({ data: { tenantId: tenantId! } }),
+  });
+  const xeroBasis = (xeroQ.data as any)?.basis as "cash" | "accrual" | null | undefined;
+  const xeroText = xeroBasis === "cash" ? "Cash basis" : xeroBasis === "accrual" ? "Accrual basis" : null;
+  const mut = useMutation({
+    mutationFn: (method: "xero" | "cash" | "accrual") => saveFn({ data: { clientId, method } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["client-gst-method", clientId] });
+      qc.invalidateQueries({ queryKey: ["gst-reconciliation", clientId] });
+      toast.success("GST accounting method saved");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not save the GST accounting method"),
+  });
+  const value = q.data?.method ?? "xero";
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">
+        Decides whether the activity statement card reports GST when invoices are dated (accrual) or when money is received and paid (cash).
+      </p>
+      {!xeroText && xeroQ.isFetched && value === "xero" && (
+        <p className="text-xs text-info">Xero's GST accounting method is blank or could not be read — choose Cash or Accrual.</p>
+      )}
+      <Label htmlFor="gst-method">GST accounting method</Label>
+      <Select value={value} onValueChange={(v) => mut.mutate(v as "xero" | "cash" | "accrual")} disabled={!q.data?.canEdit || mut.isPending}>
+        <SelectTrigger id="gst-method" className="w-full sm:w-[320px]"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="xero">{xeroText ? `Use Xero's setting (${xeroText})` : "Use Xero's setting"}</SelectItem>
+          <SelectItem value="cash">Cash basis</SelectItem>
+          <SelectItem value="accrual">Accrual basis</SelectItem>
+        </SelectContent>
+      </Select>
+      {q.data && !q.data.canEdit && <p className="text-xs text-muted-foreground">Only the organisation team can change this.</p>}
+    </div>
   );
 }

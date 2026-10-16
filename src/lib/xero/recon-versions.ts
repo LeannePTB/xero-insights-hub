@@ -14,10 +14,12 @@ export const RECON_VERSIONS: Record<string, number> = {
   balance_sheet_reconciliation: 2,
   // v3: PAYG withholding now comes from payroll pay runs in the period, not
   // from the movement on the liability account.
-  gst_reconciliation: 3,
+  // v4: cash-basis GST from payments, unfiled-amount estimate, no PAYG inputs.
+  gst_reconciliation: 4,
   // Quarterly GST windows are keyed separately so a monthly snapshot at the
   // same as-at date is never served as a quarter.
-  gst_reconciliation_quarter: 3,
+  gst_reconciliation_quarter: 4,
+  gst_reconciliation_year: 4,
   loan_consolidation: 1,
 };
 

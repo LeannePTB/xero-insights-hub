@@ -863,12 +863,15 @@ export async function computeMonthlyReport(opts: {
   } catch {
     charts = {cash:[],profit:[],note:'Stored chart history could not be read; no history has been substituted.'};
   }
-  // Freeze available current-period bars; missing historical breakdowns stay gaps.
-  charts.pnl = charts.profit.map((p,i) => ({label:p.label,values:[
+  // Freeze available current-period bars; missing historical breakdowns stay
+  // gaps. The chart covers the report period's financial year only (July on).
+  const { financialYear } = await import('@/lib/charts/standard');
+  const fyFrom = financialYear(periodEnd).from;
+  charts.pnl = charts.profit.map((p,i) => ({date:p.date,label:p.label,values:[
     p.date===periodEnd && profitAndLoss ? profitAndLoss.totals.revenue+profitAndLoss.totals.otherIncome : charts.pnl?.[i]?.values[0]??null,
     p.date===periodEnd && profitAndLoss ? profitAndLoss.totals.costOfSales+profitAndLoss.totals.expenses : charts.pnl?.[i]?.values[1]??null,
     p.value,
-  ]}));
+  ]})).filter(p => p.date >= fyFrom).map(({label,values}) => ({label,values}));
   return {
     basis: 'accrual',
     includedSections,

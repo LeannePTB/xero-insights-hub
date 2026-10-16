@@ -553,9 +553,11 @@ export type Database = {
         Row: {
           cash: number | null
           client_id: string
+          expenses: number | null
           fetched_at: string
           firm_id: string
           id: string
+          income: number | null
           month_end: string
           net_profit: number | null
           source: string
@@ -564,9 +566,11 @@ export type Database = {
         Insert: {
           cash?: number | null
           client_id: string
+          expenses?: number | null
           fetched_at?: string
           firm_id: string
           id?: string
+          income?: number | null
           month_end: string
           net_profit?: number | null
           source?: string
@@ -575,9 +579,11 @@ export type Database = {
         Update: {
           cash?: number | null
           client_id?: string
+          expenses?: number | null
           fetched_at?: string
           firm_id?: string
           id?: string
+          income?: number | null
           month_end?: string
           net_profit?: number | null
           source?: string
@@ -5310,6 +5316,10 @@ export type Database = {
       set_client_dashboard_tier: {
         Args: { _client_id: string; _reason: string; _tier: string }
         Returns: string
+      }
+      set_client_gst_method: {
+        Args: { _client_id: string; _method: string }
+        Returns: undefined
       }
       set_client_module: {
         Args: { _client_id: string; _enabled: boolean; _module_key: string }

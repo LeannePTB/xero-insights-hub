@@ -17,10 +17,12 @@ export function VectorChart({ title, points, series, currency = 'AUD', table = t
   const axisFont = AXIS_PX / scale;
   const fmt = (v: number | null) => v === null ? '—' : new Intl.NumberFormat('en-AU', { style: 'currency', signDisplay: 'negative', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
   const available = points.flatMap(p => p.values).filter(v => v !== null).length;
-  return <figure className="min-w-0 space-y-2 py-3" aria-labelledby={id}>
-    <figcaption id={id} className="text-sm font-semibold">{title} <span className="font-normal text-muted-foreground">· {currency}</span></figcaption>
+  return <figure className="min-w-0 space-y-1.5 py-1" aria-labelledby={id}>
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+      <figcaption id={id} className="text-sm font-semibold">{title} <span className="font-normal text-muted-foreground">· {currency}</span></figcaption>
+      {available > 0 && <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">{series.map((s, i) => <span key={s.label} className="inline-flex items-center gap-1.5"><span className={tones[i % tones.length]} aria-hidden="true">{s.kind === 'bar' ? '▥' : '●—'}</span>{s.label}</span>)}</div>}
+    </div>
     {!available ? <p className="text-xs text-muted-foreground">No reliable figures available for this period.</p> : <>
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">{series.map((s, i) => <span key={s.label} className="inline-flex items-center gap-1.5"><span className={tones[i % tones.length]} aria-hidden="true">{s.kind === 'bar' ? '▥' : '●—'}</span>{s.label}</span>)}</div>
       <svg ref={svgRef} viewBox="0 0 600 210" className="block h-auto max-h-64 w-full" role="group" aria-label={title}>
         {g.ticks.map((t, i) => <g key={i}><line x1="62" x2="580" y1={t.y} y2={t.y} className="stroke-border" strokeDasharray="3 3"/><text x="57" y={t.y + 4} textAnchor="end" className="fill-muted-foreground" fontSize={axisFont}>{new Intl.NumberFormat('en-AU', {notation:'compact',maximumFractionDigits:1}).format(t.value)}</text></g>)}
         <line x1="62" x2="580" y1={g.zero} y2={g.zero} className="stroke-muted-foreground"/>

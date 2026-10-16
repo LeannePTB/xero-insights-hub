@@ -53,7 +53,7 @@ export const getGstReconciliation = createServerFn({ method: "POST" })
     // for PAYG at all — no account hunt, no pay-run read, no issue line.
     const { data: clientRow, error: clientError } = await (context.supabase as any)
       .from("clients")
-      .select("gst_cycle, payg_withholding_cycle")
+      .select("gst_cycle, basis_overrides")
       .eq("id", data.clientId)
       .maybeSingle();
     if (clientError) throw new Error(clientError.message);
@@ -64,28 +64,43 @@ export const getGstReconciliation = createServerFn({ method: "POST" })
           : "Set this client's GST lodgement cycle before loading GST figures.",
       );
     }
-    const withholdsPayg =
-      clientRow?.payg_withholding_cycle != null &&
-      clientRow.payg_withholding_cycle !== "not_registered";
-    return runReconciliation({
+    // PAYG belongs on the PAYG card: this card reads GST inputs only, so its
+    // completeness never depends on pay runs.
+    const gstOverride = (clientRow?.basis_overrides as Record<string, unknown> | null)?.gst_method ?? null;
+    const run = (recalculate?: boolean) => runReconciliation({
       supabase: context.supabase as any,
       userId: context.userId,
       clientId: data.clientId,
       tenantId: data.tenantId,
       asAt: data.asAt,
-      recalculate: data.recalculate,
+      recalculate,
       reportKey: REPORT_KEYS[data.window ?? "month"]!,
       widget: "gst_reconciliation",
-      compute: (conn) =>
-        computeGstReconciliation(
+      compute: async (conn) => {
+        const { xeroGet } = await import("./api.server");
+        const { resolveGstMethod } = await import("./gst-activity");
+        let raw: string | null = null;
+        try {
+          const org = await xeroGet<{ Organisations?: { SalesTaxBasis?: string }[] }>(conn, "Organisation", {});
+          raw = org.Organisations?.[0]?.SalesTaxBasis ?? null;
+        } catch { raw = null; }
+        const method = resolveGstMethod(gstOverride, raw);
+        return computeGstReconciliation(
           conn,
           data.asAt,
           data.window ?? "month",
           overrides,
           context.supabase,
-          withholdsPayg,
+          false,
           data.clientId,
-        ),
-
+          method,
+        );
+      },
     });
+    const first = await run(data.recalculate);
+    // A saved calculation made under a different method (the adviser changed
+    // the setting since) is never served: recalculate once.
+    const savedOverride = first.method?.source === "override" ? first.method.method : null;
+    if (!data.recalculate && (gstOverride ?? null) !== savedOverride && (gstOverride || first.method?.source === "override")) return run(true);
+    return first;
   });

@@ -17,7 +17,7 @@ import {
   saveIncomeTaxInstalment,
 } from "@/lib/income-tax-instalments.functions";
 import { completedGstPeriod, type GstCycle } from "./recon-periods";
-import { latestCompletedPaygMonth, netGstAmount, lodgedBillsForPeriod } from "./tax-obligations";
+import { latestCompletedPaygMonth, netGstAmount, currentGstPeriod, forwardTax, basDueDate } from "./tax-obligations";
 import { getLodgedTaxBills } from "@/lib/xero/lodged-tax.functions";
 import { formatMoneyExact, useTenantCurrency } from "./useTenantCurrency";
 
@@ -68,6 +68,17 @@ export function TaxObligationsWidget({
     refetchOnReconnect: false,
     enabled: gstCycle !== "not_registered",
   });
+  const todayIso = format(today, "yyyy-MM-dd");
+  const runPeriod = useMemo(() => currentGstPeriod(gstCycle, todayIso), [gstCycle, todayIso]);
+  const runGstQuery = useQuery({
+    queryKey: ["gst-reconciliation", clientId, tenantId, runPeriod.kind, runPeriod.asAt],
+    queryFn: () => staggered(() => fetchGst({ data: { clientId, tenantId, asAt: runPeriod.asAt, window: runPeriod.kind } })),
+    ...xeroQueryRetry,
+    staleTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    enabled: gstCycle !== "not_registered" && gstCycle !== null,
+  });
   const paygQuery = useQuery({
     queryKey: paygQueryKey(tenantId, clientId),
     queryFn: () => staggered(() => fetchPayg({ data: { tenantId, clientId, months: 6 } })),
@@ -100,38 +111,51 @@ export function TaxObligationsWidget({
 
   const gst = gstQuery.data;
   const payg = latestCompletedPaygMonth(paygQuery.data);
-  const periodBills = [...new Set([
-    ...lodgedBillsForPeriod(billsQuery.data?.bills ?? [], gst?.periodFrom ?? gstPeriod.from, gst?.periodTo ?? gstPeriod.asAt),
-    ...(payg ? lodgedBillsForPeriod(billsQuery.data?.bills ?? [], payg.month, payg.month) : []),
-  ])];
+  const run = runGstQuery.data;
+  const runPayg = paygQuery.data?.status === "available"
+    ? paygQuery.data.months.find((m) => m.month.slice(0, 7) === todayIso.slice(0, 7))?.withheld ?? 0
+    : null;
   const latestInstalment = instalmentsQuery.data?.instalments[0] ?? null;
-  const busy = gstQuery.isLoading || paygQuery.isLoading || instalmentsQuery.isLoading;
+  const fwd = forwardTax({
+    bills: billsQuery.data?.bills ?? [], today: todayIso, period: runPeriod,
+    gst: run ? (run.statementNet ?? netGstAmount(run)) : null, payg: runPayg, paygRegistered,
+    instalment: latestInstalment ? { amount: latestInstalment.amount, due: basDueDate("quarter", latestInstalment.periodEnd) } : null,
+  });
+  const day = (d: string) => format(new Date(`${d}T00:00:00`), "d MMM");
+  const accountGap = run && run.closingBalance !== null && run.statementNet !== null ? Math.round((run.closingBalance - run.statementNet) * 100) / 100 : null;
+  const busy = gstQuery.isLoading || paygQuery.isLoading || instalmentsQuery.isLoading || runGstQuery.isLoading;
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
-      <DashboardCardHeader label={tenantName} title="Tax obligations" icon={<Calculator className="h-4 w-4"/>} description="Latest completed periods and the ATO-set instalment" source={paygQuery.data?.source} isFetching={gstQuery.isFetching || paygQuery.isFetching} actions={instalmentsQuery.data?.canEdit && !editing ? <Button variant="outline" size="sm" onClick={() => setEditing(true)}><Pencil className="h-4 w-4"/> Add instalment</Button> : undefined}/>
-      {periodBills.map((bill, i) => <p key={`${bill.reference}:${bill.due}:${i}`} className="mt-2 text-sm font-medium text-info">Lodged{bill.total !== undefined ? ` · ${money(bill.total)}` : ""} · {money(bill.amount)} still owing · due {format(new Date(`${bill.due}T00:00:00`), "d MMM")}</p>)}
+      <DashboardCardHeader label={tenantName} title="Tax obligations" icon={<Calculator className="h-4 w-4"/>} description="What still has to be paid to the ATO" source={paygQuery.data?.source} isFetching={gstQuery.isFetching || paygQuery.isFetching || runGstQuery.isFetching} actions={instalmentsQuery.data?.canEdit && !editing ? <Button variant="outline" size="sm" onClick={() => setEditing(true)}><Pencil className="h-4 w-4"/> Add instalment</Button> : undefined}/>
       {billsQuery.isError && <p className="mt-2 text-xs text-muted-foreground">Lodged bill status unavailable</p>}
-
       {busy ? (
-        <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>
+        <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>
       ) : (
-        <div className="mt-6 grid gap-5 md:grid-cols-3">
-          <div>
-            <p className="text-xs text-muted-foreground">GST</p>
-            <p className="mt-1 font-display text-lg font-semibold tabular-nums">{gst ? money(netGstAmount(gst)) : "Unavailable"}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{gst ? periodLabel(gst.periodFrom, gst.periodTo) : "Latest completed period"}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">PAYG withholding</p>
-            <p className="mt-1 font-display text-lg font-semibold tabular-nums">{payg ? money(payg.amount) : "Unavailable"}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{payg ? format(new Date(`${payg.month}T00:00:00`), "MMMM yyyy") : "Latest completed month"}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Income tax instalment</p>
-            <p className="mt-1 font-display text-lg font-semibold tabular-nums">{latestInstalment ? money(latestInstalment.amount) : "Not entered"}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{latestInstalment ? periodLabel(latestInstalment.periodStart, latestInstalment.periodEnd) : "ATO-set amount"}</p>
-          </div>
+        <div className="mt-2 space-y-2 text-sm">
+          {fwd.owing.map((o, i) => (
+            <p key={`${o.reference}:${o.due}:${i}`} className={o.overdue ? "font-medium text-destructive" : "font-medium"}>
+              Lodged and still owing: {money(o.amount)}{o.reference ? ` · ${o.reference}` : ""} · {o.overdue ? `overdue since ${day(o.due)}` : `due ${day(o.due)}`}
+            </p>
+          ))}
+          <p>
+            Building now ({runPeriod.kind === "quarter" ? `quarter ${day(fwd.building.from)} – ${day(fwd.building.to)}` : `${format(new Date(`${fwd.building.from}T00:00:00`), "MMMM")} so far`}):{" "}
+            GST {fwd.building.gst === null ? "unavailable" : `~${money(fwd.building.gst)}`}
+            {paygRegistered && <> · PAYG withholding {fwd.building.payg === null ? "unavailable" : `~${money(fwd.building.payg)}`}</>}
+            {fwd.building.total !== null && <> · total ~{money(fwd.building.total)}</>} · due {day(fwd.building.due)}
+          </p>
+          <p>Income tax instalment: {fwd.instalment ? `${money(fwd.instalment.amount)} · due ${day(fwd.instalment.due)}` : "Not entered — add instalment"}</p>
+          <p className="font-semibold">Total to plan for: {fwd.totalToPlan === null ? "unavailable" : `~${money(fwd.totalToPlan)}`}</p>
+          {run?.unfiled?.status === "estimate" && run.unfiled.sales - run.unfiled.purchases !== 0 && (
+            <p className="text-xs text-muted-foreground">GST includes an estimated {money(run.unfiled.sales - run.unfiled.purchases)} of unfiled amounts from earlier periods.</p>
+          )}
+          {accountGap !== null && Math.abs(accountGap) >= 1 && (
+            <p className="text-xs text-muted-foreground">GST account holds {money(Math.abs(accountGap))} {accountGap > 0 ? "more" : "less"} than this period's GST — worth checking in Xero.</p>
+          )}
+          <p className="pt-1 text-xs text-muted-foreground">
+            Last lodged period: {gst ? `${periodLabel(gst.periodFrom, gst.periodTo)} · GST ${money(netGstAmount(gst))}` : "GST unavailable"}
+            {payg ? ` · PAYG ${money(payg.amount)} (${format(new Date(`${payg.month}T00:00:00`), "MMM yyyy")})` : ""}
+          </p>
         </div>
       )}
 

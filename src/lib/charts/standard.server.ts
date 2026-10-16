@@ -33,12 +33,13 @@ export async function loadStandardHistory(db: any, clientId: string, tenantId: s
     const [reports,snapshots,filled] = await Promise.all([
       db.from('client_reports').select('id,period_end,version,payload').eq('client_id',clientId).eq('tenant_id',tenantId).eq('report_key','monthly_management').in('status',['final','sent']).gte('period_end',from).lte('period_end',today).order('period_end').order('version',{ascending:false}).limit(500),
       db.from('xero_snapshots').select('payload,params,as_at,fetched_at').eq('client_id',clientId).eq('tenant_id',tenantId).eq('report_key','profit_and_loss_mtd').eq('complete',true).gte('as_at',from).order('fetched_at',{ascending:false}).limit(500),
-      db.from('client_figure_history').select('month_end,net_profit').eq('client_id',clientId).eq('tenant_id',tenantId).gte('month_end',from).lte('month_end',today).order('month_end').limit(20),
+      db.from('client_figure_history').select('month_end,net_profit,income,expenses').eq('client_id',clientId).eq('tenant_id',tenantId).gte('month_end',from).lte('month_end',today).order('month_end').limit(20),
     ]);
     if(reports.error||snapshots.error||filled.error) throw new Error('Chart history is unavailable.');
     const months = new Map<string,PnlObservation>();
+    const num=(v:any)=>v===null||v===undefined?null:Number(v);
     // Backfill currently uses accrual. Never blend it into a cash-basis chart.
-    if(basis==='accrual') for(const r of filled.data??[]) months.set(r.month_end.slice(0,7),{date:r.month_end,income:null,expenses:null,profit:r.net_profit===null?null:Number(r.net_profit),partial:false,source:'Xero month-end backfill',basis});
+    if(basis==='accrual') for(const r of filled.data??[]) months.set(r.month_end.slice(0,7),{date:r.month_end,income:num(r.income),expenses:num(r.expenses),profit:num(r.net_profit),partial:false,source:'Xero month-end backfill',basis});
     for(const r of reports.data??[]) {
       const totals=r.payload?.profitAndLoss?.totals;
       // This report generator historically requests accrual; explicit future basis wins.
