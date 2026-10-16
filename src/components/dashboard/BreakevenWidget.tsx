@@ -43,7 +43,7 @@ export function BreakevenWidget({
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
-      <DashboardCardHeader label={tenantName} title="Breaking even" icon={<Target className="h-4 w-4"/>} description="The sales you need to cover your costs" badge={<BasisBadge basis={basis}/>} from={s.fromDate} to={s.toDate} source={s.data?.source} isFetching={s.isFetching} actions={<Button variant="ghost" size="icon-sm" onClick={() => { s.setShouldLoad(true); s.refetch(); }} disabled={s.isFetching} title="Refresh" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${s.isFetching ? "animate-spin" : ""}`}/></Button>}/>
+      <DashboardCardHeader label={tenantName} title="Break-even" icon={<Target className="h-4 w-4"/>} description="The sales you need to cover your costs" badge={<BasisBadge basis={basis}/>} from={s.fromDate} to={s.toDate} source={s.data?.source} isFetching={s.isFetching} actions={<Button variant="ghost" size="icon-sm" onClick={() => { s.setShouldLoad(true); s.refetch(); }} disabled={s.isFetching} title="Refresh" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${s.isFetching ? "animate-spin" : ""}`}/></Button>}/>
 
       <DateRangeControls
         fromDate={s.fromDate}
