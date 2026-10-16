@@ -113,12 +113,13 @@ export function TaxObligationsWidget({
   const payg = latestCompletedPaygMonth(paygQuery.data);
   const run = runGstQuery.data;
   const runPayg = paygQuery.data?.status === "available"
-    ? paygQuery.data.months.find((m) => m.month.slice(0, 7) === todayIso.slice(0, 7))?.withheld ?? 0
+    // Same rule as the stored summary: PAYG withheld on paydays in the running period.
+    ? Math.round(paygQuery.data.months.filter((m) => m.month >= runPeriod.from && m.month <= runPeriod.asAt).reduce((t, m) => t + m.withheld, 0) * 100) / 100
     : null;
   const latestInstalment = instalmentsQuery.data?.instalments[0] ?? null;
   const fwd = forwardTax({
     bills: billsQuery.data?.bills ?? [], today: todayIso, period: runPeriod,
-    gst: run ? (run.statementNet ?? netGstAmount(run)) : null, payg: runPayg, paygRegistered,
+    gst: gstCycle === "not_registered" ? 0 : run ? (run.statementNet ?? netGstAmount(run)) : null, payg: runPayg, paygRegistered,
     instalment: latestInstalment ? { amount: latestInstalment.amount, due: basDueDate("quarter", latestInstalment.periodEnd) } : null,
   });
   const day = (d: string) => format(new Date(`${d}T00:00:00`), "d MMM");
