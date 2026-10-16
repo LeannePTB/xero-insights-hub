@@ -72,8 +72,6 @@ import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 import { XeroSyncStatusCard } from "@/components/clients/XeroSyncStatusCard";
 import { CostClassificationPanel } from "@/components/dashboard/CostClassificationPanel";
 import { getClientWidgets } from "@/lib/tier-config.functions";
-import {
-} from "@/lib/true-breakeven.functions";
 // import { SubscriptionPanel } from "@/components/billing/SubscriptionPanel";
 import { Switch } from "@/components/ui/switch";
 import {

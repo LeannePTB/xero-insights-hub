@@ -25,7 +25,6 @@ Light/dark logo branches remain unchanged: one logo is displayed at a time; when
 | `src/routes/_authenticated/clients.$clientId.receivables.$tenantId.tsx` | `/clients/$clientId/receivables/$tenantId` | Page | Conditional | 1 → 1 | 1 → 1 |
 | `src/routes/_authenticated/clients.$clientId.reports.tsx` | `/clients/$clientId/reports` | Page | Conditional | 2 → 1 | 2 → 1 |
 | `src/routes/_authenticated/clients.$clientId.settings.cards.tsx` | `/clients/$clientId/settings/cards` | Page | Conditional | 1 → 1 | 1 → 1 |
-| `src/routes/_authenticated/clients.$clientId.settings.costs.tsx` | `/clients/$clientId/settings/costs` | Page | Conditional | 1 → 1 | 1 → 1 |
 | `src/routes/_authenticated/clients.$clientId.settings.danger.tsx` | `/clients/$clientId/settings/danger` | Page | Conditional | 1 → 1 | 1 → 1 |
 | `src/routes/_authenticated/clients.$clientId.settings.general.tsx` | `/clients/$clientId/settings/general` | Page | Conditional | 1 → 1 | 1 → 1 |
 | `src/routes/_authenticated/clients.$clientId.settings.people.tsx` | `/clients/$clientId/settings/people` | Page | Conditional | 1 → 1 | 1 → 1 |
