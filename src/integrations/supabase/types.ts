@@ -4203,6 +4203,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      admin_move_card_module: {
+        Args: { _direction: string; _module_key: string }
+        Returns: undefined
+      }
       admin_onboard_candidates: {
         Args: { _pending_id: string }
         Returns: {

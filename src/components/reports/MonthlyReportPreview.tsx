@@ -2,6 +2,7 @@ import { useWorkspaceBranding } from "@/hooks/useWorkspaceBranding";
 import { VectorChart } from '@/components/charts/VectorChart';
 import { sectionIncluded } from "@/lib/reports/monthly-report";
 import { AlertTriangle } from "lucide-react";
+import { ReportHealthChecks } from "./ReportHealthChecks";
 import { ReportVerdictPage } from "@/components/reports/ReportVerdictPage";
 import {
   SECTION_LABELS,
@@ -286,6 +287,8 @@ export function MonthlyReportPreview({
       {/* 1. Page one — the verdict, before Notes and before every number.
           Absent on payloads written before v11; never reconstructed. */}
       {payload.verdict && sectionIncluded(payload, "verdict") ? <ReportVerdictPage verdict={payload.verdict} /> : null}
+      {/* v13: Business Health — the three checks, frozen at generation. */}
+      {payload.healthChecks && sectionIncluded(payload, "verdict") ? <ReportHealthChecks checks={payload.healthChecks} /> : null}
 
       {/* A quiet staff-only line while the report is still a draft. It never
           blocks finalising — a month with no comment is normal. */}

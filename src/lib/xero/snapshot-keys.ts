@@ -76,6 +76,7 @@ export const STALENESS_SECONDS: Record<string, number> = {
   profit_and_loss_mtd: 30 * 3600,
   profit_and_loss_prior: 30 * 3600,
   profit_and_loss_ytd: 30 * 3600,
+  profit_and_loss_monthly_last3: 30 * 3600,
   trial_balance: 30 * 3600,
   bank_summary: 30 * 3600,
   accounts: 30 * 3600,
@@ -164,6 +165,14 @@ export function snapshotReports(today: string = sydneyDate()): SnapshotReport[] 
       path: "Reports/ProfitAndLoss",
       params: { fromDate: fyStart, toDate: today, standardLayout: "false" },
       asAt: today,
+    },
+    {
+      // The last three full calendar months, one column each, for the Business
+      // Health cash-cover check (average monthly costs). One call.
+      reportKey: "profit_and_loss_monthly_last3",
+      path: "Reports/ProfitAndLoss",
+      params: { fromDate: priorMonthStart, toDate: priorMonthEnd, periods: "2", timeframe: "MONTH" },
+      asAt: priorMonthEnd,
     },
     { reportKey: "trial_balance", path: "Reports/TrialBalance", params: { date: today }, asAt: today },
     {

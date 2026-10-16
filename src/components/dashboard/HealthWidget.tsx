@@ -1,28 +1,11 @@
-import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
-import { isGateWait, staggered, xeroQueryRetry } from "@/lib/xero/live-load";
-import { XeroErrorNotice, XeroWaiting } from "./XeroLoadState";
-import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Activity, AlertTriangle } from "lucide-react";
-import { getBusinessHealthDetail } from "@/lib/health.functions";
-import { useTenantCurrency } from "./useTenantCurrency";
-import { HealthScoreDonut } from "./HealthScoreDonut";
-import { StandardHistoryChart } from '@/components/charts/StandardHistoryChart';
+import { Activity, Info } from "lucide-react";
+import { DashboardCardHeader } from "./DashboardCardHeader";
+import { XeroErrorNotice } from "./XeroLoadState";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  DateRangeControls,
-  clearLegacyRangeStorage,
-  toISO,
-  startOfCurrentMonth,
-  today,
-} from "./DateRangeControls";
-import { CardFreshness } from "./CardFreshness";
-import { usePersistedDisclosure } from "@/hooks/usePersistedDisclosure";
-import { ChevronDown } from "lucide-react";
-import { HealthPillars } from "./HealthPillars";
-
-
+import { getHealthChecks } from "@/lib/health.functions";
+import { STATUS_LABEL, type CheckStatus } from "@/lib/health/health-checks";
 
 type Props = {
   tenantId?: string;
@@ -31,234 +14,87 @@ type Props = {
   clientId?: string;
 };
 
+const PILL: Record<CheckStatus, string> = {
+  green: "border-success/30 bg-success/10 text-success",
+  watch: "border-info/30 bg-info/10 text-info",
+  red: "border-destructive/30 bg-destructive/10 text-destructive",
+  na: "border-border bg-muted/40 text-muted-foreground",
+};
+
+/** Business Health: three plain checks from last night's saved Xero figures. */
 export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Props) {
-  // One server call powers the score, the drivers and the pillars, so the
-  // current-period P&L is fetched once instead of twice.
-  const fetchHealth = useServerFn(getBusinessHealthDetail);
-  const currency = useTenantCurrency(tenantId);
-  // Range is deliberately not persisted: every page load opens on the
-  // default (1st of the current month → today). Changing it lasts only for
-  // the time on the page.
-  const [fromDate, setFromDate] = useState<Date>(startOfCurrentMonth);
-  const [toDate, setToDate] = useState<Date>(today);
-  useEffect(clearLegacyRangeStorage, []);
-
-  const [detailOpen, setDetailOpen] = usePersistedDisclosure(
-    `health-detail:${tenantId ?? "none"}`,
-  );
-
+  const fetchChecks = useServerFn(getHealthChecks);
   const q = useQuery({
-    queryKey: ["business-health", tenantId, clientId, toISO(fromDate), toISO(toDate)],
-    enabled: !!tenantId,
-    staleTime: 5 * 60 * 1000,
-    ...xeroQueryRetry,
-    queryFn: () => staggered(() =>
-      fetchHealth({
-        data: {
-          tenantId: tenantId ?? '',
-          clientId,
-          fromDate: toISO(fromDate),
-          toDate: toISO(toDate),
-        },
-      })),
+    queryKey: ["health-checks", tenantId, clientId],
+    enabled: !!tenantId && !!clientId,
+    staleTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    queryFn: () => fetchChecks({ data: { tenantId: tenantId ?? "", clientId: clientId ?? "" } }),
   });
 
-
-  if (!tenantId) {
-    return <Placeholder tenantName={tenantName} />;
+  if (!tenantId || !clientId) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-card p-6 shadow-soft">
+        <p className="text-xs text-muted-foreground">{tenantName}</p>
+        <h3 className="font-display text-lg font-semibold flex items-center gap-2">
+          <Activity className="h-4 w-4 text-emphasis" /> Business health
+        </h3>
+        <p className="mt-2 text-sm text-muted-foreground">Link a Xero organisation to see business health.</p>
+      </div>
+    );
   }
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
-      <DashboardCardHeader label={[clientName, tenantName, currency, q.data?.fyLabel].filter(Boolean).join(" · ")} title="Business health" icon={<Activity className="h-4 w-4"/>} description="Cash, profit and the signals behind the business health score" from={fromDate} to={toDate} source={q.data?.source} isFetching={q.isFetching}/>
-
-      <DateRangeControls
-        fromDate={fromDate}
-        toDate={toDate}
-        onFromChange={setFromDate}
-        onToChange={setToDate}
+      <DashboardCardHeader
+        label={[clientName, tenantName, q.data?.fyLabel].filter(Boolean).join(" · ")}
+        title="Business health"
+        icon={<Activity className="h-4 w-4" />}
+        description="Three quick checks on profit, cash and getting paid"
+        source={q.data?.source}
+        isFetching={q.isFetching}
       />
-      <StandardHistoryChart tenantId={tenantId} card="health" currency={currency}/>
 
-
-
-      {q.isLoading && (isGateWait(q.failureReason) ? <XeroWaiting /> : <LoadingState />)}
-      {!!q.error && !q.data && (
-        <XeroErrorNotice error={q.error} onRetry={() => q.refetch()} isRetrying={q.isFetching} />
+      {q.isLoading && (
+        <div className="mt-4 space-y-3">
+          <Skeleton className="h-6 w-40" />
+          {[0, 1, 2].map((i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
+        </div>
       )}
+      {!!q.error && !q.data && <XeroErrorNotice error={q.error} onRetry={() => q.refetch()} isRetrying={q.isFetching} />}
 
       {q.data && (
         <>
-          {q.data.partPeriod.isPartPeriod && (
-            <p className="mt-4 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-              This period is still running, so these figures cover part of the month
-              only. They will settle as the rest of the month is invoiced, paid and
-              reconciled.
-              {q.data.partPeriod.suppressVerdict &&
-                " It is too early in the month to give an overall verdict, so the wording below is held back until there are at least two weeks of figures."}
-            </p>
-          )}
-          <div className="mt-4 flex flex-wrap items-center gap-5">
-            <HealthScoreDonut score={q.data.score} band={q.data.band} />
-            <div className="min-w-0 flex-1">
-              <p
-                className={
-                  "font-display text-lg font-semibold " +
-                  (q.data.partPeriod.suppressVerdict
-                    ? "text-muted-foreground"
-                    : q.data.band === "strong"
-                      ? "text-foreground"
-                      : q.data.band === "watch"
-                        ? "text-info"
-                        : "text-destructive")
-                }
-              >
-                {q.data.partPeriod.suppressVerdict
-                  ? "Too early in the month to call"
-                  : q.data.label}
-              </p>
-              {!q.data.partPeriod.suppressVerdict && (
-                <p className="mt-1 text-sm text-muted-foreground">{q.data.summary}</p>
-              )}
-
-
-              {q.data.alert && (
-                <div
-                  className={
-                    "mt-2 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs " +
-                    (q.data.alert.severity === "danger"
-                      ? "border-destructive/30 bg-destructive/10 text-destructive"
-                      : "border-info/30 bg-info/10 text-info border-info/30 bg-info/10 text-info")
-                  }
-                >
-                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="font-medium">{q.data.alert.title}</p>
-                    <p className="mt-0.5 opacity-90">{q.data.alert.body}</p>
+          <p className="mt-4 font-display text-xl font-semibold text-foreground">{q.data.headline}</p>
+          <ul className="mt-3 space-y-2">
+            {q.data.checks.map((c) => (
+              <li key={c.key} className="rounded-xl border border-border/60 bg-background/60 p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground">{c.question}</p>
+                    <p className="mt-0.5 font-display text-base font-semibold tabular-nums text-foreground">{c.figure}</p>
                   </div>
+                  <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${PILL[c.status]}`}>
+                    {STATUS_LABEL[c.status]}
+                  </span>
                 </div>
-              )}
-            </div>
-          </div>
-
-
-          <div className="mt-5">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              What the score is made of
-            </p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Driver
-                label="Net margin"
-                value={`${q.data.drivers.netMarginPct.toFixed(1)}%`}
-                tone={q.data.drivers.netMarginPct < 0 ? "danger" : undefined}
-              />
-              <Driver
-                label="Gross margin"
-                value={`${q.data.drivers.grossMarginPct.toFixed(1)}%`}
-              />
-              <Driver
-                label="Bad debts (% of revenue)"
-                value={`${q.data.drivers.badDebtsPctOfRevenue.toFixed(1)}%`}
-                tone={q.data.drivers.badDebtsPctOfRevenue >= 3 ? "danger" : undefined}
-              />
-              <Driver
-                label="Runway"
-                value={
-                  q.data.drivers.monthsRunway === null
-                    ? "Not available"
-                    : `${q.data.drivers.monthsRunway.toFixed(1)} months`
-                }
-                note={
-                  q.data.drivers.monthsRunway === null
-                    ? "Operating costs couldn't be derived, so the score uses a neutral stability of 50."
-                    : undefined
-                }
-              />
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Dollar figures live in the Profit &amp; Loss card.
-            </p>
-          </div>
-
-          <div className="mt-5">
-            <button
-              type="button"
-              onClick={() => setDetailOpen(!detailOpen)}
-              aria-expanded={detailOpen}
-              className="flex w-full items-center justify-between rounded-xl border border-border bg-background/60 px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/40"
-            >
-              <span>See the detail</span>
-              <ChevronDown
-                className={`h-4 w-4 text-muted-foreground transition-transform ${detailOpen ? "rotate-180" : ""}`}
-              />
-            </button>
-            {detailOpen && <HealthPillars pillars={q.data.pillars} clientId={clientId} />}
-          </div>
+                {c.detail && <p className="mt-1 text-xs text-muted-foreground">{c.detail}</p>}
+                <p className="mt-1 text-sm text-muted-foreground">{c.meaning}</p>
+              </li>
+            ))}
+          </ul>
+          {q.data.info.length > 0 && (
+            <ul className="mt-3 space-y-1">
+              {q.data.info.map((line) => (
+                <li key={line.key} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>{line.text}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </>
       )}
     </div>
   );
 }
-
-function Driver({
-  label,
-  value,
-  tone,
-  note,
-}: {
-  label: string;
-  value: string;
-  tone?: "danger";
-  note?: string;
-}) {
-  return (
-    <div className="rounded-xl border border-border/60 bg-background/60 p-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p
-        className={
-          "mt-1 font-display text-lg font-semibold tabular-nums " +
-          (tone === "danger" ? "text-destructive" : "text-foreground")
-        }
-      >
-        {value}
-      </p>
-      {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}
-    </div>
-  );
-}
-
-
-function LoadingState() {
-  return (
-    <div className="mt-4 space-y-4">
-      <div className="flex items-center gap-5">
-        <Skeleton className="h-24 w-24 rounded-full" />
-        <div className="flex-1 space-y-2">
-          <Skeleton className="h-5 w-40" />
-          <Skeleton className="h-4 w-64" />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-16 rounded-xl" />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Placeholder({ tenantName }: { tenantName?: string }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <p className="text-xs text-muted-foreground">{tenantName}</p>
-      <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-        <Activity className="h-4 w-4 text-emphasis" /> Business Health
-      </h3>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Link a Xero organisation to see the business health overview.
-      </p>
-    </div>
-  );
-}
-
-
