@@ -419,7 +419,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     doc.text(hc.headline, M.left, y);
     y += 16;
     doc.setFont("helvetica", "normal");
-    const STATUS: Record<string, string> = { green: "Green", watch: "Watch", red: "Red", na: "Not available" };
+    const STATUS: Record<string, string> = { green: "Good", watch: "Watch", red: "Needs attention", na: "Not available" };
     // Three checks side by side, each column wrapped to its own width.
     const gap = 12;
     const colW = (PAGE.w - M.left - M.right - gap * 2) / 3;

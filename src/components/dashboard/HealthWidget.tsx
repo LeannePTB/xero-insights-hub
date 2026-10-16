@@ -23,6 +23,14 @@ const PILL: Record<CheckStatus, string> = {
   na: "border-border bg-muted/40 text-muted-foreground",
 };
 
+/** Light status tint for each check tile; text stays on the default foreground for AA contrast. */
+const TILE: Record<CheckStatus, string> = {
+  green: "border-success/30 bg-success/5",
+  watch: "border-info/30 bg-info/5",
+  red: "border-destructive/30 bg-destructive/5",
+  na: "border-border/60 bg-background/60",
+};
+
 /** Business Health: three plain checks from last night's saved Xero figures. */
 export function HealthWidget({ tenantId, tenantName, clientName, clientId, released }: Props) {
   const fetchChecks = useServerFn(getHealthChecks);
@@ -71,7 +79,7 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId, relea
         <>
           <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
             {q.data.checks.map((c) => (
-              <li key={c.key} className="flex flex-col rounded-xl border border-border/60 bg-background/60 p-2.5">
+              <li key={c.key} className={`flex flex-col rounded-xl border p-2.5 ${TILE[c.status]}`}>
                 <div className="flex items-start justify-between gap-2">
                   <p className="min-w-0 text-sm font-medium text-foreground">{c.question}</p>
                   <span className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium ${PILL[c.status]}`}>

@@ -1,5 +1,6 @@
 import { Activity } from "lucide-react";
 import type { HealthBadgeSummary } from "@/lib/health.functions";
+import { STATUS_LABEL } from "@/lib/health/health-checks";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 /**
@@ -7,7 +8,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
  * as the dashboard card. The list fetches every client's summary in one
  * stored-data request; this component makes no request of its own.
  */
-const LABEL: Record<string, string> = { green: "Green", watch: "Watch", red: "Red", na: "Not available" };
 
 export function ClientHealthBadge({ summary, loading }: { summary: HealthBadgeSummary | undefined; loading?: boolean }) {
   const text = loading ? "Loading…" : summary ? summary.headline : "No saved figures yet";
@@ -34,7 +34,7 @@ export function ClientHealthBadge({ summary, loading }: { summary: HealthBadgeSu
           {summary ? (
             <ul className="space-y-1">
               {summary.checks.map((c) => (
-                <li key={c.question}><span className="font-medium">{c.question}</span> {LABEL[c.status]} · {c.figure}</li>
+                <li key={c.question}><span className="font-medium">{c.question}</span> {STATUS_LABEL[c.status as keyof typeof STATUS_LABEL] ?? c.status} · {c.figure}</li>
               ))}
             </ul>
           ) : "Business health uses last night's saved Xero figures."}

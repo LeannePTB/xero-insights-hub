@@ -604,4 +604,4 @@ export function computeHealthChecks(input: HealthInputs): HealthChecks {
   };
 }
 
-export const STATUS_LABEL: Record<CheckStatus, string> = { green: "Green", watch: "Watch", red: "Red", na: "Not available" };
+export const STATUS_LABEL: Record<CheckStatus, string> = { green: "Good", watch: "Watch", red: "Needs attention", na: "Not available" };
