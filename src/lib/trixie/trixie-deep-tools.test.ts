@@ -64,9 +64,9 @@ describe("rules pack and helpers", () => {
   });
   it("flags same contact and amount within 14 days as a possible duplicate", () => {
     const d = possibleDuplicates([
-      { contact: "A", amount: 500, date: "2026-10-01" },
-      { contact: "A", amount: 500, date: "2026-10-10" },
-      { contact: "A", amount: 500, date: "2026-11-30" },
+      { contact: "A", amount: 500, date: "2026-10-01", reference: null },
+      { contact: "A", amount: 500, date: "2026-10-10", reference: null },
+      { contact: "A", amount: 500, date: "2026-11-30", reference: null },
     ]);
     expect(d.length).toBe(1);
   });
