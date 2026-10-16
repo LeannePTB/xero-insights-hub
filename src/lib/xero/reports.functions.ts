@@ -243,7 +243,7 @@ export const getTaxLiabilities = createServerFn({ method: "POST" })
  * balance falling, and nothing here may imply we can see a payment.
  *
  * Pay run data is used for one purpose only: to explain an outstanding balance
- * by working backwards from the most recent payday. It is never listed.
+ * by working backwards from the most recent payday. Only fully covered paydays are listed.
  */
 export type SuperannuationPosition =
   | { status: "no_super_accounts" }
@@ -258,6 +258,7 @@ export type SuperannuationPosition =
       matchesPaydays: boolean;
       /** Number of whole paydays the balance covers, when it matches. */
       unpaidPaydays: number | null;
+      paydayRows: { payday: string; amount: number }[];
       /** Oldest payday the balance FULLY covers. Never a payday merely reached. */
       oldestUnpaidPayday: string | null;
       /** Balance not accounted for by the paydays above. Never pushed onto an
@@ -321,6 +322,7 @@ export const getSuperannuationPosition = createServerFn({ method: "POST" })
 
     let matchesPaydays = false;
     let unpaidPaydays: number | null = null;
+    let paydayRows: { payday: string; amount: number }[] = [];
     let oldestUnpaidPayday: string | null = null;
     let residue = 0;
     let residueKind: import("./payg-reconciliation").ResidueKind = "none";
@@ -333,18 +335,25 @@ export const getSuperannuationPosition = createServerFn({ method: "POST" })
       // Compare like with like: a payday after the saved list's own date cannot
       // be in that list, so it is excluded and reported as a residue instead.
       const ordered = runs.payRuns
-        .filter((r) => !!r.paymentDate && (!payRunsAsAt || r.paymentDate! <= payRunsAsAt))
+        .filter((r) => r.paymentDate && (!payRunsAsAt || r.paymentDate <= payRunsAsAt))
         .sort((a, b) => (b.paymentDate ?? "").localeCompare(a.paymentDate ?? ""));
       latestPayRunDate = ordered[0]?.paymentDate ?? null;
       if (outstanding > 0.005) {
         const { reconcileBalanceAgainstPeriods } = await import("./payg-reconciliation");
+        const byPayday = new Map<string, number>();
+        for (const run of ordered) {
+          if (!run.paymentDate) continue;
+          byPayday.set(run.paymentDate, round((byPayday.get(run.paymentDate) ?? 0) + run.super));
+        }
+        const periods = [...byPayday].map(([key, amount]) => ({ key, amount }));
         const recon = reconcileBalanceAgainstPeriods(
           outstanding,
-          ordered.map((r) => ({ key: r.paymentDate!, amount: round(r.super) })),
+          periods,
           { savedRunsOlderThanBalance: vintageDiffers },
         );
         matchesPaydays = recon.matches;
         unpaidPaydays = recon.owing.length ? recon.owing.length : null;
+        paydayRows = periods.filter((p) => recon.owing.includes(p.key)).map((p) => ({ payday: p.key, amount: p.amount }));
         // Never a payday we merely reached: only ones the balance fully covers.
         oldestUnpaidPayday = recon.oldest;
         residue = recon.residue;
@@ -359,6 +368,7 @@ export const getSuperannuationPosition = createServerFn({ method: "POST" })
       accounts: superLines.map((l) => ({ name: l.name, amount: round(l.amount) })),
       matchesPaydays,
       unpaidPaydays,
+      paydayRows,
       oldestUnpaidPayday,
       payrollStatus,
       residue,
