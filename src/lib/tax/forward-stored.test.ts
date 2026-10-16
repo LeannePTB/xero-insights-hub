@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 import { buildStoredForward, paygWithheldInPeriod, superDueNext } from "./forward-stored";
 
 const bills = { Invoices: [{ Type: "ACCPAY", Status: "AUTHORISED", AmountDue: 3000, Total: 4742, Contact: { Name: "Australian Taxation Office" }, Reference: "Sept BAS", DueDateString: "2026-10-21T00:00:00" }] };
