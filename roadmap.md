@@ -266,3 +266,5 @@ Separate from the card-model migration; no file or object shared with it.
 - [x] Organisation landing = overview; Add client page
 - [x] Work-in-progress card status; Rent report as WIP card
 - [x] Remove hourly history-fill schedule
+
+- [x] Owner 24 Oct: demo marking hidden from an organisation's own people \u2014 resolved per caller by the database (my_firm_demo_flags), workspace list and member detail no longer read firms.is_demo; System Administrator detail, the audited switch and its audit trail unchanged. Full security gate green: 2,542 access proofs, 327 tests, 18 live checks, signed-out call to the new reader refused live (401). Signed-in member/System-Admin click-through still blocked by interactive two-factor verification.
