@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Activity, LineChart, Landmark, Users, Scale, LayoutDashboard, Building2, Sparkles } from "lucide-react";
-import trixieIcon from "@/assets/trixie-icon.svg";
+import trixieIcon from "@/assets/trixie-icon.png";
 import { ReportHealthChecks } from "@/components/reports/ReportHealthChecks";
 import { VectorChart } from "@/components/charts/VectorChart";
 import { BreakevenChart } from "@/components/charts/BreakevenChart";

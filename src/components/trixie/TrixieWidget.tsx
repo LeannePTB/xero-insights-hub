@@ -6,7 +6,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import trixieIcon from "@/assets/trixie-icon.svg";
+import trixieIcon from "@/assets/trixie-icon.png";
 import { Button } from "@/components/ui/button";
 import { Conversation, ConversationContent, ConversationScrollButton } from "@/components/ai-elements/conversation";
 import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
@@ -141,7 +141,7 @@ export function TrixieWidget() {
               controls (table actions, selects) at the bottom of a page. */}
           <div aria-hidden className="h-24 shrink-0" />
           <Button aria-label="Ask Trixie" title="Ask Trixie" size="icon" className="fixed bottom-5 right-5 z-40 h-14 w-14 rounded-full shadow-lg" onClick={() => setOpen(true)}>
-            <img src={trixieIcon} alt="" className="h-10 w-10" />
+            <img src={trixieIcon} alt="Trixie" className="h-10 w-10 object-contain" />
           </Button>
         </>
       )}
@@ -178,7 +178,7 @@ export function TrixieWidget() {
 function PanelHeader({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <div className="flex items-center gap-2 bg-primary px-4 py-3 text-primary-foreground">
-      <img src={trixieIcon} alt="" className="h-9 w-9 shrink-0 rounded-full bg-background p-0.5" />
+      <img src={trixieIcon} alt="Trixie" className="h-9 w-9 shrink-0 rounded-full bg-background p-0.5 object-contain" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold leading-tight">Trixie</p>
         <p className="text-xs opacity-80">Dashboard help agent</p>
@@ -317,7 +317,7 @@ function TrixieChat({ pathname, threadId, initialMessages, onThread, onHistory, 
         <ConversationContent className="gap-4 p-4" onClickCapture={onLinkClick}>
           <Message from="assistant">
             <div className="flex gap-2">
-              <img src={trixieIcon} alt="" className="h-7 w-7 shrink-0" />
+              <img src={trixieIcon} alt="Trixie" className="h-7 w-7 shrink-0 object-contain" />
               <MessageContent className="bg-transparent px-0 text-sm"><MessageResponse>{GREETING}</MessageResponse></MessageContent>
             </div>
           </Message>
@@ -339,7 +339,7 @@ function TrixieChat({ pathname, threadId, initialMessages, onThread, onHistory, 
             return (
               <Message key={message.id} from={message.role}>
                 <div className={message.role === "assistant" ? "flex min-w-0 gap-2" : "contents"}>
-                  {message.role === "assistant" && <img src={trixieIcon} alt="" className="h-7 w-7 shrink-0" />}
+                  {message.role === "assistant" && <img src={trixieIcon} alt="Trixie" className="h-7 w-7 shrink-0 object-contain" />}
                   <MessageContent className={message.role === "user" ? "bg-primary text-sm text-primary-foreground" : "min-w-0 bg-transparent px-0 text-sm"}>
                     {message.parts.map((part, index) => {
                       if (part.type === "text") return <MessageResponse key={`${message.id}-${index}`}>{part.text}</MessageResponse>;
@@ -376,7 +376,7 @@ function TrixieChat({ pathname, threadId, initialMessages, onThread, onHistory, 
           })}
           {thinking && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <img src={trixieIcon} alt="" className="h-7 w-7" />
+              <img src={trixieIcon} alt="Trixie" className="h-7 w-7 object-contain" />
               <Shimmer>{toolRunning ? "Trixie is checking the dashboard…" : "Trixie is thinking…"}</Shimmer>
             </div>
           )}
