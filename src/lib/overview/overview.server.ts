@@ -3,7 +3,7 @@
 // `@/lib/xero/api.server`.
 
 import { protectedShareOfCash } from "@/lib/health/protected-money-share";
-import { bankReconWarning, parseStored } from "./bank-reconciliation";
+import { bankReconWarning, parseStored, statementPosition } from "./bank-reconciliation";
 import { addDays, addMonths, endOfMonth, startOfFinancialYear, sydneyDate } from "@/lib/sydney-time";
 import { VERDICT_REPORT_KEYS } from "@/lib/health/rule-thresholds";
 import { debtorBook, evaluateClient, type SnapshotRow, type Verdict } from "@/lib/health/rules.server";
@@ -326,7 +326,14 @@ export async function buildOverview(
     // Bank reconciled to: from the most recent nightly key-figures row.
     const kfRows = (ctx.keyFigures.get(c.client_id) ?? []).sort((a: any, b: any) => (a.as_at < b.as_at ? 1 : -1));
     const bankRecon = kfRows[0] ? bankReconWarning(kfRows[0].bank_reconciliation, String(kfRows[0].as_at)) : null;
-    const bankReconciledTo: string | null = kfRows[0] && parseStored(kfRows[0].bank_reconciliation) ? (kfRows[0].bank_reconciled_to ?? null) : null;
+    const storedRecon = kfRows[0] ? parseStored(kfRows[0].bank_reconciliation) : null;
+    const bankReconciledTo: string | null = storedRecon ? (kfRows[0].bank_reconciled_to ?? null) : null;
+    // Display-only context: where the bank would stand if everything coded
+    // were reconciled. The ledger figure above is never replaced by this.
+    const stmtPos = statementPosition(storedRecon, cash);
+    const cashNote = stmtPos
+      ? `Reconciled bank position ${stmtPos.reconciled.toLocaleString("en-AU", { style: "currency", currency: "AUD", signDisplay: "negative" })} — ${Math.abs(stmtPos.unreconciled).toLocaleString("en-AU", { style: "currency", currency: "AUD" })} not yet reconciled in Xero (last 90 days).`
+      : null;
     out.push({
       clientId: c.client_id,
       clientName: c.client_name,
