@@ -30,9 +30,12 @@ export type OverviewRow = {
   cashBigMove: boolean;
   /** Protected money as a share of cash at bank (shared rule); null when no cash at bank. */
   protectedMoney?: number | null;
-  protectedPctOfCash: number | null;
-  /** Tooltip from the shared rule; null when protected money or cash is unavailable. */
-  protectedTooltip: string | null;
+  /** What is due next to the ATO (lodged bill, else the building period). */
+  taxNext: { amount: number; due: string; overdue: boolean } | null;
+  /** Running period's GST + PAYG, shown when a lodged bill leads. */
+  taxBuilding: { amount: number; due: string } | null;
+  superDue: { amount: number; due: string | null } | null;
+  taxItems: { label: string; amount: number; due: string | null; overdue: boolean }[];
   netProfitMtd: number | null;
   /** Late share of recent invoices (due ≤ 90 days ago or not yet due), as %. */
   debtorsOverduePct: number | null;
