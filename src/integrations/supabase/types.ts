@@ -4909,6 +4909,13 @@ export type Database = {
           tier: string
         }[]
       }
+      my_firm_demo_flags: {
+        Args: never
+        Returns: {
+          firm_id: string
+          is_demo: boolean
+        }[]
+      }
       my_firm_ids: {
         Args: never
         Returns: {
