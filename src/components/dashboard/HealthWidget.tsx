@@ -55,6 +55,7 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId, relea
         description="Three quick checks on profit, cash and getting paid"
         source={q.data?.source}
         isFetching={q.isFetching}
+        actions={q.data ? <span className="font-display text-sm font-semibold text-foreground">{q.data.headline}</span> : undefined}
         badge={!released ? <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">Practice only — not visible to clients</span> : undefined}
       />
 
@@ -68,33 +69,30 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId, relea
 
       {q.data && (
         <>
-          <p className="mt-4 font-display text-xl font-semibold text-foreground">{q.data.headline}</p>
-          <ul className="mt-3 space-y-2">
+          <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
             {q.data.checks.map((c) => (
-              <li key={c.key} className="rounded-xl border border-border/60 bg-background/60 p-3">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground">{c.question}</p>
-                    <p className="mt-0.5 font-display text-base font-semibold tabular-nums text-foreground">{c.figure}</p>
-                  </div>
-                  <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${PILL[c.status]}`}>
+              <li key={c.key} className="flex flex-col rounded-xl border border-border/60 bg-background/60 p-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="min-w-0 text-sm font-medium text-foreground">{c.question}</p>
+                  <span className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium ${PILL[c.status]}`}>
                     {STATUS_LABEL[c.status]}
                   </span>
                 </div>
-                {c.detail && <p className="mt-1 text-xs text-muted-foreground">{c.detail}</p>}
-                <p className="mt-1 text-sm text-muted-foreground">{c.meaning}</p>
+                <p className="mt-0.5 font-display text-base font-semibold tabular-nums text-foreground">{c.figure}</p>
+                {c.detail && <p className="mt-0.5 text-xs text-muted-foreground">{c.detail}</p>}
+                <p className="mt-1 text-xs text-muted-foreground">{c.meaning}</p>
               </li>
             ))}
           </ul>
           {q.data.info.length > 0 && (
-            <ul className="mt-3 space-y-1">
+            <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               {q.data.info.map((line) => (
-                <li key={line.key} className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span key={line.key} className="inline-flex items-start gap-1">
+                  <Info className="mt-0.5 h-3 w-3 shrink-0" />
                   <span>{line.text}</span>
-                </li>
+                </span>
               ))}
-            </ul>
+            </p>
           )}
         </>
       )}
