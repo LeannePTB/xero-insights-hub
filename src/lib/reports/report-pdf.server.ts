@@ -408,6 +408,30 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     y += 6;
   }
 
+  // v13: Business Health — the three checks, frozen at generation.
+  const hc = sectionIncluded(payload, "verdict") ? payload.healthChecks : null;
+  if (hc) {
+    heading("Business health");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(INK.text[0], INK.text[1], INK.text[2]);
+    need(24);
+    doc.text(hc.headline, M.left, y);
+    y += 16;
+    doc.setFont("helvetica", "normal");
+    const STATUS: Record<string, string> = { green: "Green", watch: "Watch", red: "Red", na: "Not available" };
+    for (const c of hc.checks) {
+      need(50);
+      paragraph(`${c.question} — ${STATUS[c.status] ?? c.status}: ${c.figure}`, { size: 9.5 });
+      if (c.detail) paragraph(c.detail, { size: 8, colour: INK.muted });
+      paragraph(c.meaning, { size: 8.5, colour: INK.muted });
+      y += 4;
+    }
+    for (const l of hc.info) paragraph(l.text, { size: 8.5 });
+    paragraph(`Figures from Xero as saved on ${fmtDate(hc.asOf)} (${hc.fyLabel}).`, { size: 7.5, colour: INK.muted });
+    y += 6;
+  }
+
   // v12: only frozen payload points. Old final/sent reports never acquire charts.
   if (payload.charts && sectionIncluded(payload, "charts")) {
     if(payload.charts.pnl) {

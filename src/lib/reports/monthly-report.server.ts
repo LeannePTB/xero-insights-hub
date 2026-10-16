@@ -771,23 +771,18 @@ export async function computeMonthlyReport(opts: {
 
   // --- Receivables / payables detail, reconstructed as at the period end.
   const { fetchAsAtLedger } = await import("@/lib/xero/asat-ledger.server");
-  // Kept for the verdict on page one, so the debtor rules cost no extra call.
-  let debtorEntries: import("@/lib/xero/asat-ledger.server").AsAtEntry[] | null = null;
-  if (inc("receivables") || inc("verdict")) try {
+  // Debtor ledger for the receivables section.
+  if (inc("receivables")) try {
     const ledger = await fetchAsAtLedger(conn, periodEnd, "ACCREC");
     receivables = buildAgeing(ledger.entries, periodEnd);
-    debtorEntries = ledger.entries;
   } catch (e: any) {
     failed.push({ section: "receivables", message: e?.message ?? "Receivables could not be read." });
   }
 
-  // Kept for the verdict on page one: the lodged-and-owing half of protected
-  // money is read from these same bills.
-  let creditorDocuments: { invoice: any; outstanding: number }[] | null = null;
-  if (inc("payables") || inc("verdict")) try {
+  // Creditor ledger for the payables section.
+  if (inc("payables")) try {
     const ledger = await fetchAsAtLedger(conn, periodEnd, "ACCPAY");
     payables = buildAgeing(ledger.entries, periodEnd);
-    creditorDocuments = ledger.documents;
   } catch (e: any) {
     failed.push({ section: "payables", message: e?.message ?? "Payables could not be read." });
   }
@@ -826,25 +821,21 @@ export async function computeMonthlyReport(opts: {
     failed.push({ section: "notes", message: e?.message ?? "Notes could not be read." });
   }
 
-  // --- Page one: the verdict, from LIVE data. Never reads `xero_snapshots`.
-  let verdict: import("./monthly-report").ReportVerdict | null = null;
+  // --- Business Health: the same three checks as the dashboard card, from
+  // the one shared builder over stored figures (caller-scoped reads). The old
+  // rules-engine page one is no longer generated; older reports keep theirs.
+  let healthChecks: import("@/lib/health/health-checks").HealthChecks | null = null;
   if (inc("verdict")) try {
-    const { buildReportVerdict } = await import("./report-verdict.server");
-    verdict = await buildReportVerdict({
-      conn,
-      supabase: opts.supabase,
-      clientId: opts.clientId,
-      tenantId: opts.tenantId,
-      connectionStatus: (conn as any)?.status ?? "connected",
-      periodEnd,
-      debtorEntries,
-      debtorsComplete: debtorEntries !== null,
-      creditorDocuments,
-
-    });
+    const { loadHealthChecks } = await import("@/lib/health/health-checks.server");
+    const { sydneyDate } = await import("@/lib/sydney-time");
+    const res = (await loadHealthChecks(opts.supabase, [{ clientId: opts.clientId, tenantId: opts.tenantId }], sydneyDate())).get(opts.clientId);
+    if (res && res.source.mode !== "pending") {
+      const { source: _s, tenantId: _t, ...rest } = res;
+      healthChecks = rest;
+    }
   } catch {
-    // Page one is never a failable section: it must not block finalising.
-    verdict = null;
+    // Never blocks finalising.
+    healthChecks = null;
   }
 
   // De-duplicate failures per section (the P&L feeds two sections).
@@ -896,7 +887,8 @@ export async function computeMonthlyReport(opts: {
     receivables: inc("receivables") ? receivables : null,
     payables: inc("payables") ? payables : null,
     notes: inc("notes") ? notes : null,
-    verdict: inc("verdict") ? verdict : null,
+    verdict: null,
+    healthChecks: inc("verdict") ? healthChecks : null,
     // Frozen at generation time: an old report keeps the wording that was sent.
     disclaimer: disclaimerText(opts.clientName),
   };

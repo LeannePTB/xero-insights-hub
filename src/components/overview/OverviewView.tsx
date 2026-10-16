@@ -10,7 +10,7 @@ import { getClientOverview, setOverviewAlert, setClientOverviewHidden, setFirmOv
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
+import { OverviewVerdictBadge } from "@/components/overview/OverviewVerdictBadge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -275,7 +275,7 @@ function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide, que
           </td>
           <td className="max-w-[16rem] p-3 [&>span]:mt-0">
             <div className="flex flex-wrap items-center gap-1.5">
-              <ClientHealthBadge verdict={r.verdict} />
+              <OverviewVerdictBadge verdict={r.verdict} />
             </div>
           </td>
           <td className="p-3 text-right tabular-nums" title={staleTitle ?? undefined}>

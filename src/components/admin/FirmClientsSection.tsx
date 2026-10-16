@@ -18,7 +18,7 @@ import { listClients, deleteClient, getClientRemovalImpact } from "@/lib/clients
 import { getSupportAccess } from "@/lib/support-access.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { recordViewAs } from "@/lib/view-as.functions";
-import { listClientVerdicts } from "@/lib/health/verdicts.functions";
+import { listClientHealthChecks } from "@/lib/health.functions";
 
 import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
 import { Button } from "@/components/ui/button";
@@ -70,7 +70,7 @@ export function FirmClientsSection({
   const removeClient = useServerFn(deleteClient);
   const fetchRemovalImpact = useServerFn(getClientRemovalImpact);
   const fetchSupportAccess = useServerFn(getSupportAccess);
-  const fetchVerdicts = useServerFn(listClientVerdicts);
+  const fetchHealthChecks = useServerFn(listClientHealthChecks);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
   // Unticked by default: removing a client must never silently drop a Xero
   // authorisation the owner would have to ask the client to grant again.
@@ -149,10 +149,10 @@ export function FirmClientsSection({
   // as the caller and makes zero Xero calls. Staff-only surface.
   const clientIdsForVerdicts = clients.map((c: any) => c.id);
   const verdictsQ = useQuery({
-    queryKey: ["client-verdicts", firmId, clientIdsForVerdicts.join(",")],
+    queryKey: ["client-health-checks", firmId, clientIdsForVerdicts.join(",")],
     enabled: BUSINESS_HEALTH_ENABLED && showHealth && canOpenClientData && clientIdsForVerdicts.length > 0,
     staleTime: 5 * 60 * 1000,
-    queryFn: () => fetchVerdicts({ data: { firmId, clientIds: clientIdsForVerdicts } }),
+    queryFn: () => fetchHealthChecks({ data: { clientIds: clientIdsForVerdicts } }),
   });
 
   return (
@@ -328,7 +328,7 @@ export function FirmClientsSection({
                           {tenantNames || "No Xero org linked"}
                         </div>
                         {BUSINESS_HEALTH_ENABLED && canOpenClientData && showHealth && c.healthAllowed && (
-                          <ClientHealthBadge verdict={verdictsQ.data?.verdicts?.[c.id]} />
+                          <ClientHealthBadge summary={verdictsQ.data?.results?.[c.id]} loading={verdictsQ.isLoading} />
                         )}
                       </div>
                     </>

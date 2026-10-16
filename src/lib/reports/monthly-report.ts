@@ -13,7 +13,9 @@ export const MONTHLY_REPORT_KEY = "monthly_management";
 // cap on large files and reported the ageing sections as failed.
 // v4: the rendered disclaimer text is frozen into the payload at generation
 // time, so an old report always shows the wording that was actually sent.
-export const MONTHLY_REPORT_PAYLOAD_VERSION = 12;
+export const MONTHLY_REPORT_PAYLOAD_VERSION = 13;
+// v13: the Business Health section is the three checks (`healthChecks`), built
+// by the same function as the dashboard card. Older reports keep `verdict`.
 // v10: only notes marked "Include in management report" are carried into the payload.
 // v11: page one carries the verdict — the ranked finding, how often it has been
 // raised in prior finalised reports, the coverage sentence and the optional
@@ -180,6 +182,8 @@ export type MonthlyReportPayload = {
    * rendered for those, never reconstructed.
    */
   verdict?: ReportVerdict | null;
+  /** v13: Business Health — headline, three checks and info lines, frozen at generation. */
+  healthChecks?: import("@/lib/health/health-checks").HealthChecks | null;
   /**
    * Verbatim legal wording, rendered with the client name at generation time
    * and frozen here. Absent on payloads written before v4 — callers fall back
