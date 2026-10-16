@@ -640,10 +640,9 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const topIncomeShare = incomeTotal > 0 ? (topIncome / incomeTotal) * 100 : 0;
 
     // Wages: prefer the separate Wages marker in cost classifications; fall back to name detection.
-    // Use the trusted server client after widget access has been checked so RLS helper gaps don't
-    // prevent the Business Health card from reading advisor-maintained account tags.
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    let wageTagsQuery = (supabaseAdmin as any)
+    // Read through the caller's session so RLS (has_client_read_access / user_can_manage_client)
+    // applies, after assertWidgetAccess has already authorised this Xero file.
+    let wageTagsQuery = (context.supabase as any)
       .from("client_cost_classifications")
       .select("account_name, classification, is_wages")
       .eq("tenant_id", data.tenantId);

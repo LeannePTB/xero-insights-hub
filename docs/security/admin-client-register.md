@@ -94,7 +94,6 @@ the check is TypeScript, but they are not open endpoints.
 | `src/lib/firm-subscription.functions.ts` | subscription handlers | `exception — calls DB authorisation first` | **Phase 4 batch 5, verified.** Traced line by line: `resolveAccess` now takes the caller's client and uses `my_firm_memberships` + `me_is_super_admin` only; writes go through the audited subscription RPCs from phase 3b. |
 | `src/lib/subscription-state.server.ts` | subscription state reads | `exception — calls DB authorisation first` | **Phase 4 batch 5, verified.** No `supabaseAdmin` access decision remains: membership from `rpc("my_firm_memberships")`, super-admin from `rpc("me_is_super_admin")`. |
 
-| `src/lib/health.functions.ts` | health/verdict handlers | `exception — calls DB authorisation first` | **Phase 4 batch 5, verified.** Traced: the only service-role use is the advisor-maintained wage tag read in `getBusinessHealthDetail`, after `assertWidgetAccess` → `rpc("assert_widget_access")` for that Xero file. |
 | `src/lib/xero/audit.functions.ts` | Xero audit handlers | `exception — calls DB authorisation first` | **Phase 4 batch 1, traced.** The Xero file is resolved to its client by `public.effective_tier_for_tenant`, then `public.user_can_access_client` / `user_can_access_firm` / `user_can_write_client` and `public.client_can_use_widget` run before any privileged read or write. |
 | `src/lib/xero/authorised-tenants.server.ts` | `reconcileAuthorisedTenants` | `system context` | **Phase 4 batch 5, verified.** Traced: the only caller is the scheduled snapshot refresh (`snapshot-refresh.server.ts`), which runs with no session. Marks connection rows authorised/unauthorised from Xero's own response; no caller data is returned. |
 | `src/lib/xero/authorisation-freshness.server.ts` | freshness check | `system context` | **Phase 4 batch 5, verified.** Traced: the only caller is the public Xero OAuth callback route (`reconcileAfterConnect`), inside the post-OAuth pipeline. |
@@ -123,3 +122,39 @@ run wholly on the caller's own session through the audited `admin_practice_team`
 - `src/lib/xero/snapshot-refresh.functions.ts` (`refreshXeroSnapshots`, `resyncClient`) — reaches the existing snapshot worker (`resolveRefreshTarget`, `refreshTenant`) and rate limiter, which use `supabaseAdmin` for token use and run records. Called only after AAL2 and the caller-scoped `me_can_manage_client` check; tenants for `resyncClient` are read as the caller under RLS.
 
 | `src/lib/overview/figure-backfill.server.ts` | One-off month-end history fill, run only from the bearer-checked scheduled route `/api/public/xero/snapshot-refresh` (`mode: "backfill"`). Reads queued items created by `start_figure_backfill()` (System Administrator, aal2, audited); writes only `client_figure_history` and job metadata. No user-initiated path. |
+
+## Client tables reached with `supabaseAdmin`
+
+Each file below already has a verified row in the register above; this section names exactly which
+client-data tables it touches with the service-role client. `tests/static-guards.test.ts` (section 2)
+fails when a file uses `supabaseAdmin` on a client table that is not listed here, or when a listed
+pair no longer exists. Adding a pair needs the same call-path verification as a register row.
+**16 Oct 2026:** `src/lib/health.functions.ts` removed — the wage-tag read of
+`client_cost_classifications` now uses the caller's session after `assertWidgetAccess`.
+
+<!-- client-tables:start -->
+- `src/lib/audit.server.ts`: client_xero_orgs
+- `src/lib/branding.server.ts`: clients
+- `src/lib/clients.functions.ts`: clients, client_xero_orgs
+- `src/lib/consolidation-groups.functions.ts`: clients, consolidation_groups, consolidation_group_members
+- `src/lib/firms.functions.ts`: clients
+- `src/lib/invites.functions.ts`: clients
+- `src/lib/live-access-tests.server.ts`: clients, client_access
+- `src/lib/loan-consolidation.functions.ts`: clients, client_xero_orgs, consolidation_groups, consolidation_group_members, loan_consolidation_accounts, loan_consolidation_snapshots
+- `src/lib/plan-tiers.server.ts`: clients
+- `src/lib/reports/monthly-report-context.server.ts`: client_reports
+- `src/lib/reports/report-delivery.server.ts`: clients, client_reports, report_recipients
+- `src/lib/reports/report-pdf.server.ts`: clients, client_reports
+- `src/lib/xero/access.server.ts`: client_xero_orgs
+- `src/lib/xero/authorisation-freshness.server.ts`: client_xero_orgs
+- `src/lib/xero/client-orgs.server.ts`: clients, client_xero_orgs
+- `src/lib/xero/connection-cleanup.server.ts`: client_xero_orgs
+- `src/lib/xero/connections.functions.ts`: client_xero_orgs
+- `src/lib/xero/consolidated.functions.ts`: client_xero_orgs, consolidation_group_members
+- `src/lib/xero/first-link-refresh.server.ts`: xero_snapshots
+- `src/lib/xero/onboard.server.ts`: clients, client_xero_orgs
+- `src/lib/xero/orphan-connections.functions.ts`: client_xero_orgs
+- `src/lib/xero/search.functions.ts`: clients
+- `src/lib/xero/snapshot-refresh.server.ts`: client_rental_properties, client_xero_orgs
+- `src/routes/api/public/xero/callback.ts`: client_xero_orgs
+<!-- client-tables:end -->

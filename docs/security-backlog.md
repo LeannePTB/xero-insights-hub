@@ -1867,3 +1867,6 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 
 ## 16 Oct 2026 — Closed: System Administrator WIP testing exception removed
 `app_private.client_cards_v2` no longer adds purchased Work-in-progress cards for a System Administrator. WIP cards now show only through a live `org_early_access` grant plus a client tick, for every caller (migration 0062). Narrows access only; grants unchanged. Access matrix row for `support_grant_active` flipped to deny; 2,542 proofs and 18 live checks pass.
+
+## 16 Oct 2026 — Closed: Business Health wage tags read with supabaseAdmin
+`src/lib/health.functions.ts` now reads `client_cost_classifications` through the caller's session after `assertWidgetAccess`; RLS (`has_client_read_access` / `user_can_manage_client`) applies. Register row removed. New guard `tests/admin-client-tables.test.ts` requires every (file, client table) pair reached with `supabaseAdmin` to be listed in the register. Sweep: no other unregistered use found.
