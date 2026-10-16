@@ -2,7 +2,7 @@ import { postAuthDestination } from "@/lib/session-cutoff";
 
 type MfaReader = {
   listFactors: () => Promise<{ data: { totp?: { status: string }[] } | null; error?: unknown }>;
-  getAuthenticatorAssuranceLevel: () => Promise<{ data: { currentLevel?: string } | null; error?: unknown }>;
+  getAuthenticatorAssuranceLevel: () => Promise<{ data: { currentLevel?: string | null } | null; error?: unknown }>;
 };
 
 /** Navigation only: destination guards and server AAL2 checks remain authoritative. */

@@ -9,7 +9,7 @@ describe("seven business days after payday", () => {
     expect(paydaySuperDueDate("2026-10-30")).toBe("2026-11-10");
   });
   it("skips Christmas, observed Boxing Day and New Year across year end", () => {
-    expect(paydaySuperDueDate("2026-12-24")).toBe("2027-01-08");
+    expect(paydaySuperDueDate("2026-12-24")).toBe("2027-01-07");
   });
   it("skips Good Friday and Easter Monday", () => {
     expect(paydaySuperDueDate("2027-03-25")).toBe("2027-04-07");
