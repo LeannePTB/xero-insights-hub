@@ -34,7 +34,7 @@ async function assertTenantBelongsToClient(supabase: any, clientId: string, tena
 
 export const listStatutoryAccounts = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .inputValidator((input: { clientId: string; tenantId: string }) => input)
+  .inputValidator((input: { clientId: string; tenantId: string; refresh?: boolean }) => input)
   .handler(async ({ data, context }): Promise<{ rows: StatutoryAccountRow[] }> => {
     const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
     await assertClientDataAccessForClient(context.userId, data.clientId);
@@ -42,7 +42,10 @@ export const listStatutoryAccounts = createServerFn({ method: "POST" })
 
     const { getConnectionByTenant, xeroGet } = await import("@/lib/xero/api.server");
     const conn = await getConnectionByTenant(data.tenantId);
-    const accountsRes = await xeroGet<{ Accounts?: any[] }>(conn, "Accounts");
+    // Stored nightly chart of accounts first (read as the caller, RLS
+    // applies); live only on an explicit Refresh or when nothing is stored.
+    const { readAccountsFirst } = await import("@/lib/xero/settings-accounts.server");
+    const accountsRes = await readAccountsFirst(context.supabase, conn, data.clientId, !!data.refresh, xeroGet);
 
 
     const { data: stored, error } = await context.supabase

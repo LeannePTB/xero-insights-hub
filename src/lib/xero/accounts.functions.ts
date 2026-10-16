@@ -10,7 +10,7 @@ import type { AccountRef } from "@/lib/cost-classification";
  */
 export const getExpenseAccounts = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .inputValidator((input: { clientId: string; tenantId: string }) => input)
+  .inputValidator((input: { clientId: string; tenantId: string; refresh?: boolean }) => input)
   .handler(async ({ data, context }): Promise<{ accounts: AccountRef[] }> => {
     const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
     await assertClientDataAccessForClient(context.userId, data.clientId);
@@ -31,10 +31,9 @@ export const getExpenseAccounts = createServerFn({ method: "POST" })
 
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
     const conn = await getConnectionByTenant(data.tenantId);
-    const res = await xeroGet<{ Accounts?: any[] }>(conn, "Accounts", {
-      where: 'Class=="EXPENSE"',
-    });
-    const accounts: AccountRef[] = (res.Accounts ?? []).map((a) => ({
+    const { readAccountsFirst } = await import("./settings-accounts.server");
+    const res = await readAccountsFirst(context.supabase, conn, data.clientId, !!data.refresh, xeroGet);
+    const accounts: AccountRef[] = (res.Accounts ?? []).filter((a: any) => a.Class === "EXPENSE").map((a: any) => ({
       code: a.Code ?? null,
       name: a.Name as string,
       type: a.Type ?? null,
