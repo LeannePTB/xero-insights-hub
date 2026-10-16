@@ -28,6 +28,7 @@ import {
   debtorAlert,
   lateSharePct,
   nextTaxPayment,
+  withForwardBuilding,
   lodgedAtoBills,
   oldDebtsText,
   splitDebtors,
@@ -196,6 +197,8 @@ const ALL_EXPECTED: ExpectedStatutory = { gst: true, payg: true, super: true };
 /** What the tax rule needs beyond the Balance Sheet. */
 export type TaxContext = {
   today: string;
+  /** Shared forward tax summary (Tax obligations card); replaces "building". */
+  forward?: import("@/components/dashboard/tax-obligations").ForwardTax | null;
   gstCycle: Cycle;
   paygCycle: Cycle;
   /** Recent debtors (due in the last 90 days or not yet due). */
@@ -327,14 +330,14 @@ export function ruleProtectedMoneyVsCash(
   }
   const cashAmount = analysed.cashAtBank.total;
   const total = protectedMoney.total;
-  const nextTax = nextTaxPayment({
+  const nextTax = withForwardBuilding(nextTaxPayment({
     gstCycle: tax.gstCycle,
     paygCycle: tax.paygCycle,
     today: tax.today,
     current: taxBalancesFromLines(analysed.taxLines.lines, tax.gstCycle ?? null, tax.paygCycle ?? null),
     periodEnd: tax.periodEnd ?? (() => null),
     lodged: payables ? lodgedAtoBills(payables.payload) : null,
-  });
+  }), tax.forward);
   const pastDue = payables ? pastDueTaxBills(payables.payload, statutoryAccountIds, tax.today) : 0;
   const alert = taxPaymentAlert({ next: nextTax, today: tax.today, cashAtBank: cashAmount, recentDebtors: tax.recentDebtors, pastDueOwing: pastDue });
 
@@ -538,6 +541,7 @@ export type EvaluateOptions = {
   /** Lodgement cycles, for the next-tax-payment due date. */
   gstCycle?: Cycle;
   paygCycle?: Cycle;
+  forward?: import("@/components/dashboard/tax-obligations").ForwardTax | null;
 };
 
 /** Evaluate against stored snapshot rows (the staff badge). */
@@ -648,6 +652,7 @@ export function evaluateFromRows(
     gstCycle: cycleOf(options.gstCycle, expected.gst),
     paygCycle: cycleOf(options.paygCycle, expected.payg),
     recentDebtors: debtorSplit?.recent ?? 0,
+    forward: options.forward ?? null,
     periodEnd: periodEndTaxLookup(
       input.snapshots as any,
       byKey.get("accounts")?.payload,
