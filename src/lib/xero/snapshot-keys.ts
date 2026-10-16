@@ -77,6 +77,8 @@ export const STALENESS_SECONDS: Record<string, number> = {
   profit_and_loss_prior: 30 * 3600,
   profit_and_loss_ytd: 30 * 3600,
   profit_and_loss_monthly_last3: 30 * 3600,
+  // A closed quarter's balance sheet: read once per quarter end.
+  balance_sheet_period_end: 100 * 86400,
   trial_balance: 30 * 3600,
   bank_summary: 30 * 3600,
   accounts: 30 * 3600,
@@ -118,6 +120,11 @@ export type SnapshotReport = {
   pageLimit?: number;
   /** Fetched only for clients that have rental properties set up. */
   rentOnly?: boolean;
+  /**
+   * A closed-period report: skipped when a complete row with the same
+   * parameters is already stored, so it is re-read only when its date moves.
+   */
+  oncePerParams?: boolean;
 };
 
 /**
@@ -173,6 +180,16 @@ export function snapshotReports(today: string = sydneyDate()): SnapshotReport[] 
       path: "Reports/ProfitAndLoss",
       params: { fromDate: priorMonthStart, toDate: priorMonthEnd, periods: "2", timeframe: "MONTH" },
       asAt: priorMonthEnd,
+    },
+    {
+      // Balance sheet at the last completed quarter end, for the "due now vs
+      // still building" tax split of quarterly lodgers. Monthly lodgers use
+      // balance_sheet_prior (last month end). Re-read only when the date moves.
+      reportKey: "balance_sheet_period_end",
+      path: "Reports/BalanceSheet",
+      params: { date: lastQuarterEnd(today) },
+      asAt: lastQuarterEnd(today),
+      oncePerParams: true,
     },
     { reportKey: "trial_balance", path: "Reports/TrialBalance", params: { date: today }, asAt: today },
     {
@@ -264,6 +281,13 @@ export function snapshotReports(today: string = sydneyDate()): SnapshotReport[] 
       rentOnly: true,
     },
   ];
+}
+
+/** End of the last completed calendar quarter on or before `today`. */
+export function lastQuarterEnd(today: string): string {
+  const y = +today.slice(0, 4);
+  const m = +today.slice(5, 7);
+  return new Date(Date.UTC(y, Math.floor((m - 1) / 3) * 3, 0)).toISOString().slice(0, 10);
 }
 
 /** Unused today; kept next to the catalogue it describes. */

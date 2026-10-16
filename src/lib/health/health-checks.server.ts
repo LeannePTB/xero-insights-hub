@@ -163,18 +163,26 @@ export async function loadHealthChecks(
     );
     const monthly = monthlyReports.length ? monthlyCosts(monthlyReports, accounts, wageNames) : null;
 
-    // Cash at bank and ATO balances: the same analysis the rest of the app uses.
+    // Cash at bank and tax: the same analysis as the Overview column and rule.
     let cashAtBank: number | null = null;
-    let atoOwed: number | null = null;
+    let nextTax = null as ReturnType<typeof nextTaxPayment>;
     const client = ((clientQ.data ?? []) as any[]).find((c) => c.id === t.clientId);
+    const gstCycle = client?.gst_cycle ?? null;
+    const paygCycle = client?.payg_withholding_cycle ?? null;
     if (bs && accounts) {
       const banks = ((bankQ.data ?? []) as any[]).filter((b) => b.client_id === t.clientId && b.tenant_id === tenantId);
       const overrides = statutoryOverrideMap(((overrideQ.data ?? []) as any[]).filter((o) => o.client_id === t.clientId));
-      const analysis = analyseBalanceSheet(bs.payload, { Accounts: accounts }, overrides, banks);
+      const accs = classifiedAccounts(accounts, banks);
+      const analysis = analyseBalanceSheet(bs.payload, accs, overrides);
       if (analysis.cashAtBank.status === "assessed" || analysis.cashAtBank.status === "absent") cashAtBank = analysis.cashAtBank.total;
-      if (analysis.taxLines.status === "assessed") {
-        atoOwed = atoOwedFromTaxLines(analysis.taxLines.lines, client?.gst_cycle ?? null, client?.payg_withholding_cycle ?? null);
-      }
+      const periodRows = ((periodQ.data ?? []) as any[]).filter((r) => r.client_id === t.clientId && r.tenant_id === tenantId && r.payload_version === SNAPSHOT_PAYLOAD_VERSION);
+      nextTax = nextTaxPayment({
+        gstCycle,
+        paygCycle,
+        today,
+        current: analysis.taxLines.status === "assessed" ? taxBalancesFromLines(analysis.taxLines.lines, gstCycle, paygCycle) : analysis.taxLines.status === "absent" ? { gst: 0, payg: 0 } : null,
+        periodEnd: periodEndTaxLookup(periodRows, accs, overrides, gstCycle, paygCycle),
+      });
     }
 
     const checks = computeHealthChecks({
@@ -184,9 +192,9 @@ export async function loadHealthChecks(
       cashAtBank,
       invoices: inv ? (inv.payload?.Invoices ?? []) : null,
       monthly,
-      atoOwed,
-      gstCycle: client?.gst_cycle ?? null,
-      paygCycle: client?.payg_withholding_cycle ?? null,
+      nextTax,
+      gstCycle,
+      paygCycle,
     });
 
     // Freshness: the OLDEST stored component is what the card is as fresh as.

@@ -288,6 +288,21 @@ export async function refreshTenant(
         report.api === "payroll" &&
         (payrollSetting !== "registered" || !grantedScopes.includes("payroll.payruns.read"))
       ) continue;
+      if (report.oncePerParams) {
+        // System context (refresh job): checks only whether this tenant's own
+        // closed-period row already exists, so it is not re-read nightly.
+        const { data: existing } = await (supabaseAdmin as any)
+          .from("xero_snapshots")
+          .select("id")
+          .eq("client_id", target.clientId)
+          .eq("tenant_id", target.tenantId)
+          .eq("report_key", report.reportKey)
+          .eq("params_hash", snapshotParamsHash(report.params))
+          .eq("payload_version", SNAPSHOT_PAYLOAD_VERSION)
+          .eq("complete", true)
+          .limit(1);
+        if (existing?.length) { succeeded += 1; continue; }
+      }
       try {
         const { payload, truncated } = await fetchReport(conn, report, budget);
         await writeSnapshot({
