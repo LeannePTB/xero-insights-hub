@@ -1862,3 +1862,5 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - Verified: build OK; 325 tests, 2,531 access proofs and 18 live checks pass; fixture, grants, RPC, catalogue, matrix and definer-register gates pass. security_posture() and linter: no new RLS/no-policy or anon-definer findings; the new function joins the long-standing authenticated guarded-definer exposure list (187 warnings, established deliberate pattern).
 
 - Closed (15 Oct 2026): bank classification widened with `overdraft` (migration 0060). Same table, RLS, guarded audited save function (AAL2 + user_can_write_client); no access change.
+
+- 2026-10-16 — Shared Xero reference cache (`src/lib/xero/shared-cache.server.ts`): 10-minute, per-instance, tenant-keyed, resolved payloads only, below each caller's access check; Accounts/Organisation/BankSummary/BalanceSheet/P&L only. Hourly per-file hold raised 200 → 1,500 and reworded as a wait. No access change. OPEN: `health.functions.ts` reads `client_cost_classifications` with `supabaseAdmin` (user-initiated path) — not registered; review.

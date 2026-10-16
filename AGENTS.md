@@ -33,3 +33,4 @@
 - WIP early access (`org_early_access`) resolves only inside `client_cards_v2` for active org members, keeping one visibility path.
 
 - Period video uses separate storage, caller-scoped audited RPCs and a draft-only attachment trigger; the unchanged notes builder preserves generation snapshots.
+- Xero reference reads (accounts, organisation, bank summary, balance sheet, P&L) go through the short tenant-keyed shared cache inside xeroGet, beneath per-caller access checks; settings pages read stored snapshots first and go live only on explicit Refresh, because repeated live reads exhausted the per-file budget.
