@@ -44,3 +44,6 @@ export function shouldHeartbeat(opts: {
 export function deadlineFromServerTouch(touchedAt: number): number {
   return touchedAt + INACTIVITY_WINDOW_MS;
 }
+
+/** Dispatched on window when a user-initiated action (mutation) succeeds. */
+export const USER_ACTION_EVENT = "ta:user-action";
