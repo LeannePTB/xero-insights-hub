@@ -40,6 +40,7 @@ describe("per-file hourly Xero ceiling", () => {
   it("keeps the ceiling well above normal use and well below Xero's daily allowance", async () => {
     const { XERO_FILE_HOUR_CEILING } = await load();
     expect(XERO_FILE_HOUR_CEILING).toBeGreaterThan(60);
-    expect(XERO_FILE_HOUR_CEILING).toBeLessThan(1000);
+    // Raised Oct 2026 (owner): still well inside Xero's 5,000/day.
+    expect(XERO_FILE_HOUR_CEILING).toBeLessThan(2500);
   });
 });
