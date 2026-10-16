@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfitAndLoss } from "@/lib/xero/reports.functions";
+import { getBreakevenDefaultRange } from "@/lib/xero/breakeven-range.functions";
 import { listCostClassifications } from "@/lib/cost-classification.functions";
 import { getExpenseAccounts } from "@/lib/xero/accounts.functions";
 import { buildClassificationResolver } from "@/lib/cost-classification";
@@ -21,6 +22,17 @@ import {
  * a part month (1 Sep to 7 Sep) comes out below 1, which is what stops a few
  * days of trading being read as a full month.
  */
+/** 1 July of the current Australian financial year to today (local dates). */
+export function financialYearToToday(now = new Date()) {
+  const fyStartYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  return { from: new Date(fyStartYear, 6, 1), to: new Date(now.getFullYear(), now.getMonth(), now.getDate()) };
+}
+
+function parseISODate(iso: string) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 /** The last `n` completed calendar months (local dates). */
 export function lastFullMonthsRange(n: number, now = new Date()) {
   return { from: new Date(now.getFullYear(), now.getMonth() - n, 1), to: new Date(now.getFullYear(), now.getMonth(), 0) };
@@ -62,10 +74,26 @@ export function useBreakevenData({
   const fetchPnl = useServerFn(getProfitAndLoss);
   const fetchClassifications = useServerFn(listCostClassifications);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
-  // Range is deliberately not persisted: every page load opens on the
-  // default — the last three FULL months, averaged, never scaled up.
-  const [fromDate, setFromDate] = useState<Date>(() => lastFullMonthsRange(3).from);
-  const [toDate, setToDate] = useState<Date>(() => lastFullMonthsRange(3).to);
+  // Default (16 Oct 2026): 1 July of this financial year to the as-at date of
+  // the latest saved figures, read from the server; it moves with each refresh.
+  // A user-picked range is kept until they leave the card (not persisted).
+  const fetchRange = useServerFn(getBreakevenDefaultRange);
+  const rangeQ = useQuery({
+    queryKey: ["breakeven-default-range", tenantId],
+    queryFn: () => fetchRange({ data: { tenantId } }),
+    enabled: shouldLoad,
+    retry: false,
+  });
+  const [picked, setPicked] = useState<{ from?: Date; to?: Date }>({});
+  const fallback = financialYearToToday();
+  const stored = rangeQ.data
+    ? { from: parseISODate(rangeQ.data.fromDate), to: parseISODate(rangeQ.data.toDate) }
+    : null;
+  const fromDate = picked.from ?? stored?.from ?? fallback.from;
+  const toDate = picked.to ?? stored?.to ?? fallback.to;
+  const setFromDate = (d: Date) => setPicked((p) => ({ ...p, from: d }));
+  const setToDate = (d: Date) => setPicked((p) => ({ ...p, to: d }));
+  const rangeReady = !rangeQ.isLoading;
   useEffect(clearLegacyRangeStorage, []);
 
   const fromStr = toISO(fromDate);
@@ -74,7 +102,7 @@ export function useBreakevenData({
   const pnlQ = useQuery({
     queryKey: ["xero-pnl", tenantId, fromStr, toStr, basis],
     queryFn: () => fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "accounting_breakeven", basis } }),
-    enabled: shouldLoad,
+    enabled: shouldLoad && rangeReady,
     retry: false,
   });
 
@@ -181,7 +209,11 @@ export function useBreakevenData({
       void classQ.refetch();
       void accountsQ.refetch();
     },
-    refetch: pnlQ.refetch,
+    refetch: async () => {
+      // A refresh can bring newer saved figures: the default TO date follows.
+      await rangeQ.refetch();
+      return pnlQ.refetch();
+    },
     // Deliberately NOT exposed: React Query's `dataUpdatedAt`. Freshness comes
     // from the provenance the server returns on `data.source`, never from when
     // our own query happened to run.

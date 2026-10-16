@@ -38,3 +38,11 @@ describe("seven business days after payday", () => {
     expect(paydaySuperStatus("2026-10-27", "2026-10-30")).toEqual({ text: "Overdue by 3 days", overdue: true });
   });
 });
+import { paydaySuperFlag } from "../src/lib/payday-super";
+describe("paydaySuperFlag", () => {
+  it("flags only overdue and due-today", () => {
+    expect(paydaySuperFlag("2026-10-27", "2026-10-28")).toBe("Overdue");
+    expect(paydaySuperFlag("2026-10-27", "2026-10-27")).toBe("Due today");
+    expect(paydaySuperFlag("2026-10-27", "2026-10-16")).toBeNull();
+  });
+});

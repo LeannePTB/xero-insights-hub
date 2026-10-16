@@ -13,6 +13,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { touchSessionActivity } from "@/lib/session-activity.functions";
+import {
+  ACTIVITY_EVENTS,
+  USER_ACTION_EVENT,
+  deadlineFromServerTouch,
+  shouldHeartbeat,
+} from "@/lib/session-activity-policy";
 import { logAuthEvent } from "@/lib/audit.functions";
 import {
   INACTIVITY_WARN_AT_MS,
@@ -40,13 +46,14 @@ import {
  *   is already expired the moment it wakes; no timer has to have been running.
  * - Every tab of one session shares that deadline and a BroadcastChannel, so
  *   activity in one tab extends all of them and expiry ends all of them.
- * - Only real interaction counts: pointerdown, keydown and route navigation.
- *   The presence heartbeat, snapshot polling and token refresh never call in.
- * - The server call is debounced to at most once a minute.
+ * - Only real interaction counts: pointer, key, wheel, scroll, touch, returning
+ *   to the tab, route navigation and completed user actions. The presence
+ *   heartbeat, snapshot polling and token refresh never call in.
+ * - The server call is throttled to at most once every two minutes, never from
+ *   a hidden tab, and the deadline moves only when the server confirms it.
  * - This layer can only ever sign out EARLIER than the server. If the browser
  *   clock is wrong or storage is cleared, the database still refuses.
  */
-const TOUCH_MIN_INTERVAL_MS = 60_000;
 const TICK_MS = 5_000;
 
 export function SessionIdleGuard() {
@@ -79,23 +86,30 @@ export function SessionIdleGuard() {
     navigate({ to: "/auth", replace: true });
   }, [navigate]);
 
-  /** Real interaction: extend the shared deadline and tell the server. */
+  /**
+   * Real interaction: tell the server (throttled), and only once the server
+   * has CONFIRMED it, move the shared deadline. The browser deadline is
+   * anchored to the server's own record, so the browser can never believe a
+   * session is alive that the server has already ended (16 Oct 2026 fix).
+   */
   const registerActivity = useCallback(
     (opts: { force?: boolean } = {}) => {
       if (endingRef.current) return;
-      const deadline = Date.now() + INACTIVITY_WINDOW_MS;
-      writeIdleDeadline(deadline);
-      setWarnUntil(null);
-      try {
-        channelRef.current?.postMessage({ type: "activity", deadline });
-      } catch {}
-      const since = Date.now() - lastTouchRef.current;
-      if (opts.force || since >= TOUCH_MIN_INTERVAL_MS) {
-        lastTouchRef.current = Date.now();
-        void touch({} as never).catch((err: unknown) => {
-          // The server is the control; a failed ping never grants time. But if
-          // the server says the session is already idle, end it here rather than
-          // leaving the person on a page whose every query is refused.
+      const at = Date.now();
+      if (!shouldHeartbeat({ now: at, lastTouchAt: lastTouchRef.current, hidden: document.hidden, force: opts.force })) return;
+      lastTouchRef.current = at;
+      void touch({} as never)
+        .then(() => {
+          const deadline = deadlineFromServerTouch(at);
+          writeIdleDeadline(deadline);
+          setWarnUntil(null);
+          try {
+            channelRef.current?.postMessage({ type: "activity", deadline, at });
+          } catch {}
+        })
+        .catch((err: unknown) => {
+          // A failed ping never grants time; allow a retry on the next interaction.
+          lastTouchRef.current = 0;
           const message = String((err as { message?: string })?.message ?? err);
           if (/SESSION_IDLE/i.test(message)) {
             void endSession();
@@ -105,7 +119,6 @@ export function SessionIdleGuard() {
             console.error("[session-activity] activity was not recorded:", message);
           }
         });
-      }
     },
     [touch, endSession],
   );
@@ -118,8 +131,10 @@ export function SessionIdleGuard() {
       channel = new BroadcastChannel(SESSION_CHANNEL);
       channelRef.current = channel;
       channel.onmessage = (event) => {
-        const msg = event.data as { type?: string; deadline?: number } | null;
+        const msg = event.data as { type?: string; deadline?: number; at?: number } | null;
         if (msg?.type === "activity" && typeof msg.deadline === "number") {
+          // Another tab already told the server; this tab need not repeat it.
+          if (typeof msg.at === "number") lastTouchRef.current = Math.max(lastTouchRef.current, msg.at);
           writeIdleDeadline(msg.deadline);
           setWarnUntil(null);
         } else if (msg?.type === "expired") {
@@ -140,11 +155,19 @@ export function SessionIdleGuard() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onActivity = () => registerActivity();
-    window.addEventListener("pointerdown", onActivity, { passive: true });
-    window.addEventListener("keydown", onActivity, { passive: true });
+    const onVisible = () => {
+      if (!document.hidden) registerActivity();
+    };
+    for (const e of ACTIVITY_EVENTS) window.addEventListener(e, onActivity, { passive: true, capture: true });
+    // A completed user action (save, toggle, upload) counts as activity too.
+    window.addEventListener(USER_ACTION_EVENT, onActivity);
+    window.addEventListener("focus", onVisible);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
-      window.removeEventListener("pointerdown", onActivity);
-      window.removeEventListener("keydown", onActivity);
+      for (const e of ACTIVITY_EVENTS) window.removeEventListener(e, onActivity, { capture: true });
+      window.removeEventListener(USER_ACTION_EVENT, onActivity);
+      window.removeEventListener("focus", onVisible);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [registerActivity]);
 

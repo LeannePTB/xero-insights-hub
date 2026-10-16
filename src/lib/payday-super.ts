@@ -52,3 +52,12 @@ export function paydaySuperStatus(due: string, today = sydneyDate()): { text: st
   const days = Math.round((dateValue(due).getTime() - dateValue(today).getTime()) / 86400000);
   return { text: days === 0 ? "Due today" : days > 0 ? `Due in ${days} days` : `Overdue by ${-days} days`, overdue: days < 0 };
 }
+/**
+ * Exceptions only, shown beside the due date of an UNPAID payday: "Overdue"
+ * once the due date has passed, "Due today" on the day, otherwise nothing.
+ */
+export function paydaySuperFlag(due: string, today = sydneyDate()): "Overdue" | "Due today" | null {
+  if (due < today) return "Overdue";
+  if (due === today) return "Due today";
+  return null;
+}

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { getSuperannuationPosition } from "@/lib/xero/reports.functions";
 import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
 import { useTenantCurrency, formatMoneyExact } from "@/components/dashboard/useTenantCurrency";
-import { paydaySuperDueDate, paydaySuperStatus } from "@/lib/payday-super";
+import { paydaySuperDueDate, paydaySuperFlag } from "@/lib/payday-super";
 
 /**
  * Superannuation not yet paid.
@@ -97,17 +97,16 @@ export function SuperannuationWidget({
             <p className="mt-1 font-display text-lg font-semibold tabular-nums">{fmt(outstanding)}</p>
             {paydayRows.length > 0 ? (
               <div className="mt-3 divide-y divide-border">
-                <div className="hidden grid-cols-[1fr_1fr_1fr_1.4fr] gap-3 pb-2 text-xs text-muted-foreground sm:grid">
-                  <span>Payday</span><span>Super</span><span>Due (7 business days)</span><span>Status</span>
+                <div className="hidden grid-cols-[1fr_1fr_1.4fr] gap-3 pb-2 text-xs text-muted-foreground sm:grid">
+                  <span>Payday</span><span>Super</span><span>Due (7 business days)</span>
                 </div>
                 {paydayRows.map(({ payday, amount }) => {
                   const due = paydaySuperDueDate(payday);
-                  const status = paydaySuperStatus(due);
-                  return <div key={payday} className="grid grid-cols-2 gap-x-3 gap-y-1 py-3 text-sm sm:grid-cols-[1fr_1fr_1fr_1.4fr]">
+                  const flag = paydaySuperFlag(due);
+                  return <div key={payday} className="grid grid-cols-2 gap-x-3 gap-y-1 py-3 text-sm sm:grid-cols-[1fr_1fr_1.4fr]">
                     <span><span className="text-muted-foreground sm:hidden">Payday </span>{format(new Date(`${payday}T00:00:00`), "d MMM yyyy")}</span>
                     <span className="tabular-nums">{fmt(amount)}</span>
-                    <span><span className="text-muted-foreground sm:hidden">Due </span>{format(new Date(`${due}T00:00:00`), "d MMM yyyy")}<span className="block text-xs text-muted-foreground">7 business days after payday</span></span>
-                    <span className={status.overdue ? "font-medium text-destructive" : "text-muted-foreground"}>{status.text}</span>
+                    <span><span className="text-muted-foreground sm:hidden">Due </span>{format(new Date(`${due}T00:00:00`), "d MMM yyyy")}{flag && <span className={`ml-2 inline-flex rounded px-1.5 py-0.5 text-xs font-medium ${flag === "Overdue" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>{flag}</span>}<span className="block text-xs text-muted-foreground">7 business days after payday</span></span>
                   </div>;
                 })}
                 <p className="pt-2 text-xs text-muted-foreground">Super must reach the fund within 7 business days of each payday (weekends and public holidays don't count).</p>
