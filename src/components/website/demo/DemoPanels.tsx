@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
-import { Activity, LineChart, Landmark, Users, Scale, LayoutDashboard } from "lucide-react";
+import { Activity, LineChart, Landmark, Users, Scale, LayoutDashboard, Building2, Sparkles } from "lucide-react";
+import trixieIcon from "@/assets/trixie-icon.svg";
 import { ReportHealthChecks } from "@/components/reports/ReportHealthChecks";
 import { VectorChart } from "@/components/charts/VectorChart";
 import { BreakevenChart } from "@/components/charts/BreakevenChart";
 import { PnlKpi } from "@/components/dashboard/PnlKpi";
 import { TaxObligationsBody } from "@/components/dashboard/TaxObligationsBody";
 import { STATUS_LABEL } from "@/lib/health/health-checks";
-import { DEMO_BREAKEVEN, DEMO_BUSINESS, DEMO_FILE, DEMO_HEALTH, DEMO_OVERVIEW, DEMO_PNL_MONTHS, DEMO_PNL_TILES, DEMO_SUPER, DEMO_TAX } from "./demo-fixture";
+import { DEMO_BREAKEVEN, DEMO_BUSINESS, DEMO_GROUP, DEMO_TRIXIE, DEMO_FILE, DEMO_HEALTH, DEMO_OVERVIEW, DEMO_PNL_MONTHS, DEMO_PNL_TILES, DEMO_SUPER, DEMO_TAX } from "./demo-fixture";
 
 const money = (n: number) => n.toLocaleString("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0 });
 
@@ -104,4 +105,49 @@ export function DemoHero() {
   return <AppWindow title={`Traction Advisory · ${DEMO_BUSINESS} · Live Dashboard`}>
     <div className="space-y-4"><DemoOverview /><DemoHealth /></div>
   </AppWindow>;
+}
+
+const aud = (n: number) => `${n < 0 ? "-" : ""}A$${Math.abs(n).toLocaleString("en-AU", { maximumFractionDigits: 0 })}`;
+
+/** Multi-company group view in the consolidation card style. */
+export function DemoGroup() {
+  const c = DEMO_GROUP.companies;
+  const sum = (k: "revenue" | "profit" | "cash" | "loan") => c.reduce((t, r) => t + r[k], 0);
+  return <Card icon={<Building2 className="h-4 w-4" />} title="Group consolidation" label={DEMO_GROUP.name}>
+    <p className="mt-1 text-xs text-muted-foreground">Financial year to {DEMO_GROUP.asAt} · 4 companies</p>
+    <div className="mt-4 overflow-x-auto">
+      <table className="w-full min-w-[34rem] text-sm">
+        <thead className="text-left text-xs text-muted-foreground"><tr><th className="pb-2">Company</th><th className="pb-2 text-right">Revenue</th><th className="pb-2 text-right">Net profit</th><th className="pb-2 text-right">Cash at bank</th></tr></thead>
+        <tbody className="divide-y divide-border">
+          {c.map((r) => <tr key={r.name}><td className="py-2.5">{r.name}</td><td className="py-2.5 text-right tabular-nums">{aud(r.revenue)}</td><td className="py-2.5 text-right tabular-nums">{aud(r.profit)}</td><td className="py-2.5 text-right tabular-nums">{aud(r.cash)}</td></tr>)}
+          <tr className="font-semibold"><td className="py-2.5">Group total</td><td className="py-2.5 text-right tabular-nums">{aud(sum("revenue"))}</td><td className="py-2.5 text-right tabular-nums">{aud(sum("profit"))}</td><td className="py-2.5 text-right tabular-nums">{aud(sum("cash"))}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div className="mt-4 rounded-lg border border-border bg-background p-4">
+      <p className="text-xs font-semibold uppercase text-muted-foreground">Inter-company loans</p>
+      <div className="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+        {c.filter((r) => r.loan !== 0).map((r) => <div key={r.name} className="flex justify-between gap-3"><span className="truncate">{r.name}</span><span className="shrink-0 tabular-nums">{aud(r.loan)}</span></div>)}
+      </div>
+      <p className="mt-3 text-sm font-semibold text-success">Nets to {aud(sum("loan"))} across the group · balanced</p>
+    </div>
+  </Card>;
+}
+
+/** Trixie chat in the current app style. */
+export function DemoTrixie() {
+  return <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
+    <div className="rounded-lg border border-border bg-card p-4 shadow-soft sm:p-5">
+      <h3 className="flex items-center gap-2 font-display text-base font-semibold"><img src={trixieIcon} alt="" className="h-5 w-5" />Trixie</h3>
+      <div className="mt-4 space-y-4">
+        <div className="ml-auto w-fit max-w-[85%] rounded-lg bg-primary px-4 py-2.5 text-sm text-primary-foreground">{DEMO_TRIXIE.question}</div>
+        <div className="max-w-[92%] space-y-2 rounded-lg border border-border bg-background px-4 py-3 text-sm leading-relaxed">{DEMO_TRIXIE.answer.map((a) => <p key={a}>{a}</p>)}</div>
+      </div>
+      <div className="mt-4 rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground">Ask about {DEMO_BUSINESS}…</div>
+    </div>
+    <aside className="rounded-lg border border-border bg-card p-4 shadow-soft">
+      <p className="flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground"><Sparkles className="h-3.5 w-3.5" />Key numbers</p>
+      <dl className="mt-3 divide-y divide-border text-sm">{DEMO_TRIXIE.keyNumbers.map(([k, v]) => <div key={k} className="flex justify-between gap-3 py-2"><dt className="text-muted-foreground">{k}</dt><dd className="font-semibold tabular-nums">{v}</dd></div>)}</dl>
+    </aside>
+  </div>;
 }
