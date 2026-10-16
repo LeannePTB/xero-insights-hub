@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { CardFreshness } from './CardFreshness';
+import { useCardTitle } from './card-title-context';
 import type { SnapshotSource } from '@/lib/xero/snapshot-source';
 
 export function DashboardCardHeader({ label, title, icon, description, source, isFetching, from, to, actions, badge, status, stackActions }: {
@@ -9,6 +10,8 @@ export function DashboardCardHeader({ label, title, icon, description, source, i
   /** Actions drop under the title on narrow screens (wide controls). */
   stackActions?: boolean;
 }) {
+  // The catalogue name wins, so a System Admin rename shows everywhere.
+  title = useCardTitle(title);
   return <header className={`mb-3 grid min-w-0 items-start gap-3 pr-9 ${stackActions ? "grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto]" : "grid-cols-[minmax(0,1fr)_auto]"}`} data-dashboard-card-header>
     <div className="min-w-0">
       <p className="text-xs font-semibold uppercase text-muted-foreground break-words">{label}</p>

@@ -50,6 +50,7 @@ import { OrganisationLapsedNotice } from "@/components/dashboard/OrganisationLap
 import { ClientTrialNotice } from "@/components/dashboard/ClientTrialNotice";
 import { PageContainer } from "@/components/PageContainer";
 import { EMPTY_CATALOGUE } from "@/lib/cards/catalogue";
+import { CardTitleProvider } from "@/components/dashboard/card-title-context";
 import { RentReportWidget } from "@/components/dashboard/RentReportWidget";
 import { standardFallbackCards } from "@/components/dashboard/dashboard-card-layout";
 import { dashboardCardMeta, dashboardPackageSummary } from "@/components/dashboard/dashboard-card-layout";
@@ -405,7 +406,7 @@ function ClientDashboard() {
         {card.node}
       </div>
     ) : card.node;
-    return { ...card, node, fullWidth: meta.fullWidth, group: meta.group, groupLabel: meta.label };
+    return { ...card, node: <CardTitleProvider title={entry?.label}>{node}</CardTitleProvider>, fullWidth: meta.fullWidth, group: meta.group, groupLabel: meta.label };
   }).sort((a, b) => {
     const left = dashboardCardMeta(a.id, catalogue); const right = dashboardCardMeta(b.id, catalogue);
     return left.groupRank - right.groupRank || left.rank - right.rank || a.id.localeCompare(b.id);

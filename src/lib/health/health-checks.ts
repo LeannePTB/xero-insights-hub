@@ -318,6 +318,8 @@ export type NextTaxPayment = {
   amount: number | null;
   /** Accruing for a period that has not ended yet. */
   building: number;
+  /** Due date of the building amount, when it comes from the shared forward figure. */
+  buildingDue?: string;
   /** Period end the due amount was read at; null when estimated. */
   periodEnd: string | null;
   /** True when the period-end balance sheet was missing (full balance used). */
@@ -400,12 +402,32 @@ export function nextTaxPayment(i: {
   };
 }
 
+/**
+ * Replace the balance-sheet "building" figure with the shared forward figure
+ * (running period's corrected GST + PAYG withheld so far) used by the Tax
+ * obligations card. Lodged bills stay as "due next".
+ */
+export function withForwardBuilding(
+  next: NextTaxPayment | null,
+  fwd: { owing: { amount: number; due: string }[]; building: { total: number | null; due: string } } | null | undefined,
+): NextTaxPayment | null {
+  if (!fwd || fwd.building.total === null) return next;
+  if (!next) {
+    const first = fwd.owing.map((o) => o.due).sort()[0];
+    const amount = first ? fwd.owing.filter((o) => o.due === first).reduce((s, o) => s + o.amount, 0) : null;
+    return { due: first ?? fwd.building.due, amount, building: fwd.building.total, buildingDue: fwd.building.due, periodEnd: null, estimate: false, later: [], source: first ? "lodged_bill" : "balance_sheet" };
+  }
+  return { ...next, building: fwd.building.total, buildingDue: fwd.building.due };
+}
+
 function nextTaxCore(next: NextTaxPayment): string {
   const head = next.amount !== null
     ? `~${money(next.amount)} due ${dayLabel(next.due)}${next.estimate ? " (estimate, full balance)" : ""}`
     : `due ${dayLabel(next.due)}`;
   const then = next.later.map((l) => ` · then ~${money(l.amount)} due ${dayLabel(l.due)}`).join("");
-  const building = next.building > 0 ? ` · building for next period: ~${money(next.building)}` : "";
+  const building = next.building > 0
+    ? next.buildingDue ? ` · building now: ~${money(next.building)} due ${dayLabel(next.buildingDue)}` : ` · building for next period: ~${money(next.building)}`
+    : "";
   return `${head}${then}${building}`;
 }
 

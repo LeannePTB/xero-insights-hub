@@ -2,8 +2,8 @@
 // caller (RLS applies). Zero Xero calls: this module must never import
 // `@/lib/xero/api.server`.
 
-import { protectedShareOfCash } from "@/lib/health/protected-money-share";
-import { lateSharePct, splitDebtors, taxSetAsideTooltip } from "@/lib/health/health-checks";
+import { nextDueItems, superDueNext } from "@/lib/tax/forward-stored";
+import { lateSharePct, splitDebtors } from "@/lib/health/health-checks";
 import { PERIOD_END_BS_KEYS, classifiedAccounts } from "@/lib/health/health-checks.server";
 import { bankReconWarning, parseStored, statementPosition } from "./bank-reconciliation";
 import { addDays, addMonths, endOfMonth, startOfFinancialYear, sydneyDate } from "@/lib/sydney-time";
@@ -24,6 +24,8 @@ export type DayFigures = {
   protectedMoney: number | null;
   /** Per-account breakdown of protected money, for the tooltip. */
   protectedAccounts?: { name: string; amount: number; counted: boolean }[];
+  /** Super liability on the balance sheet (counted lines only). */
+  superOwed?: number | null;
   revenueMtd: number | null;
   netProfitMtd: number | null;
 };
@@ -50,6 +52,8 @@ export type OverviewContext = {
   alertStates: Map<string, any[]>;
   /** user id -> display label, from organisation_members (auth.users email). */
   people: Map<string, string>;
+  /** Shared forward tax summary per client (stored only). */
+  forward: Map<string, import("@/lib/tax/forward-tax.server").StoredForward>;
   today: string;
   now: Date;
 };
@@ -106,6 +110,7 @@ export async function loadOverviewContext(sb: Sb, firmId: string | null = null):
     keyFigures: new Map(),
     alertStates: new Map(),
     people: new Map(),
+    forward: new Map(),
     today,
     now,
   };
@@ -164,6 +169,10 @@ export async function loadOverviewContext(sb: Sb, firmId: string | null = null):
     for (const row of (kf.data ?? []) as any[]) push(ctx.keyFigures, row.client_id, row);
     for (const row of (st.data ?? []) as any[]) push(ctx.alertStates, row.client_id, row);
   }
+  {
+    const { loadStoredForward } = await import("@/lib/tax/forward-tax.server");
+    ctx.forward = await loadStoredForward(sb, ids.map((id: string) => ({ clientId: id, tenantId: ctx.connections.get(id)?.[0]?.tenantId ?? null })), today).catch(() => new Map());
+  }
   // Who cleared an alert: names come from organisation_members (caller-scoped),
   // only for organisations that have any alert state.
   const firmsWithStates = new Set(
@@ -217,6 +226,7 @@ export function verdictFor(ctx: OverviewContext, clientId: string, bsDate?: stri
       withholdsPayg: ctx.cycles.get(clientId)?.payg !== "not_registered",
       gstCycle: (ctx.cycles.get(clientId)?.gst ?? null) as any,
       paygCycle: (ctx.cycles.get(clientId)?.payg ?? null) as any,
+      forward: ctx.forward.get(clientId)?.tax ?? null,
     },
   );
 }
@@ -247,6 +257,7 @@ export function seriesFor(ctx: OverviewContext, clientId: string): ClientSeries 
         const pm = buildProtectedMoney(d, a.taxLines.lines);
         f.protectedMoney = pm.total;
         f.protectedAccounts = pm.components.flatMap((c) => (c.status === "resolved" ? c.accounts : []));
+        f.superOwed = Math.round(a.taxLines.lines.filter((l) => l.category === "super" && l.amount > 0).reduce((t, l) => t + l.amount, 0) * 100) / 100;
       }
     } else if (row.report_key === "profit_and_loss_mtd") {
       const report = row.payload?.Reports?.[0];
@@ -279,7 +290,7 @@ export function seriesFor(ctx: OverviewContext, clientId: string): ClientSeries 
   return { anchor, byDate, avgMonthlyRevenue };
 }
 
-export type FigureKey = Exclude<keyof DayFigures, "protectedAccounts">;
+export type FigureKey = Exclude<keyof DayFigures, "protectedAccounts" | "superOwed">;
 
 /** A move of one figure over `days` ending at the anchor, with the prior-month routine check. */
 export function moveFor(s: ClientSeries, key: FigureKey, days: number): MoveResult {
@@ -369,14 +380,22 @@ export async function buildOverview(
       cashChange7d: m7.state === "evaluated" ? m7.change : null,
       cashBigMove: m7.state === "evaluated" && m7.big,
       ...(() => {
-        const share = cash !== null && prot !== null ? protectedShareOfCash(prot, cash) : null;
-        const money = (n: number) => n.toLocaleString("en-AU", { style: "currency", signDisplay: "negative", currency: "AUD" });
-        const lines = (today?.protectedAccounts ?? []).map(
-          (a) => `${a.name}: ${money(a.amount)}${a.counted ? "" : " (debit balance, not a refund — not counted)"}`,
-        );
-        // The tax rule's own split (due now vs building), so tooltip and badge agree.
-        const tooltip = share ? [taxSetAsideTooltip(verdict.nextTax ?? null), ...(prot !== null ? [`Protected money: ${money(prot)}`] : []), ...lines].join("\n") : null;
-        return { protectedPctOfCash: share?.pct ?? null, protectedTooltip: tooltip };
+        // Amounts, not percentages: the same helpers as the Tax obligations and super cards.
+        const fw = ctx.forward.get(c.client_id);
+        if (!fw) return { taxNext: null, taxBuilding: null, superDue: null, taxItems: [] };
+        const sup = superDueNext(today?.superOwed ?? null, fw.payRuns);
+        const items = nextDueItems(fw.tax, sup);
+        const first = [...fw.tax.owing].sort((a, b) => (a.due < b.due ? -1 : 1))[0];
+        const b = fw.tax.building;
+        const taxNext = first
+          ? { amount: fw.tax.owing.filter((o) => o.due === first.due).reduce((t, o) => t + o.amount, 0), due: first.due, overdue: first.overdue }
+          : b.total !== null && b.total > 0 ? { amount: b.total, due: b.due, overdue: false } : null;
+        return {
+          taxNext,
+          taxBuilding: first && b.total !== null && b.total > 0 ? { amount: b.total, due: b.due } : null,
+          superDue: sup,
+          taxItems: items,
+        };
       })(),
       netProfitMtd: today?.netProfitMtd ?? null,
       debtorsOverduePct,

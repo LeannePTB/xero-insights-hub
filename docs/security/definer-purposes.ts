@@ -436,6 +436,8 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "System Administrator only (aal2 + assert_super_admin): sets the display-only demo flag (firms.is_demo) and audits the change. Switcher grouping only; never touches membership, billing, access or client data.",
   "public.admin_set_card_status":
     "System Administrator only (aal2 + assert_super_admin): marks a catalogue card Available or Work in progress and audits the change. Changes product configuration only; never touches client ticks or client data.",
+  "public.admin_set_card_label":
+    "System Administrator only (aal2 + assert_super_admin): renames one catalogue card's display name (1–60 characters) and audits old → new. Card keys, ticks, entitlement and client data are untouched; display text only.",
   "public.admin_set_card_entry":
     "Moves one catalogue card between packages/Advisory modules and edits its description. aal2 + System Administrator via public.assert_super_admin, validated (Advisory cards need an existing module), audited with old and new package/module. Product catalogue only; no organisation or client data. Changes what every purchase includes; client_cards_v2 still intersects with each client's ticks.",
   "public.start_figure_backfill":

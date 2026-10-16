@@ -3,8 +3,10 @@ import type { CardCatalogue } from '@/lib/cards/catalogue';
 // Presentation only: callers pass the cards already granted by the database.
 // Advisory module order is card_modules.sort_order: catalogue.modules arrives
 // already ordered by it, so no module list is hard-coded here.
+/** Default Tax & compliance layout: obligations, then GST + PAYG side by side, then super. */
+export const TAX_ORDER = ['tax_obligations', 'gst_reconciliation', 'payg_withholding', 'superannuation'];
 export const STANDARD_ORDER = ['health', 'pnl', 'receivables', 'payables', 'notes'];
-const WIDE_CARDS = new Set(['health', 'pnl', 'cashflow', 'cashflow_scenario', 'accounting_breakeven', 'transaction_search', 'gst_reconciliation', 'tax_obligations', 'notes', 'loan_consolidation']);
+const WIDE_CARDS = new Set(['health', 'pnl', 'cashflow', 'cashflow_scenario', 'accounting_breakeven', 'transaction_search', 'tax_obligations', 'superannuation', 'notes', 'loan_consolidation']);
 
 export function dashboardCardMeta(id: string, catalogue: CardCatalogue) {
   const key = id.includes(':') ? id.slice(id.indexOf(':') + 1) : id;
@@ -16,7 +18,7 @@ export function dashboardCardMeta(id: string, catalogue: CardCatalogue) {
     label: card?.package === 'advisory'
       ? catalogue.modules.find(m => m.key === card.module)?.label ?? 'Advisory'
       : card?.package === 'consolidation' ? 'Consolidation' : 'Standard',
-    rank: card?.package === 'standard' ? STANDARD_ORDER.indexOf(key) : key === 'tax_obligations' && group === 'tax_compliance' ? -1 : catalogue.cards.findIndex(c => c.key === key),
+    rank: card?.package === 'standard' ? STANDARD_ORDER.indexOf(key) : group === 'tax_compliance' && TAX_ORDER.includes(key) ? TAX_ORDER.indexOf(key) - TAX_ORDER.length : catalogue.cards.findIndex(c => c.key === key),
     groupRank: moduleGroupRank(group ?? 'standard', catalogue),
     fullWidth: WIDE_CARDS.has(key),
   };

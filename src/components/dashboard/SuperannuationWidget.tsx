@@ -98,7 +98,7 @@ export function SuperannuationWidget({
             {paydayRows.length > 0 ? (
               <div className="mt-3 divide-y divide-border">
                 <div className="hidden grid-cols-[1fr_1fr_1fr_1.4fr] gap-3 pb-2 text-xs text-muted-foreground sm:grid">
-                  <span>Payday</span><span>Super</span><span>Due date</span><span>Status</span>
+                  <span>Payday</span><span>Super</span><span>Due (7 business days)</span><span>Status</span>
                 </div>
                 {paydayRows.map(({ payday, amount }) => {
                   const due = paydaySuperDueDate(payday);
@@ -106,11 +106,11 @@ export function SuperannuationWidget({
                   return <div key={payday} className="grid grid-cols-2 gap-x-3 gap-y-1 py-3 text-sm sm:grid-cols-[1fr_1fr_1fr_1.4fr]">
                     <span><span className="text-muted-foreground sm:hidden">Payday </span>{format(new Date(`${payday}T00:00:00`), "d MMM yyyy")}</span>
                     <span className="tabular-nums">{fmt(amount)}</span>
-                    <span><span className="text-muted-foreground sm:hidden">Due </span>{format(new Date(`${due}T00:00:00`), "d MMM yyyy")}</span>
+                    <span><span className="text-muted-foreground sm:hidden">Due </span>{format(new Date(`${due}T00:00:00`), "d MMM yyyy")}<span className="block text-xs text-muted-foreground">7 business days after payday</span></span>
                     <span className={status.overdue ? "font-medium text-destructive" : "text-muted-foreground"}>{status.text}</span>
                   </div>;
                 })}
-                <p className="pt-2 text-xs text-muted-foreground">Due seven business days after payday, excluding weekends and national public holidays. A state public holiday can add a day.</p>
+                <p className="pt-2 text-xs text-muted-foreground">Super must reach the fund within 7 business days of each payday (weekends and public holidays don't count).</p>
               </div>
             ) : <p className="mt-2 text-sm text-muted-foreground">{available.payrollStatus === "not_authorised"
               ? "Payroll access has not been authorised in Xero for this organisation, so the paydays behind this balance cannot be identified."

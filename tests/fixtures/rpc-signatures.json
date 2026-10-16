@@ -161,6 +161,14 @@
     },
     {
         "args": [
+            "_card_key",
+            "_label"
+        ],
+        "name": "admin_set_card_label",
+        "required": 2
+    },
+    {
+        "args": [
             "_module_key",
             "_label",
             "_description"

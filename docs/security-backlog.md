@@ -1906,3 +1906,8 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 ## 2026-10-16 — GST method, unfiled estimate, FY P&L
 - ADDED `set_client_gst_method` (aal2, user_can_write_client, audited); registered and in fixture. Security check passed.
 - OPEN: Business Health next-tax line, Overview tax rule and monthly report still use their previous tax inputs; move them onto `forwardTax` + corrected GST.
+
+## 16 Oct 2026 — shared forward tax, card names
+- CLOSED: Business Health next-tax line, Overview tax rule/column and new monthly reports now read the shared stored forward tax summary (`src/lib/tax/forward-stored.ts`), same as the Tax obligations card. Stored only; caller-scoped reads; no Xero calls.
+- NEW definer `admin_set_card_label` (aal2 + assert_super_admin, audited old → new, EXECUTE revoked from PUBLIC/anon). Registered; fixture and RPC snapshot regenerated. Display text only.
+- OPEN: running-period GST appears in stored figures only once the Tax obligations card has saved the current period's calculation; until then "building" falls back to the balance-sheet method.

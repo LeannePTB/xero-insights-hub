@@ -11,8 +11,6 @@ import { breakevenReadiness } from "@/components/dashboard/breakeven-readiness";
 import {
   clearLegacyRangeStorage,
   toISO,
-  startOfCurrentMonth,
-  today,
 } from "@/components/dashboard/DateRangeControls";
 
 
@@ -23,6 +21,11 @@ import {
  * a part month (1 Sep to 7 Sep) comes out below 1, which is what stops a few
  * days of trading being read as a full month.
  */
+/** The last `n` completed calendar months (local dates). */
+export function lastFullMonthsRange(n: number, now = new Date()) {
+  return { from: new Date(now.getFullYear(), now.getMonth() - n, 1), to: new Date(now.getFullYear(), now.getMonth(), 0) };
+}
+
 function monthsBetween(from: Date, to: Date) {
   if (to < from) return 0.1;
   let total = 0;
@@ -60,9 +63,9 @@ export function useBreakevenData({
   const fetchClassifications = useServerFn(listCostClassifications);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   // Range is deliberately not persisted: every page load opens on the
-  // default (1st of the current month → today).
-  const [fromDate, setFromDate] = useState<Date>(startOfCurrentMonth);
-  const [toDate, setToDate] = useState<Date>(today);
+  // default — the last three FULL months, averaged, never scaled up.
+  const [fromDate, setFromDate] = useState<Date>(() => lastFullMonthsRange(3).from);
+  const [toDate, setToDate] = useState<Date>(() => lastFullMonthsRange(3).to);
   useEffect(clearLegacyRangeStorage, []);
 
   const fromStr = toISO(fromDate);

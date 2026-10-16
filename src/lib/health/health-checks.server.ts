@@ -12,7 +12,7 @@ import { computeHealthChecks, monthlyCosts, normaliseName, type HealthChecks } f
 import type { SnapshotSource } from "@/lib/xero/snapshot-source";
 import { analyseBalanceSheet, countsTowardProtected, type StatutoryOverrides } from "@/lib/xero/tax-lines";
 import { applyBankClassifications, type BankClassificationRow } from "@/lib/xero/bank-classifications";
-import { lodgedAtoBills, nextTaxPayment, type TaxBalances } from "./health-checks";
+import { lodgedAtoBills, nextTaxPayment, withForwardBuilding, type TaxBalances } from "./health-checks";
 
 /**
  * GST and PAYG withholding owed on one balance sheet, for the cycles the client
@@ -121,6 +121,9 @@ export async function loadHealthChecks(
     supabase.from("xero_snapshots").select(cols).in("client_id", clientIds).in("report_key", PERIOD_END_BS_KEYS as unknown as string[]).gte("fetched_at", new Date(Date.now() - PERIOD_END_MAX_AGE_DAYS * 86_400_000).toISOString()).order("fetched_at", { ascending: false }),
   ]);
   if (latestQ.error || priorQ.error) throw new Error("Saved figures could not be read.");
+  // The shared forward tax figures (same as the Tax obligations card).
+  const { loadStoredForward } = await import("@/lib/tax/forward-tax.server");
+  const forward = await loadStoredForward(supabase, targets.map((t) => ({ clientId: t.clientId, tenantId: t.tenantId ?? null })), today).catch(() => new Map());
 
   const { SNAPSHOT_PAYLOAD_VERSION, STALENESS_SECONDS } = await import("@/lib/xero/snapshot-keys");
   const { statutoryOverrideMap } = await import("@/lib/xero/tax-lines");
@@ -195,7 +198,7 @@ export async function loadHealthChecks(
       cashAtBank,
       invoices: inv ? (inv.payload?.Invoices ?? []) : null,
       monthly,
-      nextTax,
+      nextTax: withForwardBuilding(nextTax, forward.get(t.clientId)?.tax),
       gstCycle,
       paygCycle,
     });

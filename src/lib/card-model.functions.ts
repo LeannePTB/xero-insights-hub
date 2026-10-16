@@ -607,6 +607,25 @@ export const saveCardEntry = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+const cardLabelSchema = z.object({
+  cardKey: z.string().regex(/^[a-z][a-z_]{1,39}$/),
+  label: z.string().trim().min(1).max(60),
+});
+
+/** System Administrator only (database-enforced, AAL2, audited). */
+export const saveCardLabel = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) => cardLabelSchema.parse(i))
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase as any).rpc("admin_set_card_label", { _card_key: data.cardKey, _label: data.label });
+    if (error) {
+      if (/INVALID_LABEL/.test(error.message)) throw new Error("Card names must be 1–60 characters.");
+      if (/Forbidden|NO_ACCESS|insufficient|aal2/i.test(error.message)) throw new Error("Forbidden");
+      throw new Error("The card name could not be saved.");
+    }
+    return { ok: true };
+  });
+
 const moduleSchema = z.object({
   moduleKey: z.string().regex(/^[a-z][a-z_]{1,39}$/),
   label: z.string().trim().min(1).max(60),

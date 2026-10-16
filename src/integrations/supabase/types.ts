@@ -4303,6 +4303,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_set_card_label: {
+        Args: { _card_key: string; _label: string }
+        Returns: undefined
+      }
       admin_set_card_module: {
         Args: { _description: string; _label: string; _module_key: string }
         Returns: undefined

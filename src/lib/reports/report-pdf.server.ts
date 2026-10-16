@@ -420,14 +420,38 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     y += 16;
     doc.setFont("helvetica", "normal");
     const STATUS: Record<string, string> = { green: "Green", watch: "Watch", red: "Red", na: "Not available" };
-    for (const c of hc.checks) {
-      need(50);
-      paragraph(`${c.question} — ${STATUS[c.status] ?? c.status}: ${c.figure}`, { size: 9.5 });
-      if (c.detail) paragraph(c.detail, { size: 8, colour: INK.muted });
-      paragraph(c.meaning, { size: 8.5, colour: INK.muted });
-      y += 4;
-    }
-    for (const l of hc.info) paragraph(l.text, { size: 8.5 });
+    // Three checks side by side, each column wrapped to its own width.
+    const gap = 12;
+    const colW = (PAGE.w - M.left - M.right - gap * 2) / 3;
+    const blocks = hc.checks.map((c) => {
+      const parts: { lines: string[]; size: number; bold: boolean; muted: boolean }[] = [];
+      const add = (t: string, size: number, bold = false, muted = false) => {
+        doc.setFont("helvetica", bold ? "bold" : "normal"); doc.setFontSize(size);
+        parts.push({ lines: doc.splitTextToSize(t, colW), size, bold, muted });
+      };
+      add(c.question, 9, true);
+      add(`${STATUS[c.status] ?? c.status}: ${c.figure}`, 9.5, true);
+      if (c.detail) add(c.detail, 8, false, true);
+      add(c.meaning, 8, false, true);
+      const h = parts.reduce((t, p) => t + p.lines.length * p.size * 1.25 + 2, 0);
+      return { parts, h };
+    });
+    const rowH = Math.max(...blocks.map((b) => b.h), 0);
+    need(rowH + 6);
+    blocks.forEach((b, i) => {
+      let yy = y;
+      const x = M.left + i * (colW + gap);
+      for (const p of b.parts) {
+        doc.setFont("helvetica", p.bold ? "bold" : "normal"); doc.setFontSize(p.size);
+        const col = p.muted ? INK.muted : INK.text;
+        doc.setTextColor(col[0], col[1], col[2]);
+        for (const line of p.lines) { yy += p.size * 1.25; doc.text(line, x, yy - p.size * 0.25); }
+        yy += 2;
+      }
+    });
+    y += rowH + 6;
+    doc.setFont("helvetica", "normal");
+    if (hc.info.length) paragraph(hc.info.map((l) => l.text).join("  ·  "), { size: 8.5 });
     paragraph(`Figures from Xero as saved on ${fmtDate(hc.asOf)} (${hc.fyLabel}).`, { size: 7.5, colour: INK.muted });
     y += 6;
   }
