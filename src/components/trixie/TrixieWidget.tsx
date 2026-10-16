@@ -128,6 +128,7 @@ export function TrixieWidget() {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const location = useLocation();
   const getThread = useServerFn(getMyTrixieThread);
+  const navigate = useNavigate();
 
   const pathRef = useRef(location.pathname);
   pathRef.current = location.pathname;
@@ -148,13 +149,16 @@ export function TrixieWidget() {
       return;
     }
     await writeActive(thread.id);
+    const home = threadPathFor(thread.scope);
+    // A chat picked from History for another client opens on that client's page.
+    if (!threadMatchesPage(thread.scope, pathRef.current)) void navigate({ to: home });
     setLoaded({
-      scopeKey: scopeKeyOf(threadPathFor(thread.scope)),
+      scopeKey: scopeKeyOf(home),
       key: thread.id,
       threadId: thread.id,
       messages: thread.messages.map((m: TrixieStoredMessage) => ({ id: m.id, role: m.role, parts: [{ type: "text", text: m.content }], metadata: { sources: m.sources } })),
     });
-  }, [getThread]);
+  }, [getThread, navigate]);
 
   useEffect(() => {
     if (!open || loaded) return;
@@ -163,9 +167,15 @@ export function TrixieWidget() {
 
   // Moving to another client or workspace starts a fresh chat for that page.
   const currentScopeKey = scopeKeyOf(location.pathname);
+  const prevScopeRef = useRef(currentScopeKey);
+  const loadedRef = useRef(loaded);
+  loadedRef.current = loaded;
   useEffect(() => {
-    if (loaded && loaded.scopeKey !== currentScopeKey) void openThread(null);
-  }, [currentScopeKey, loaded, openThread]);
+    if (prevScopeRef.current === currentScopeKey) return;
+    prevScopeRef.current = currentScopeKey;
+    const l = loadedRef.current;
+    if (l && l.scopeKey !== currentScopeKey) void openThread(null);
+  }, [currentScopeKey, openThread]);
 
   return (
     <>
