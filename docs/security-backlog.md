@@ -1902,3 +1902,7 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - Verified: all application tests and 354 regression/security tests pass; 2,568 access proofs, zero known failures; full security gate and 18 live checks pass. Automatic compilation reports build OK (04:27:43 UTC). Linter unchanged at 196 findings (1 info, 3 anon-definer, 192 authenticated-definer).
 - OPEN: authenticated Positive Traction/Business Owner visual readback and successful MFA completion remain blocked: restored requesting-user session returns SESSION ended at /auth; no idle/AAL2 bypass attempted. security_posture() read is permission-denied to tooling. Explicit standalone tsgo and full-build commands were not run: the environment prohibits manual compilation and uses the automatic harness; do not claim them as separate passes or unconditional publish readiness.
 - Saved Positive Traction readings (16 Oct): super liability 373.92 and latest payday 2026-10-16 super 373.92. New date helper yields 2026-10-27, Due in 11 days on 16 Oct; these are saved readings, not authenticated card readback. National calendar excludes state-specific substitute ANZAC days; the card notes a state holiday can add a day.
+
+## 2026-10-16 — GST method, unfiled estimate, FY P&L
+- ADDED `set_client_gst_method` (aal2, user_can_write_client, audited); registered and in fixture. Security check passed.
+- OPEN: Business Health next-tax line, Overview tax rule and monthly report still use their previous tax inputs; move them onto `forwardTax` + corrected GST.
