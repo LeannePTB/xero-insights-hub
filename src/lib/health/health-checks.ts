@@ -240,6 +240,90 @@ export function nextAtoDueDate(cycle: Cycle, today: string): string | null {
   return cands.sort().find((d) => d >= today) ?? null;
 }
 
+export type NextTaxPayment = { due: string; amount: number | null };
+
+/**
+ * The next GST / PAYG withholding payment: earliest due date across the
+ * client's registered cycles, with the balance-sheet amount owed (null when
+ * unknown or not positive). Null when registered for neither.
+ */
+export function nextTaxPayment(gstCycle: Cycle, paygCycle: Cycle, today: string, atoOwed: number | null): NextTaxPayment | null {
+  const gstDue = gstCycle && gstCycle !== "not_registered" ? nextAtoDueDate(gstCycle, today) : null;
+  const paygDue = paygCycle && paygCycle !== "not_registered" ? nextAtoDueDate(paygCycle, today) : null;
+  const due = [gstDue, paygDue].filter((d): d is string => !!d).sort()[0] ?? null;
+  if (!due) return null;
+  return { due, amount: atoOwed !== null && atoOwed > 0 ? atoOwed : null };
+}
+
+export function nextTaxText(next: NextTaxPayment): string {
+  return next.amount !== null
+    ? `Next tax payment: ~${money(next.amount)} due ${dayLabel(next.due)}`
+    : `Next tax payment due ${dayLabel(next.due)}`;
+}
+
+/** Neutral tooltip for the Overview "Protected money %" column. */
+export function taxSetAsideTooltip(next: NextTaxPayment | null): string {
+  if (!next) return "Tax set aside";
+  return next.amount !== null
+    ? `Tax set aside · next ~${money(next.amount)} due ${dayLabel(next.due)}`
+    : `Tax set aside · next due ${dayLabel(next.due)}`;
+}
+
+export function oldDebtsText(d: DebtorSplit): string {
+  return `Old debts to review: ${money(d.old)}${d.oldestOldDue ? ` (oldest from ${monthYearLabel(d.oldestOldDue)})` : ""}`;
+}
+
+export function daysUntil(today: string, date: string): number {
+  return dayNumber(date) - dayNumber(today);
+}
+export { dayLabel };
+
+// ---------------------------------------------------------------------------
+// Overview alert rules (owner-set, 16 Oct 2026). The Overview badge and the
+// Business Health card both call these, so they can never disagree.
+// ---------------------------------------------------------------------------
+export type AlertLevel = "action" | "warn" | null;
+/** A tax payment due within this many days can raise an alert. */
+export const TAX_DUE_SOON_DAYS = 7;
+
+export type TaxAlert = {
+  level: AlertLevel;
+  reason: "past_due" | "due_soon_over_available" | "due_soon_over_cash" | null;
+  daysToDue: number | null;
+};
+
+/**
+ * Tax is money set aside, not a shortfall. Action: a tax payment is past due
+ * and still owing, or the next one is due within 7 days and is more than cash
+ * at bank + recent debtors. Warn: due within 7 days and more than cash alone.
+ */
+export function taxPaymentAlert(i: {
+  next: NextTaxPayment | null;
+  today: string;
+  cashAtBank: number;
+  recentDebtors: number;
+  pastDueOwing: number;
+}): TaxAlert {
+  if (i.pastDueOwing > 0) return { level: "action", reason: "past_due", daysToDue: null };
+  if (!i.next || i.next.amount === null) return { level: null, reason: null, daysToDue: null };
+  const days = daysUntil(i.today, i.next.due);
+  if (days < 0 || days > TAX_DUE_SOON_DAYS) return { level: null, reason: null, daysToDue: days };
+  if (i.next.amount > i.cashAtBank + Math.max(0, i.recentDebtors)) return { level: "action", reason: "due_soon_over_available", daysToDue: days };
+  if (i.next.amount > i.cashAtBank) return { level: "warn", reason: "due_soon_over_cash", daysToDue: days };
+  return { level: null, reason: null, daysToDue: days };
+}
+
+/** Same thresholds as "Customers paying on time?": red → Action, watch → Warn. */
+export function debtorAlert(late: number, recent: number): AlertLevel {
+  const s = payingOnTimeStatus(late, recent);
+  return s === "red" ? "action" : s === "watch" ? "warn" : null;
+}
+
+/** Late share of recent invoices, as a percentage; null when nothing recent. */
+export function lateSharePct(d: DebtorSplit): number | null {
+  return d.recent > 0 ? (d.late / d.recent) * 100 : null;
+}
+
 // ---------------------------------------------------------------------------
 // The one builder
 // ---------------------------------------------------------------------------
@@ -325,19 +409,10 @@ export function computeHealthChecks(input: HealthInputs): HealthChecks {
 
   // Info lines (never counted)
   const info: HealthInfoLine[] = [];
-  const gstDue = input.gstCycle && input.gstCycle !== "not_registered" ? nextAtoDueDate(input.gstCycle, input.today) : null;
-  const paygDue = input.paygCycle && input.paygCycle !== "not_registered" ? nextAtoDueDate(input.paygCycle, input.today) : null;
-  const nextDue = [gstDue, paygDue].filter((d): d is string => !!d).sort()[0] ?? null;
-  if (nextDue) {
-    info.push({
-      key: "next_tax",
-      text: input.atoOwed !== null && input.atoOwed > 0
-        ? `Next tax payment: ~${money(input.atoOwed)} due ${dayLabel(nextDue)}`
-        : `Next tax payment due ${dayLabel(nextDue)}`,
-    });
-  }
+  const next = nextTaxPayment(input.gstCycle, input.paygCycle, input.today, input.atoOwed);
+  if (next) info.push({ key: "next_tax", text: nextTaxText(next) });
   if (haveDebtors && debtors.old > 0) {
-    info.push({ key: "old_debts", text: `Old debts to review: ${money(debtors.old)}${debtors.oldestOldDue ? ` (oldest from ${monthYearLabel(debtors.oldestOldDue)})` : ""}` });
+    info.push({ key: "old_debts", text: oldDebtsText(debtors) });
   }
 
   const counted = checks.filter((c) => c.status !== "na").length;
