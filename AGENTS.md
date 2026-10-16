@@ -18,7 +18,7 @@
 - Print and email rendering use server-safe presentation tokens mirroring the global semantic palette, because CSS variables are unavailable in PDFs and email clients.
 - Official web colours are represented by OKLCH semantic tokens; approved logo crops are bundled circular TA marks, because artwork must retain its proportions and the colour sheet's printed conversions are not authoritative.
 - Bank-reconciliation warnings use only per-account dates, the cash account overlay and the recent-line window in `src/lib/overview/bank-reconciliation.ts`, never file-wide oldest dates. Missing data shows nothing.
-- Protected money % is display-only via `src/lib/health/protected-money-share.ts`; tax and debtor alerts come only from the shared rule functions in `src/lib/health/health-checks.ts` (used by the Overview verdict and Business Health), so the two can never disagree.
+- Protected money % is display-only (`protected-money-share.ts`); tax/debtor alerts come only from `health-checks.ts` rules shared by Overview and Business Health, so they never disagree.
 - Viewer is one read-only login type whose scope (All clients via firm_viewer_access, Selected via client_access external_adviser rows) is changed only through `set_viewer_scope`, because the two storage paths must switch atomically without a new predicate.
 - Login labels use `LOGIN_TYPE_LABEL`; DB keys stay unchanged, preserving access.
 - Auth/public logos share display-only rendering and official fallback; auth logic stays route-owned.
