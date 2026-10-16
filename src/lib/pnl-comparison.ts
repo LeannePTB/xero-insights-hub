@@ -13,3 +13,11 @@ export function paydayNote(current: number | null, prior: number | null): string
   const n = (k: number) => `${k} payday${k === 1 ? "" : "s"}`;
   return `${n(current)} this period vs ${prior} in the comparison — wages and super aren't like for like.`;
 }
+
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** Short range label: "1–16 Oct", or "28 Sep–3 Oct" across months. */
+export function shortRange(from: Date, to: Date): string {
+  return from.getMonth() === to.getMonth() && from.getFullYear() === to.getFullYear()
+    ? `${from.getDate()}–${to.getDate()} ${MON[to.getMonth()]}`
+    : `${from.getDate()} ${MON[from.getMonth()]}–${to.getDate()} ${MON[to.getMonth()]}`;
+}

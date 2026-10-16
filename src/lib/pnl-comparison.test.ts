@@ -21,3 +21,10 @@ describe("P&L comparison range", () => {
     expect(paydayNote(3, null)).toBeNull();
   });
 });
+import { shortRange } from "./pnl-comparison";
+describe("P&L comparison heading", () => {
+  it("labels ranges for the sub-heading and tiles", () => {
+    expect(shortRange(d("2026-10-01"), d("2026-10-16"))).toBe("1–16 Oct");
+    expect(shortRange(d("2026-09-28"), d("2026-10-03"))).toBe("28 Sep–3 Oct");
+  });
+});

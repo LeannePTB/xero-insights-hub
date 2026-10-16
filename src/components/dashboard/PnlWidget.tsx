@@ -1,12 +1,12 @@
 import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
 import { staggered, xeroQueryRetry } from "@/lib/xero/live-load";
 import { useEffect, useRef, useState } from "react";
-import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfitAndLoss, getPaydayCounts } from "@/lib/xero/reports.functions";
-import { sameDaysPreviousMonth, paydayNote } from "@/lib/pnl-comparison";
-import { Loader2, TrendingUp, TrendingDown, Minus, RefreshCw, LineChart } from "lucide-react";
+import { sameDaysPreviousMonth, paydayNote, shortRange } from "@/lib/pnl-comparison";
+import { PnlKpi as Kpi } from "./PnlKpi";
+import { Loader2, RefreshCw, LineChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StandardHistoryChart } from '@/components/charts/StandardHistoryChart';
 
@@ -19,7 +19,7 @@ import {
   toISO,
 } from "@/components/dashboard/DateRangeControls";
 import { CardFreshness } from "@/components/dashboard/CardFreshness";
-import { useTenantCurrency, formatMoney } from "@/components/dashboard/useTenantCurrency";
+import { useTenantCurrency } from "@/components/dashboard/useTenantCurrency";
 
 
 
@@ -52,9 +52,8 @@ export function PnlWidget({
   const prior = sameDaysPreviousMonth(fromDate, toDate);
   const priorFromStr = toISO(prior.from);
   const priorToStr = toISO(prior.to);
-  const priorLabel = prior.from.getMonth() === prior.to.getMonth()
-    ? `${format(prior.from, "d")}–${format(prior.to, "d MMM yyyy")}`
-    : `${format(prior.from, "d MMM")}–${format(prior.to, "d MMM yyyy")}`;
+  const priorLabel = shortRange(prior.from, prior.to);
+  const currentLabel = shortRange(fromDate, toDate);
   const fetchPaydays = useServerFn(getPaydayCounts);
   const paydaysQ = useQuery({
     queryKey: ["pnl-paydays", tenantId, fromStr, toStr, priorFromStr, priorToStr],
@@ -104,9 +103,8 @@ export function PnlWidget({
         <XeroErrorNotice error={error} onRetry={() => runQuery()} isRetrying={isFetching} />
       ) : current ? (
         <>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Compared with {priorLabel}
-          </p>
+          <h3 className="mt-4 text-sm font-normal text-foreground">How {currentLabel} compares with {priorLabel}</h3>
+          {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}
           <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Kpi label="Income" value={current.totalIncome} previous={priorData?.totalIncome ?? 0} higherIsBetter currency={currency} priorLabel={priorLabel} />
             <Kpi label="Cost of Sales" value={current.totalCostOfSales} previous={priorData?.totalCostOfSales ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
@@ -114,57 +112,9 @@ export function PnlWidget({
             <Kpi label="Expenses" value={current.totalExpenses} previous={priorData?.totalExpenses ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
             <Kpi label="Net Profit" value={current.netProfit} previous={priorData?.netProfit ?? 0} higherIsBetter currency={currency} priorLabel={priorLabel} />
           </div>
-          {note && <p className="mt-2 text-xs text-muted-foreground">{note}</p>}
         </>
       ) : null}
     </div>
   );
 }
 
-function Kpi({
-  label,
-  value,
-  previous,
-  higherIsBetter,
-  currency = "AUD",
-  priorLabel,
-}: {
-  label: string;
-  value: number;
-  previous: number;
-  higherIsBetter: boolean;
-  currency?: string;
-  priorLabel?: string;
-}) {
-  const fmt = (n: number) => formatMoney(n, currency);
-  const delta = value - previous;
-  const pct = previous !== 0 ? (delta / Math.abs(previous)) * 100 : null;
-  const up = delta > 0;
-  const flat = delta === 0;
-  const good = flat ? true : up ? higherIsBetter : !higherIsBetter;
-  const Icon = flat ? Minus : up ? TrendingUp : TrendingDown;
-  const tone = flat ? "text-muted-foreground" : good ? "text-emerald-600" : "text-rose-600";
-  return (
-    <div className="rounded-lg border border-border/60 bg-background p-3">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-1 text-lg font-semibold tracking-normal tabular-nums">{fmt(value)}</p>
-      <div className={`mt-1 flex items-center gap-1 text-xs font-medium ${tone}`}>
-        <Icon className="h-3 w-3 shrink-0" />
-        <span className="tabular-nums">
-          {flat ? "No change" : `${up ? "+" : ""}${fmt(delta)}`}
-          {pct !== null && !flat && (
-            <span className="ml-1 text-muted-foreground">
-              ({up ? "+" : ""}{pct.toFixed(1)}%)
-            </span>
-          )}
-        </span>
-      </div>
-      <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
-        {priorLabel ? `${priorLabel}: ` : "Prior: "}
-        {fmt(previous)}
-      </p>
-    </div>
-  );
-}
