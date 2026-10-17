@@ -1,7 +1,6 @@
 - Overview uses stored snapshots, `evaluateClient` status and caller-scoped `overview_clients()`; never duplicate access rules in TypeScript.
 - Sidebar spacer never shrinks; inset: flex-1 min-w-0, not w-full (clipping).
 - AppShell owns the sole menu header; AppHeader registers actions there and renders standalone only outside, avoiding duplicate branding/lost actions.
-- Client income tax instalments use one period-history table and audited caller-scoped save; history and organisation-team-only editing stay explicit.
 - AppShell navigation uses `src/lib/nav/sidebar-nav.ts`, URL-selected (/system, /firms/:id, /clients/:id) and gated only by getMyContext signals; it stays presentation-only and database-movable.
 - Branding/website use narrow anon display readers and separate audited AAL2 canonical-admin saves on the grant-free branding table. Public sales visuals are synthetic; media uses bounded admin-only storage INSERT, never bypassing blocked public buckets.
 
@@ -30,10 +29,5 @@
 - Report sections come from `card_catalogue.report_sections` via `client_report_sections`, frozen into new drafts' `includedSections`: one list, final/sent untouched.
 - Read nested `AGENTS.md` before edits.
 - WIP early access (`org_early_access`) resolves only inside `client_cards_v2` for active org members, keeping one visibility path.
-
 - Period video uses separate storage, caller-scoped audited RPCs and a draft-only attachment trigger; the unchanged notes builder preserves generation snapshots.
 - Health uses the DB visibility/release rule; tax bill labels share `lodgedAtoBills` through a stored-only, card-gated reader (no access grant).
-- Modules use `card_modules.sort_order`. Tax tiles use pure `TaxObligationsBody` with unchanged shared figures.
-- Wages split uses only the Cost classification Wages marker via pure `src/lib/wages-split.ts`; it is presentation only, so gross/net profit and break-even maths never change.
-- Lodged bill/instalment status labels come only from `billStatus` (organisation Perth day) in `tax-obligations.ts`, so card, Overview, report and Trixie never disagree.
-- Income tax instalment setting/editing lives in Client settings → Tax & reporting through audited caller-scoped functions; the dashboard tile is read-only.
