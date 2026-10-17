@@ -130,10 +130,12 @@ describe('Notes retired', () => {
   it('nobody signed in can write notes any more', async () => {
     await expect(asUser(owner, () => db.query(`insert into public.client_notes(client_id, body) values($1,'x')`,[client]))).rejects.toThrow();
   });
-  it('the Notes card is not in the catalogue', () => {
-    const cat = readFileSync('tests/fixtures/card-catalogue.sql','utf8');
-    const line = cat.split('\n').find((l) => l.includes("'notes'")) ?? '';
-    expect(line === '' || line.includes("'retired'")).toBe(true);
+  it('the Notes card is not in the catalogue lists', async () => {
+    const { ALL_WIDGETS, DEFAULT_CARD_ORDER } = await import('../src/lib/tiers');
+    const { STANDARD_ORDER } = await import('../src/components/dashboard/dashboard-card-layout');
+    expect(ALL_WIDGETS).not.toContain('notes');
+    expect(DEFAULT_CARD_ORDER).not.toContain('notes');
+    expect(STANDARD_ORDER).not.toContain('notes');
   });
 });
 
