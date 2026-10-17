@@ -11,7 +11,7 @@ import { getGstReconciliation } from "@/lib/xero/gst.functions";
 import { getPaygWithholdingPosition } from "@/lib/xero/reports.functions";
 import { listIncomeTaxInstalments } from "@/lib/income-tax-instalments.functions";
 import { completedGstPeriod, type GstCycle } from "./recon-periods";
-import { latestCompletedPaygMonth, netGstAmount, currentGstPeriod, forwardTax, instalmentDueDate, organisationToday } from "./tax-obligations";
+import { latestCompletedPaygMonth, netGstAmount, currentGstPeriod, forwardTax, pickCurrentInstalment, organisationToday } from "./tax-obligations";
 import { getLodgedTaxBills } from "@/lib/xero/lodged-tax.functions";
 import { formatMoneyExact, useTenantCurrency } from "./useTenantCurrency";
 import { TaxObligationsBody } from "./TaxObligationsBody";
@@ -89,11 +89,11 @@ export function TaxObligationsWidget({
     ? Math.round(paygQuery.data.months.filter((m) => m.month >= runPeriod.from && m.month <= runPeriod.asAt).reduce((t, m) => t + m.withheld, 0) * 100) / 100
     : null;
   const frequency = instalmentsQuery.data?.frequency ?? null;
-  const latestInstalment = frequency === "not_required" ? null : instalmentsQuery.data?.instalments[0] ?? null;
+  const latestInstalment = pickCurrentInstalment(instalmentsQuery.data?.instalments ?? [], frequency, todayIso);
   const fwd = forwardTax({
     bills: billsQuery.data?.bills ?? [], today: todayIso, period: runPeriod,
     gst: gstCycle === "not_registered" ? 0 : run ? (run.statementNet ?? netGstAmount(run)) : null, payg: runPayg, paygRegistered,
-    instalment: latestInstalment ? { amount: latestInstalment.amount, due: instalmentDueDate(frequency, latestInstalment.periodEnd) } : null,
+    instalment: latestInstalment ? { amount: latestInstalment.amount, due: latestInstalment.due } : null,
     instalmentSetting: frequency ?? "unset",
   });
   const accountGap = run && run.closingBalance !== null && run.statementNet !== null ? Math.round((run.closingBalance - run.statementNet) * 100) / 100 : null;
