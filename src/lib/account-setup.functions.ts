@@ -11,8 +11,8 @@ const scope = z.object({ clientId: z.string().uuid(), tenantId: z.string().min(1
 async function assertCanEdit(supabase: any, userId: string, clientId: string, tenantId: string) {
   const { data: ok, error } = await supabase.rpc("user_can_write_client", { _user_id: userId, _client_id: clientId });
   if (error || ok !== true) throw new Error("Account setup is available to the organisation team only.");
-  const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
-  await assertTenantBelongsToClient(supabase, clientId, tenantId);
+  const { error: ownErr } = await supabase.rpc("assert_tenant_belongs_to_client", { _client_id: clientId, _tenant_id: tenantId });
+  if (ownErr) throw new Error("Accounts unavailable.");
 }
 
 /** Account names with posted P&L amounts in the stored YTD / prior-year / recent-month snapshots. */

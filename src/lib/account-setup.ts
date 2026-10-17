@@ -23,7 +23,7 @@ export type ChartAccount = {
 };
 
 const up = (s?: string | null) => String(s ?? "").trim().toUpperCase();
-const PAYROLL_COST = /\b(wage|wages|salar(y|ies)|superannuation|super\b|workers'? ?comp|workcover|payroll tax|payroll)\b/i;
+const PAYROLL_COST = /\b(wage|wages|salar(y|ies)|superannuation|super\b|workers'? ?comp\w*|workcover|payroll tax|payroll)\b/i;
 const TAX_WORDS = /\b(gst|bas|ato|payg|withholding|super|superannuation|integrated|ica|tax)\b/i;
 const TAX_EXTRA = /\b(suspense|clearing)\b/i;
 
