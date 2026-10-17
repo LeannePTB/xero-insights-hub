@@ -30,7 +30,7 @@ describe('hire maths', () => {
     expect(hireMonthlyCost({ pay: 'salary', salary: 78000, superPct: 12, onCostPct: 0 })).toBe(7280);
   });
   it('hourly: A$35 × 38h × 52 / 12 + 12% super + 3% on-cost', () => {
-    expect(hireMonthlyCost({ pay: 'hourly', hourlyRate: 35, hoursPerWeek: 38, superPct: 12, onCostPct: 3 })).toBe(6626.83);
+    expect(hireMonthlyCost({ pay: 'hourly', hourlyRate: 35, hoursPerWeek: 38, superPct: 12, onCostPct: 3 })).toBe(6627.83);
   });
   it('a hire from the second month adds to costs only from then, and break-even reads it', () => {
     const base = { revenue: 20000, revenueByCustomer: {}, costs: { fixed: 8000, variable: 2000, cogs: 4000 }, accounts: {} };
