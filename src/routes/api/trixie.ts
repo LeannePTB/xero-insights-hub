@@ -122,15 +122,17 @@ export const Route = createFileRoute("/api/trixie")({
           const question = lastUserText(messages);
           const knowledge = question ? await readKnowledge(c, question, 3).catch(() => ({ articles: [], sources: [] })) : { articles: [], sources: [] };
           // Packages/modules come from the same database catalogue as the app.
-          const [cm, cc] = await Promise.all([
+          const [cm, cc, contact] = await Promise.all([
             (c.supabase as any).from("card_modules").select("module_key, label, description, sort_order").order("sort_order"),
             (c.supabase as any).from("card_catalogue").select("card_key, package, module_key, label, description, sort_order, status").order("sort_order"),
+            (c.supabase as any).rpc("get_platform_contact"),
           ]);
           const packagesText = cm.error || cc.error ? "" : catalogueGuideText(offeredCatalogue(mapCatalogue(cm.data, cc.data)));
           const instructions = trixieInstructions(c, {
             guide: [trixieGuide(c.audience), packagesText].filter(Boolean).join("\n"),
             pages: pageMapText(trixiePageMap({ mode: c.mode, audience: c.audience, firmId: c.firmId, clientId: c.clientId })),
             articles: knowledge.articles,
+            contactEmail: (!contact.error && ((contact.data ?? []) as any[])[0]?.main_contact_email) || undefined,
           });
           // Per-question cost guard, set in System Admin → Trixie.
           const { data: guard } = await (c.supabase as any).rpc("trixie_cost_guard");
