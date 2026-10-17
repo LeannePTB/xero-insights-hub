@@ -83,11 +83,8 @@ export function project(baseline: Baseline, adjustments: Adjustment[], months: s
       if (j + whole === i) total += scenRevenue[j]! * (1 - frac);
       if (j + whole + 1 === i) total += scenRevenue[j]! * frac;
     }
-    // Months before the projection were collected on the old terms.
     return total;
   });
-  // Delay applies to months already in the list; revenue earned before the
-  // first delayed month arrives as normal.
   let bCash = openingCash, sCash = openingCash;
   return months.map((m, i) => {
     let oneOff = 0;
@@ -98,8 +95,7 @@ export function project(baseline: Baseline, adjustments: Adjustment[], months: s
         else if (m > a.month && a.repayment) oneOff -= a.repayment;
       }
     }
-    const firstSlow = slow.length ? slow.map((s) => s.start).sort()[0]! : null;
-    const sIn = firstSlow && m >= firstSlow ? cashIn[i]! + (months.slice(0, i + 1).every((x) => x >= firstSlow) ? 0 : 0) : scenRevenue[i]!;
+    const sIn = slow.length ? cashIn[i]! : scenRevenue[i]!;
     const bMove = baseline.revenue - baseCosts;
     const sMove = sIn - scenCosts[i]! + oneOff;
     if (bCash !== null) bCash += bMove;
