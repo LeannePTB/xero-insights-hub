@@ -123,6 +123,7 @@ const CONTEXT: Record<Role, Ctx> = {
 const q = (v: string) => `'${v}'`;
 const TARGET: Record<string, Record<string, string>> = {
   client_report_pending_videos: {client_id:q(CLIENT_A),period_end:q("2026-09-30"),video_url:q("https://www.loom.com/share/1234567890abcdef")},
+  client_cashflow_scenarios: {id:q('c5000001-1111-4111-8111-111111111111'),client_id:q(CLIENT_A),name:q('Scenario A'),payload:"'{}'::jsonb",shared_with_client:'false',created_by:q(U.ownerA)},
   upgrade_enquiries: {id:q('e0000002-1111-4111-8111-111111111111'),submitter_id:q(U.ownerA),firm_id:q(ORG_A),name:q('Enquiry A'),email:q('a@example.invalid'),organisation_name:q('Org A'),module_keys:"'{}'::text[]",client_ids:"'{}'::uuid[]",message:q('Hello'),status:q('new'),submission_key:q('f0000000-0000-0000-0000-000000000000'),created_at:'now()'},
   firms: { id: q(ORG_A), name: q("Org A"), owner_user_id: q(U.ownerA) },
   firm_members: {

@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **3038**. Known failures: **0**.
+Rows: **3115**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -254,6 +254,10 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | read | ALLOW | pglite | AAL2 existing client-write rule |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 | report_video:read | execute | ALLOW | pglite | Owner 14 Oct: AAL2 me_can_manage_client, per-client/period video |  |
 | report_video:pending | execute | ALLOW | pglite | Owner 14 Oct: AAL2 me_can_manage_client, per-client/period video |  |
 | report_video:draft | execute | ALLOW | pglite | Owner 14 Oct: AAL2 me_can_manage_client, per-client/period video |  |
@@ -539,6 +543,10 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | read | DENY | pglite | Unshared scenarios: no Business Owner, Viewer, support or bare admin reads; Viewers never, even when shared |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 | report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
@@ -775,6 +783,10 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | read | DENY | pglite | Unshared scenarios: no Business Owner, Viewer, support or bare admin reads; Viewers never, even when shared |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 | report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
@@ -957,6 +969,10 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | read | DENY | pglite | Unshared scenarios: no Business Owner, Viewer, support or bare admin reads; Viewers never, even when shared |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 
 ## Support-grant holder, grant revoked
 
@@ -1111,6 +1127,10 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | read | DENY | pglite | Unshared scenarios: no Business Owner, Viewer, support or bare admin reads; Viewers never, even when shared |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 
 ## Anonymous (no session)
 
@@ -1286,6 +1306,10 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | read | DENY | pglite | Unshared scenarios: no Business Owner, Viewer, support or bare admin reads; Viewers never, even when shared |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 | report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
@@ -1519,6 +1543,10 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | read | DENY | pglite | Unshared scenarios: no Business Owner, Viewer, support or bare admin reads; Viewers never, even when shared |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 | report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
@@ -1773,6 +1801,10 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | read | ALLOW | pglite | AAL2 existing client-write rule |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 | report_video:read | execute | ALLOW | pglite | Owner 14 Oct: AAL2 me_can_manage_client, per-client/period video |  |
 | report_video:pending | execute | ALLOW | pglite | Owner 14 Oct: AAL2 me_can_manage_client, per-client/period video |  |
 | report_video:draft | execute | ALLOW | pglite | Owner 14 Oct: AAL2 me_can_manage_client, per-client/period video |  |
@@ -2018,6 +2050,10 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | read | DENY | pglite | Unshared scenarios: no Business Owner, Viewer, support or bare admin reads; Viewers never, even when shared |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 | report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
@@ -2196,6 +2232,10 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | read | DENY | pglite | Unshared scenarios: no Business Owner, Viewer, support or bare admin reads; Viewers never, even when shared |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 | report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
@@ -2327,6 +2367,10 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | read | DENY | pglite | Unshared scenarios: no Business Owner, Viewer, support or bare admin reads; Viewers never, even when shared |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 | report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
@@ -2429,6 +2473,10 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | read | DENY | pglite | Unshared scenarios: no Business Owner, Viewer, support or bare admin reads; Viewers never, even when shared |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 | report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
@@ -2628,6 +2676,10 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | read | DENY | pglite | Unshared scenarios: no Business Owner, Viewer, support or bare admin reads; Viewers never, even when shared |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 | report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
@@ -2803,6 +2855,10 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | read | DENY | pglite | Unshared scenarios: no Business Owner, Viewer, support or bare admin reads; Viewers never, even when shared |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 | report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
@@ -2967,6 +3023,10 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | read | DENY | pglite | Unshared scenarios: no Business Owner, Viewer, support or bare admin reads; Viewers never, even when shared |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 | report_video:read | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:pending | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
 | report_video:draft | execute | DENY | pglite | PK 1–6: client IDs filter only; existing manager rule, no role bypass |  |
@@ -3010,6 +3070,10 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | read | DENY | pglite | Unshared scenarios: no Business Owner, Viewer, support or bare admin reads; Viewers never, even when shared |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 | client_notes | read | DENY | pglite | PK 2 — the aal2 gate requires activity inside the 30 minute window |  |
 | assert_aal2() with an idle session | execute | DENY | pglite | PK 2 — raises SESSION_IDLE before any MFA answer |  |
 | touch_session_activity() | execute | DENY | pglite | PK 2 — an idle session cannot revive itself: the aal2 assertion fails first |  |
@@ -3046,6 +3110,9 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 | client_notes | read | ALLOW | pglite | PK 2 — a brand-new session with no activity row is active from its start time |  |
 | assert_aal2() immediately after MFA (no activity row yet) | execute | ALLOW | pglite | PK 2 — completing MFA is never refused as idle |  |
 | touch_session_activity() | execute | ALLOW | pglite | PK 2 — the first activity write of a new session succeeds |  |
@@ -3080,6 +3147,9 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 | client_notes | read | ALLOW | pglite | PK 2 — recent recorded activity keeps a long-lived session active, whatever its age |  |
 | assert_aal2() after 90 minutes of continuous use | execute | ALLOW | pglite | PK 2 — an actively used session is never refused as idle |  |
 | touch_session_activity() | execute | ALLOW | pglite | PK 2 — an actively used session keeps recording its own activity, caller-scoped |  |
@@ -3115,6 +3185,10 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | read | DENY | pglite | Unshared scenarios: no Business Owner, Viewer, support or bare admin reads; Viewers never, even when shared |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 
 ## Live smoke-suite test account (confined to ZZ Security Test Org, banned outside a run)
 
@@ -3146,6 +3220,9 @@ None.
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
+| client_cashflow_scenarios | insert | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | update | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
+| client_cashflow_scenarios | delete | DENY | pglite | Audited caller-scoped RPCs only; no direct writes |  |
 | membership of a real organisation | insert | DENY | live | Live suite containment — app_private.confine_security_test_accounts() refuses even service_role |  |
 | a platform role (user_roles) | insert | DENY | live | Live suite containment — app_private.confine_security_test_accounts() refuses even service_role |  |
 | practice_team membership | insert | DENY | live | Live suite containment — app_private.confine_security_test_accounts() refuses even service_role |  |
