@@ -12,7 +12,7 @@ const GENERIC = "This scenario could not be saved.";
 export type SavedScenario = {
   id: string;
   name: string;
-  payload: unknown;
+  payload: Record<string, any>;
   shared_with_client: boolean;
   report_period_end: string | null;
   updated_at: string;
