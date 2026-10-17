@@ -360,6 +360,12 @@
     {
         "args": [
         ],
+        "name": "attach_report_scenario",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
         "name": "audit_table_change",
         "required": 0
     },
@@ -606,6 +612,13 @@
         ],
         "name": "delete_all_my_trixie_threads",
         "required": 0
+    },
+    {
+        "args": [
+            "_id"
+        ],
+        "name": "delete_cashflow_scenario",
+        "required": 1
     },
     {
         "args": [
@@ -1255,6 +1268,17 @@
     {
         "args": [
             "_client_id",
+            "_id",
+            "_name",
+            "_payload",
+            "_report_table"
+        ],
+        "name": "save_cashflow_scenario",
+        "required": 5
+    },
+    {
+        "args": [
+            "_client_id",
             "_tenant_id",
             "_changes"
         ],
@@ -1417,6 +1441,22 @@
             "_reason"
         ],
         "name": "set_all_client_tiers",
+        "required": 2
+    },
+    {
+        "args": [
+            "_id",
+            "_period_end"
+        ],
+        "name": "set_cashflow_scenario_report",
+        "required": 2
+    },
+    {
+        "args": [
+            "_id",
+            "_shared"
+        ],
+        "name": "set_cashflow_scenario_shared",
         "required": 2
     },
     {

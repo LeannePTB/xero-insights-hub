@@ -76,6 +76,7 @@ create table public.client_access (id uuid, client_id uuid, user_id uuid, tier t
 create table public.client_account_setup (id uuid, client_id uuid, tenant_id text, account_id uuid, setup_group text, value text, wages_variable boolean, confirmed boolean, account_name text, match_status text, updated_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_bank_account_classifications (client_id uuid, tenant_id text, account_id uuid, classification text, updated_by uuid, updated_at timestamp with time zone);
 create table public.client_cards (client_id uuid, cards text[], created_at timestamp with time zone, updated_at timestamp with time zone);
+create table public.client_cashflow_scenarios (id uuid, client_id uuid, name text, payload jsonb, report_table jsonb, report_period_end date, shared_with_client boolean, created_by uuid, created_at timestamp with time zone, updated_by uuid, updated_at timestamp with time zone);
 create table public.client_cost_classifications (id uuid, client_id uuid, tenant_id text, account_name text, classification text, created_at timestamp with time zone, updated_at timestamp with time zone, is_wages boolean);
 create table public.client_figure_history (id uuid, client_id uuid, firm_id uuid, tenant_id text, month_end date, cash numeric, net_profit numeric, source text, fetched_at timestamp with time zone, income numeric, expenses numeric);
 create table public.client_income_tax_instalments (id uuid, client_id uuid, tenant_id text, period_start date, period_end date, amount numeric(14,2), created_by uuid, updated_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
@@ -83,7 +84,7 @@ create table public.client_key_figures (id uuid, client_id uuid, firm_id uuid, t
 create table public.client_notes (id uuid, client_id uuid, author_id uuid, body text, created_at timestamp with time zone, updated_at timestamp with time zone, include_in_report boolean);
 create table public.client_rental_properties (id uuid, client_id uuid, tenant_id text, name text, match_type text, match_ids text[], expected_amount numeric(14,2), frequency text, lease_start date, created_by uuid, updated_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_report_pending_videos (client_id uuid, period_end date, video_url text, video_heading text, video_message text, video_set_by uuid, video_set_at timestamp with time zone);
-create table public.client_reports (id uuid, client_id uuid, firm_id uuid, tenant_id text, report_key text, period_end date, title text, payload jsonb, payload_version integer, pdf_path text, status text, version integer, complete boolean, generated_by uuid, generated_at timestamp with time zone, finalised_at timestamp with time zone, sent_at timestamp with time zone, sent_to text[], video_url text, video_heading text, video_message text, video_set_by uuid, video_set_at timestamp with time zone);
+create table public.client_reports (id uuid, client_id uuid, firm_id uuid, tenant_id text, report_key text, period_end date, title text, payload jsonb, payload_version integer, pdf_path text, status text, version integer, complete boolean, generated_by uuid, generated_at timestamp with time zone, finalised_at timestamp with time zone, sent_at timestamp with time zone, sent_to text[], video_url text, video_heading text, video_message text, video_set_by uuid, video_set_at timestamp with time zone, scenario_snapshot jsonb);
 create table public.client_statutory_accounts (id uuid, client_id uuid, tenant_id text, account_name text, category statutory_category, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_subscriptions (id uuid, client_id uuid, stripe_customer_id text, stripe_subscription_id text, plan_name text, subscription_type client_subscription_type, status client_subscription_status, current_period_end timestamp with time zone, trial_end timestamp with time zone, past_due_since timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone, dashboard_tier dashboard_tier, promotion_code text, coupon_id text, comp_reason text, comped_by uuid, comped_at timestamp with time zone);
 create table public.client_true_breakeven_inputs (id uuid, client_id uuid, tenant_id text, loan_principal numeric, credit_card_interest numeric, owner_drawings numeric, tax_payments numeric, ato_payment_plan numeric, equipment_finance numeric, other numeric, notes text, created_at timestamp with time zone, updated_at timestamp with time zone);
@@ -4161,6 +4162,18 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION app_private.is_client_business_owner(_user_id uuid, _client_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select case when auth.uid() is not null and _user_id is distinct from auth.uid() then false else (
+    select exists (select 1 from public.client_access ca
+      where ca.user_id = _user_id and ca.client_id = _client_id and ca.relationship = 'business_owner')
+  ) end
+$function$
+;
 CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -4306,6 +4319,7 @@ alter table public.client_access enable row level security;
 alter table public.client_account_setup enable row level security;
 alter table public.client_bank_account_classifications enable row level security;
 alter table public.client_cards enable row level security;
+alter table public.client_cashflow_scenarios enable row level security;
 alter table public.client_cost_classifications enable row level security;
 alter table public.client_figure_history enable row level security;
 alter table public.client_income_tax_instalments enable row level security;
@@ -4484,6 +4498,14 @@ grant SELECT on table public.client_cards to service_role;
 grant TRIGGER on table public.client_cards to service_role;
 grant TRUNCATE on table public.client_cards to service_role;
 grant UPDATE on table public.client_cards to service_role;
+grant SELECT on table public.client_cashflow_scenarios to authenticated;
+grant DELETE on table public.client_cashflow_scenarios to service_role;
+grant INSERT on table public.client_cashflow_scenarios to service_role;
+grant REFERENCES on table public.client_cashflow_scenarios to service_role;
+grant SELECT on table public.client_cashflow_scenarios to service_role;
+grant TRIGGER on table public.client_cashflow_scenarios to service_role;
+grant TRUNCATE on table public.client_cashflow_scenarios to service_role;
+grant UPDATE on table public.client_cashflow_scenarios to service_role;
 grant SELECT on table public.client_cost_classifications to authenticated;
 grant DELETE on table public.client_cost_classifications to service_role;
 grant INSERT on table public.client_cost_classifications to service_role;
@@ -5233,6 +5255,9 @@ create policy client_bank_classifications_read on public.client_bank_account_cla
 create policy mfa_aal2_required on public.client_bank_account_classifications as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "client cards readable by client read access" on public.client_cards as permissive for select to authenticated using ((app_private.is_aal2() AND app_private.user_can_read_client(auth.uid(), client_id)));
 create policy mfa_aal2_required on public.client_cards as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "Business Owners read shared cashflow scenarios" on public.client_cashflow_scenarios as permissive for select to authenticated using ((shared_with_client AND app_private.is_client_business_owner(auth.uid(), client_id)));
+create policy "Managers read cashflow scenarios" on public.client_cashflow_scenarios as permissive for select to authenticated using (app_private.user_can_write_client(auth.uid(), client_id));
+create policy mfa_aal2_required on public.client_cashflow_scenarios as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "Manage cost classifications by firm (delete)" on public.client_cost_classifications as permissive for delete to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
   WHERE ((c.id = client_cost_classifications.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
@@ -5647,4 +5672,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: 36f89beb90c0928cc01ded55f88817e9652d507d32093a1a55cd08aab2df3aa5
+-- catalogue-fingerprint: e2bb3117fa995b78fb33b58c1ca36d0b8bc8aa6e9979451bf2c3d2e21469809b
