@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { getSuperannuationPosition } from "@/lib/xero/reports.functions";
 import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
 import { useTenantCurrency, formatMoneyExact } from "@/components/dashboard/useTenantCurrency";
+import { billStatus, organisationToday } from "./tax-obligations";
+import { TONE, PILL_BASE, billTone } from "./status-tone";
 import { paydaySuperDueDate, paydaySuperFlag } from "@/lib/payday-super";
 
 /**
@@ -107,7 +109,7 @@ export function SuperannuationWidget({
                   return <div key={payday} className="grid grid-cols-2 gap-x-3 gap-y-1 py-3 text-sm sm:grid-cols-[1fr_1fr_1.4fr]">
                     <span><span className="text-muted-foreground sm:hidden">Payday </span>{format(new Date(`${payday}T00:00:00`), "d MMM yyyy")}</span>
                     <span className="tabular-nums">{fmt(amount)}</span>
-                    <span><span className="text-muted-foreground sm:hidden">Due </span>{format(new Date(`${due}T00:00:00`), "d MMM yyyy")}{flag && <span className={`ml-2 inline-flex rounded px-1.5 py-0.5 text-xs font-medium ${flag === "Overdue" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>{flag}</span>}<span className="block text-xs text-muted-foreground">7 business days after payday</span></span>
+                    <span><span className="text-muted-foreground sm:hidden">Due </span>{format(new Date(`${due}T00:00:00`), "d MMM yyyy")}{flag && <span className={`ml-2 inline-flex rounded px-1.5 py-0.5 text-xs font-medium ${TONE[flag === "Overdue" ? "red" : "watch"].pill} border`}>{flag}</span>}<span className="block text-xs text-muted-foreground">7 business days after payday</span></span>
                   </div>;
                 })}
                 <p className="pt-2 text-xs text-muted-foreground">Super must reach the fund within 7 business days of each payday (weekends and public holidays don't count).</p>
@@ -192,9 +194,16 @@ function SgQuarterTable({ rows, fmt }: { rows: import("@/lib/payday-super").SgQu
         <div key={q.from} className="grid grid-cols-3 gap-3 py-2 text-sm">
           <span>{q.label}{q.current ? <span className="block text-xs text-muted-foreground">Current quarter</span> : null}</span>
           <span className="tabular-nums">{fmt(q.superFromPayRuns)}</span>
-          <span>{format(new Date(`${q.due}T00:00:00`), "d MMM yyyy")}</span>
+          <span className="flex flex-wrap items-center gap-2">{format(new Date(`${q.due}T00:00:00`), "d MMM yyyy")}<QuarterPill due={q.due} amount={q.superFromPayRuns} /></span>
         </div>
       ))}
     </div>
   );
+}
+
+/** Status by due date only; never "Paid" — Xero shows no super payments. */
+function QuarterPill({ due, amount }: { due: string; amount: number }) {
+  if (!(amount > 0.005)) return <span className={`${PILL_BASE} ${TONE.na.pill}`}>No pay runs</span>;
+  const st = billStatus(due, organisationToday(), amount);
+  return <span className={`${PILL_BASE} ${TONE[billTone(st.kind)].pill}`}>{st.label}</span>;
 }

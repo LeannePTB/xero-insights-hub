@@ -555,7 +555,7 @@ export function computeHealthChecks(input: HealthInputs): HealthChecks {
   const ytdDays = input.pnlYtd ? dayNumber(input.pnlYtd.to) - dayNumber(input.pnlYtd.from) + 1 : 0;
   const profitHeldBack = !!input.pnlYtd && ytdDays < PROFIT_MIN_DAYS;
   if (profit.netProfit === null) {
-    checks.push({ key: "profit", question: "Making money?", figure: "Not available", detail: null, status: "na", meaning: "Xero's profit and loss for this year hasn't been saved yet." });
+    checks.push({ key: "profit", question: "Making money?", figure: "No data", detail: null, status: "na", meaning: "Xero's profit and loss for this year hasn't been saved yet." });
   } else {
     const np = profit.netProfit;
     const margin = profit.revenue && profit.revenue > 0 ? (np / profit.revenue) * 100 : null;
@@ -583,7 +583,7 @@ export function computeHealthChecks(input: HealthInputs): HealthChecks {
   const debtors = splitDebtors(input.invoices, input.today);
   const haveDebtors = input.invoices !== null;
   if (input.cashAtBank === null || !input.monthly || input.monthly.average <= 0) {
-    checks.push({ key: "cash_cover", question: "Cash cover", figure: "Not available", detail: null, status: "na",
+    checks.push({ key: "cash_cover", question: "Cash cover", figure: "No data", detail: null, status: "na",
       meaning: input.cashAtBank === null ? "Cash at bank couldn't be read from the saved balance sheet." : "Monthly costs for the last three months aren't saved yet." });
   } else {
     const available = input.cashAtBank + (haveDebtors ? debtors.recent : 0);
@@ -617,7 +617,7 @@ export function computeHealthChecks(input: HealthInputs): HealthChecks {
 
   // 3. Paying on time?
   if (!haveDebtors) {
-    checks.push({ key: "paying_on_time", question: "Customers paying on time?", figure: "Not available", detail: null, status: "na", meaning: "The list of unpaid sales invoices hasn't been saved yet." });
+    checks.push({ key: "paying_on_time", question: "Customers paying on time?", figure: "No data", detail: null, status: "na", meaning: "The list of unpaid sales invoices hasn't been saved yet." });
   } else if (debtors.recent <= 0) {
     checks.push({ key: "paying_on_time", question: "Customers paying on time?", figure: "Nothing owing", detail: null, status: "green", meaning: "No recent sales invoices are waiting to be paid." });
   } else {
@@ -669,4 +669,4 @@ export function computeHealthChecks(input: HealthInputs): HealthChecks {
 export const PANEL_STATUS_LABEL: Record<CheckStatus, string> = { green: "Good", watch: "Monitor", red: "Alert", na: "No data" };
 export const PANEL_TITLE: Record<CheckKey, string> = { profit: "Profit", cash_cover: "Cash Cover", paying_on_time: "Customers Paying" };
 
-export const STATUS_LABEL: Record<CheckStatus, string> = { green: "Good", watch: "Watch", red: "Needs attention", na: "Not available" };
+export const STATUS_LABEL: Record<CheckStatus, string> = PANEL_STATUS_LABEL;

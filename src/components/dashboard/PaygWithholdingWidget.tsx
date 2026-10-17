@@ -1,3 +1,4 @@
+import { TONE, PILL_BASE } from "./status-tone";
 import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
 import { staggered, xeroQueryRetry } from "@/lib/xero/live-load";
 import { paygQueryKey, paygQueryLimits } from "./payg-query";
@@ -249,7 +250,7 @@ export function PaygWithholdingWidget({
                 <span className="min-w-0 text-sm">{periodName(cycle, r.from, r.to)}</span>
                 <span className="flex shrink-0 items-center gap-3">
                   {label && (!isPaidUp || r.status !== "paid") && (
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${bad ? "bg-destructive/10 text-destructive" : good ? "bg-success/10 text-success" : r.status === "no_pay_runs" ? "bg-muted text-muted-foreground" : "bg-info/10 text-info"}`}>{label}</span>
+                    <span className={`${PILL_BASE} ${TONE[bad ? "red" : good ? "green" : r.status === "no_pay_runs" ? "na" : "watch"].pill}`}>{label}</span>
                   )}
                   <span className="text-sm tabular-nums">{r.status === "no_pay_runs" ? "—" : fmt(r.withheld)}</span>
                 </span>
