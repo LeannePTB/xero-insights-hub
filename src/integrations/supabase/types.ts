@@ -444,6 +444,62 @@ export type Database = {
           },
         ]
       }
+      client_account_setup: {
+        Row: {
+          account_id: string | null
+          account_name: string
+          client_id: string
+          confirmed: boolean
+          created_at: string
+          id: string
+          match_status: string
+          setup_group: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+          value: string
+          wages_variable: boolean
+        }
+        Insert: {
+          account_id?: string | null
+          account_name: string
+          client_id: string
+          confirmed?: boolean
+          created_at?: string
+          id?: string
+          match_status?: string
+          setup_group: string
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+          value: string
+          wages_variable?: boolean
+        }
+        Update: {
+          account_id?: string | null
+          account_name?: string
+          client_id?: string
+          confirmed?: boolean
+          created_at?: string
+          id?: string
+          match_status?: string
+          setup_group?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string
+          wages_variable?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_account_setup_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_bank_account_classifications: {
         Row: {
           account_id: string
@@ -4141,6 +4197,88 @@ export type Database = {
       }
     }
     Views: {
+      account_setup_bank_v: {
+        Row: {
+          account_id: string | null
+          classification: string | null
+          client_id: string | null
+          tenant_id: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          classification?: string | null
+          client_id?: string | null
+          tenant_id?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          classification?: string | null
+          client_id?: string | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_account_setup_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      account_setup_cost_v: {
+        Row: {
+          account_id: string | null
+          account_name: string | null
+          classification: string | null
+          client_id: string | null
+          is_wages: boolean | null
+          tenant_id: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          account_name?: string | null
+          classification?: never
+          client_id?: string | null
+          is_wages?: never
+          tenant_id?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          account_name?: string | null
+          classification?: never
+          client_id?: string | null
+          is_wages?: never
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_account_setup_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      account_setup_statutory_v: {
+        Row: {
+          account_id: string | null
+          account_name: string | null
+          category: Database["public"]["Enums"]["statutory_category"] | null
+          client_id: string | null
+          tenant_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_account_setup_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_firm_overview: {
         Row: {
           cancel_at_period_end: boolean | null
@@ -5159,6 +5297,10 @@ export type Database = {
       revoke_firm_member_invite: { Args: { _id: string }; Returns: undefined }
       revoke_firm_viewer_access: { Args: { _id: string }; Returns: undefined }
       revoke_viewer_invite: { Args: { _id: string }; Returns: undefined }
+      save_client_account_setup: {
+        Args: { _changes: Json; _client_id: string; _tenant_id: string }
+        Returns: number
+      }
       save_client_bank_account_classification: {
         Args: {
           _account_id: string

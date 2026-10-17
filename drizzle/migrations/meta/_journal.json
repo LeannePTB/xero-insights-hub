@@ -484,6 +484,13 @@
       "when": 1792218752530,
       "tag": "0068_roadmap_contact_suppression_retired",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1792222114843,
+      "tag": "0069_client_account_setup",
+      "breakpoints": true
     }
   ]
 }
