@@ -70,7 +70,7 @@ describe('dashboard catalogue ordering', () => {
     expect(canReorderCards(cards, 'health', 'notes')).toBe(true);
     expect(canReorderCards(cards, 'missing', 'notes')).toBe(false);
   });
-  it('orders Standard health, P&L, receivables, payables, then Notes', () => {
+  it('orders Standard health, P&L, receivables, payables (Notes retired, ranked last)', () => {
     const keys = catalogue.cards.filter(c => c.package === 'standard').map(c => c.key);
     expect(keys.sort((a,b) => dashboardCardMeta(a,catalogue).rank - dashboardCardMeta(b,catalogue).rank)).toEqual(['health','pnl','receivables','payables','notes']);
   });
@@ -87,6 +87,6 @@ describe('dashboard catalogue ordering', () => {
   });
   it('falls back to Standard cards in default order when the catalogue is unavailable', () => {
     const ids = ['t1:xero_audit','notes','t1:pnl','health','t1:cashflow','t1:receivables'].map(id => ({ id }));
-    expect(standardFallbackCards(ids).map(c => c.id)).toEqual(['health','t1:pnl','t1:receivables','notes']);
+    expect(standardFallbackCards(ids).map(c => c.id)).toEqual(['health','t1:pnl','t1:receivables']);
   });
 });
