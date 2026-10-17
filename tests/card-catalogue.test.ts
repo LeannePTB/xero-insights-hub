@@ -40,13 +40,16 @@ const REPORTS = "src/routes/_authenticated/clients.$clientId.reports.tsx";
  * the snapshotted function body (`when 'advisory' then array['...','...']`).
  */
 const catalogueSql = readFileSync(join(ROOT, FIXTURE), "utf8");
+/** Retired catalogue rows whose code has been deleted (status 'retired' live, so offered to no one).
+ *  Notes: retired 17 Oct 2026, replaced by the report "Message to client". */
+const RETIRED_AND_REMOVED = new Set(["notes"]);
 const offered = [
   ...new Set(
     [...catalogueSql.matchAll(/when\s+'[a-z_]+'\s+then\s+array\[([^\]]*)\]/gi)].flatMap((m) =>
       [...m[1]!.matchAll(/'([a-z_]+)'/g)].map((c) => c[1]!),
     ),
   ),
-].sort();
+].filter((k) => !RETIRED_AND_REMOVED.has(k)).sort();
 
 /**
  * Every card key the dashboard has a component branch for. Read from the
@@ -59,7 +62,6 @@ const rendered = new Set(
 );
 // Notes renders unconditionally on the management reports page (no
 // widgets.includes branch), so the regex above cannot see it.
-if (readFileSync(join(ROOT, REPORTS), "utf8").includes("<NotesCard")) rendered.add("notes");
 
 /**
  * A deprecated key draws a card when the card it was merged into is rendered.

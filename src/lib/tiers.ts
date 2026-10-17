@@ -24,7 +24,6 @@ export const ALL_WIDGETS: WidgetKey[] = [
   "receivables",
   "payables",
   "pnl",
-  "notes",
   "superannuation",
   "accounting_breakeven",
   "true_breakeven",
@@ -123,7 +122,6 @@ export const DEFAULT_CARD_ORDER: WidgetKey[] = [
   "cashflow",
   "cashflow_scenario",
   "loan_consolidation",
-  "notes",
 ];
 
 /** Position of a widget in the default order; unknown keys sort last, stably. */

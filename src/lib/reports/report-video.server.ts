@@ -19,8 +19,8 @@ export async function savePendingVideoServer(supabase: any, input: {
     _report_id: input.reportId ?? null, _url: url,
     _heading: input.heading?.trim() || null, _message: input.message?.trim() || null,
   });
-  if (error) throw new Error("Video could not be saved. Check that the report is still a draft and you can manage this client.");
-  return { cleared: !url };
+  if (error) throw new Error("Message could not be saved. Check that the report is still a draft and you can manage this client.");
+  return { cleared: !url && !input.heading?.trim() && !input.message?.trim() };
 }
 
 export async function setReportVideoServer(opts: { supabase: any; input: SetReportVideoInput }) {

@@ -6,8 +6,8 @@ import type { CardCatalogue } from '@/lib/cards/catalogue';
 /** Fixed Tax & compliance layout; saved preferences never override it. */
 export const TAX_ORDER = ['tax_obligations', 'gst_reconciliation', 'payg_withholding', 'superannuation'];
 export const isFixedCardGroup = (group?: string) => group === 'tax_compliance';
-export const STANDARD_ORDER = ['health', 'pnl', 'receivables', 'payables', 'notes'];
-const WIDE_CARDS = new Set(['health', 'pnl', 'cashflow', 'cashflow_scenario', 'accounting_breakeven', 'transaction_search', 'tax_obligations', 'superannuation', 'notes', 'loan_consolidation']);
+export const STANDARD_ORDER = ['health', 'pnl', 'receivables', 'payables'];
+const WIDE_CARDS = new Set(['health', 'pnl', 'cashflow', 'cashflow_scenario', 'accounting_breakeven', 'transaction_search', 'tax_obligations', 'superannuation', 'loan_consolidation']);
 
 export function dashboardCardMeta(id: string, catalogue: CardCatalogue) {
   const key = id.includes(':') ? id.slice(id.indexOf(':') + 1) : id;

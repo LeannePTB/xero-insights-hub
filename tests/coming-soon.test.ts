@@ -28,7 +28,7 @@ describe('Notes card retired from the dashboard (owner 14 Oct)', () => {
   });
   it('the live dashboard no longer renders the Notes card; the reports page keeps it', () => {
     expect(readFileSync('src/routes/_authenticated/clients.$clientId.index.tsx', 'utf8')).not.toContain('NotesCard');
-    expect(readFileSync('src/routes/_authenticated/clients.$clientId.reports.tsx', 'utf8')).toContain('<NotesCard');
+    expect(readFileSync('src/routes/_authenticated/clients.$clientId.reports.tsx', 'utf8')).not.toContain('NotesCard');
   });
 });
 

@@ -1943,3 +1943,8 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - Read access unchanged: `user_can_read_client`; tax rows keep the support-grant read path the statutory table had; bank/cost rows do not gain it.
 - OPEN (next release): legacy tables `client_cost_classifications`, `client_statutory_accounts`, `client_bank_account_classifications` are read-only (write grants revoked, `save_client_bank_account_classification` execute revoked) and marked DEPRECATED — drop after one release. The matrix still lists the old bank RPC owner/staff "allow" rows proved by direct definer call; retire them with the table.
 - Account setup screen now refuses non-writers on read (previously the old list functions answered any reader) — a narrowing.
+
+## 17 Oct 2026 — Notes retired (owner decision 16:04)
+- OPEN: `client_notes` is read-only for one release (INSERT/UPDATE/DELETE revoked from authenticated; table marked DEPRECATED). No rows deleted. Its write policies remain but have no grant behind them. Drop the table and policies in a later release once no final/sent report needs it (report payloads already hold their own notes snapshots).
+- CLOSED: `src/lib/reports/monthly-report.server.ts` no longer uses supabaseAdmin (note-author lookup removed); register row removed.
+- Note: `save_report_video` now keeps heading/message without a Loom link (message ≤ 2,000 chars); same AAL2 + me_can_manage_client guard, audited set/cleared, draft-only lock unchanged.

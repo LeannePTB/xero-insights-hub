@@ -104,6 +104,8 @@ export type RenderInput = {
   version: number;
   title: string;
   branding?: { productName: string; primaryLogo: string; clientLogo?: string | null };
+  /** "Message from your adviser" — lives on the report row, not the payload. */
+  message?: { heading?: string | null; message?: string | null; videoUrl?: string | null } | null;
 };
 
 /** Deterministic render of the stored payload. No network, no Xero. */
@@ -334,6 +336,15 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     `${titleNames} · ${m.monthLabel} (period ended ${fmtDate(m.periodEnd)})`,
   );
   // The first section heading supplies the gap after the title block.
+
+  // Message from your adviser -------------------------------------------------
+  const adviserMessage = input.message?.message?.trim() || "";
+  const adviserVideo = input.message?.videoUrl?.trim() || "";
+  if (adviserMessage || adviserVideo || input.message?.heading?.trim()) {
+    heading(input.message?.heading?.trim() || "A message from your adviser");
+    for (const para of adviserMessage.split(/\n/)) paragraph(para || " ", { colour: INK.text });
+    if (adviserVideo) paragraph(`Video message: ${adviserVideo}`);
+  }
 
   // Incomplete banner, prominently on page one --------------------------------
   const shownFailures = renderableFailedSections(payload);
@@ -736,6 +747,9 @@ type ReportRow = {
   title: string | null;
   payload: MonthlyReportPayload;
   pdf_path: string | null;
+  video_url?: string | null;
+  video_heading?: string | null;
+  video_message?: string | null;
 };
 
 /**
@@ -751,7 +765,7 @@ export async function getReportPdfUrl(opts: {
 }): Promise<{ url: string; path: string; status: string; regenerated: boolean }> {
   const { data, error } = await opts.supabase
     .from("client_reports")
-    .select("id, client_id, firm_id, period_end, version, status, title, payload, pdf_path")
+    .select("id, client_id, firm_id, period_end, version, status, title, payload, pdf_path, video_url, video_heading, video_message")
     .eq("id", opts.reportId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -831,6 +845,7 @@ export async function buildAndStoreReportPdf(report: ReportRow, actor?: { userId
     status: report.status,
     version: report.version,
     title: report.title ?? "Monthly Management Report",
+    message: { heading: report.video_heading ?? null, message: report.video_message ?? null, videoUrl: report.video_url ?? null },
     branding: { productName: whiteLabel === true ? ((firm as any)?.name ?? platform.productName) : platform.productName, primaryLogo, clientLogo },
   });
 
@@ -856,7 +871,7 @@ export async function ensureFinalReportPdf(reportId: string): Promise<string | n
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data } = await (supabaseAdmin as any)
       .from("client_reports")
-      .select("id, client_id, firm_id, period_end, version, status, title, payload, pdf_path")
+      .select("id, client_id, firm_id, period_end, version, status, title, payload, pdf_path, video_url, video_heading, video_message")
       .eq("id", reportId)
       .maybeSingle();
     if (!data) return null;
