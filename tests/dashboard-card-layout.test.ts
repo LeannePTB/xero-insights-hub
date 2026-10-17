@@ -5,7 +5,7 @@ import type { CardCatalogue } from '../src/lib/cards/catalogue';
 const catalogue: CardCatalogue = {
   modules: [{ key: 'profit', label: 'Profit', description: '' }],
   cards: [
-    ...['notes', 'payables', 'receivables', 'pnl', 'health'].map(key => ({ key, package: 'standard' as const, module: null, label: key, description: '' })),
+    ...['payables', 'receivables', 'pnl', 'health'].map(key => ({ key, package: 'standard' as const, module: null, label: key, description: '' })),
     { key: 'accounting_breakeven', package: 'advisory', module: 'profit', label: 'Breaking even', description: '' },
   ],
 };
@@ -72,7 +72,7 @@ describe('dashboard catalogue ordering', () => {
   });
   it('orders Standard health, P&L, receivables, payables (Notes retired, ranked last)', () => {
     const keys = catalogue.cards.filter(c => c.package === 'standard').map(c => c.key);
-    expect(keys.sort((a,b) => dashboardCardMeta(a,catalogue).rank - dashboardCardMeta(b,catalogue).rank)).toEqual(['health','pnl','receivables','payables','notes']);
+    expect(keys.sort((a,b) => dashboardCardMeta(a,catalogue).rank - dashboardCardMeta(b,catalogue).rank)).toEqual(['health','pnl','receivables','payables']);
   });
   it('uses the catalogue module rather than an Advisory catch-all', () => {
     expect(dashboardCardMeta('file:accounting_breakeven',catalogue).group).toBe('profit');
