@@ -71,7 +71,7 @@ function PackagesPage() {
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
-                  <tr><th className="p-3">Card</th><th className="p-3">Status</th><th className="p-3">Coming soon</th><th className="p-3">Package</th><th className="p-3">Module</th><th className="p-3">What the client sees</th><th className="p-3" /></tr>
+                  <tr><th className="p-3">Card</th><th className="p-3">Status</th><th className="p-3">Roadmap</th><th className="p-3">Package</th><th className="p-3">Module</th><th className="p-3">What the client sees</th><th className="p-3" /></tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {catalogue.cards.map((c) => <CardRow key={c.key} card={c} modules={catalogue.modules} />)}
@@ -82,10 +82,32 @@ function PackagesPage() {
               Work in progress: not offered anywhere — hidden from dashboards, menus, reports, Trixie, upgrade offers and the website, and not tickable. Existing client ticks are kept and come back when it is switched to Available. Organisations with early access see it, labelled, on clients they tick.
             </p>
           </section>
+          {(q.data?.retired?.length ?? 0) > 0 && (
+            <details className="rounded-lg border border-border bg-card p-4 text-sm">
+              <summary className="cursor-pointer font-semibold">Retired ({q.data!.retired.length})</summary>
+              <p className="mt-2 text-xs text-muted-foreground">Retired cards are hidden everywhere, for every role. Their code, stored results and client ticks are kept.</p>
+              <ul className="mt-2 space-y-1">
+                {q.data!.retired.map((r) => <li key={r.key} className="flex items-center justify-between gap-3"><span>{r.label}</span><RetiredRestore cardKey={r.key} label={r.label} /></li>)}
+              </ul>
+            </details>
+          )}
           <ComingSoonAdmin catalogue={catalogue} />
         </>
       )}
     </PageContainer>
+  );
+}
+
+function RetiredRestore({ cardKey, label }: { cardKey: string; label: string }) {
+  const qc = useQueryClient();
+  const save = useServerFn(saveCardStatus);
+  const [busy, setBusy] = useState(false);
+  return (
+    <Button size="sm" variant="outline" disabled={busy} onClick={async () => {
+      setBusy(true);
+      try { await save({ data: { cardKey, status: "wip" } } as any); toast.success(`${label} moved back to Work in progress`); await qc.invalidateQueries({ queryKey: KEY }); }
+      catch (e: any) { toast.error(e?.message ?? "Could not change that."); } finally { setBusy(false); }
+    }}>Restore as Work in progress</Button>
   );
 }
 
@@ -185,12 +207,12 @@ function ComingSoonTick({ card }: { card: CatalogueCard }) {
       <Checkbox
         checked={!card.comingSoonHidden}
         disabled={busy}
-        aria-label={`${card.label} listed in Coming soon`}
+        aria-label={`${card.label} listed on the Roadmap`}
         onCheckedChange={async (v) => {
           setBusy(true);
           try {
             await save({ data: { cardKey: card.key, hidden: v !== true } });
-            toast.success(`${card.label}: ${v === true ? "left out of Coming soon" : "listed in Coming soon"}`);
+            toast.success(`${card.label}: ${v === true ? "left off the Roadmap" : "listed on the Roadmap"}`);
             await qc.invalidateQueries({ queryKey: KEY });
           } catch (e: any) { toast.error(e?.message ?? "Could not save"); } finally { setBusy(false); }
         }}
