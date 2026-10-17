@@ -7,6 +7,7 @@ import { usePlatformBranding } from '@/hooks/usePlatformBranding';
 import { type WebsiteSettings } from '@/lib/website-settings';
 import { activeModules, EMPTY_CATALOGUE, type CardCatalogue, type CatalogueCard } from '@/lib/cards/catalogue';
 import type { ReactNode } from 'react';
+import { useMainContact } from '@/hooks/useMainContact';
 import { AppWindow, DemoHero, DemoOverview, DemoHealth, DemoPnl, DemoTax, DemoSuper, DemoBreakeven, DemoGroup, DemoTrixie } from './demo/DemoPanels';
 const practiceFeatures = [
  [LayoutDashboard,'Every client. One Overview.','Spot who needs a conversation, without opening every Xero file.'],
@@ -40,6 +41,7 @@ function Actions({settings,final=false}:{settings:WebsiteSettings;final?:boolean
 }
 export function SalesPage({settings}:{settings:WebsiteSettings&{packages?:CardCatalogue;comingSoon?:{name:string;description:string;timing:string|null}[]}}){
  const brand=usePlatformBranding();
+ const contact=useMainContact();
  const cat=settings.packages??EMPTY_CATALOGUE;const labels=(f:(c:CatalogueCard)=>boolean)=>cat.cards.filter(f).map(c=>c.label);
  const packages=[{title:'Standard',icon:LayoutDashboard,description:'The essentials, clearly laid out.',price:settings.standardPrice,features:labels(c=>c.package==='standard')},{title:'Advisory',icon:Sparkles,description:'Choose the modules each client needs.',price:settings.advisoryPrice,features:activeModules(cat).map(m=>`${m.label} — ${m.description}`)},{title:'Consolidation',icon:Layers,description:'A connected view of the group.',price:settings.consolidationPrice,features:[...labels(c=>c.package==='consolidation'),'Optional extra with Advisory']},{title:'White label',icon:Palette,description:'Your practice. Your identity.',price:settings.whiteLabelPrice,features:['Your organisation’s name','Your organisation’s logo','Branded client experience','Independent optional extra']}];
  return <div className="sales-page bg-background text-foreground">
