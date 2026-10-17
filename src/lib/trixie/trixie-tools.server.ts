@@ -180,7 +180,8 @@ async function forwardSummary(ctx: TrixieContext, tenantId: string) {
   const status = (due: string, amount: number) => { const s = billStatus(due, today, amount); return s.detail ? `${s.label} (${s.detail})` : s.label; };
   return {
     lodgedBills: fwd.owing.map((o) => ({ reference: o.reference, amount: money(o.amount), due: o.due, status: status(o.due, o.amount) })),
-    currentlyAccruing: { total: fwd.building.total === null ? null : money(fwd.building.total), gst: fwd.building.gst === null ? null : money(fwd.building.gst), payg: fwd.building.payg === null ? null : money(fwd.building.payg), due: fwd.building.due, note: "Estimate for the period still running" },
+    finishedNotLodged: (fwd.unlodged ?? []).map((u) => ({ tax: u.kind === "gst" ? "GST" : "PAYG withholding", period: `${u.from} to ${u.to}`, amount: money(u.amount), due: u.due, status: status(u.due, u.amount), note: "From Xero balances, not a lodged statement" })),
+    currentlyAccruing: { total: fwd.building.total === null ? null : money(fwd.building.total), gst: fwd.building.gst === null ? null : money(fwd.building.gst), gstDue: fwd.building.gstDue ?? fwd.building.due, payg: fwd.building.payg === null ? null : money(fwd.building.payg), paygDue: fwd.building.paygDue ?? fwd.building.due, due: fwd.building.due, note: "Estimate for the period still running" },
     incomeTaxInstalment: fwd.instalmentSetting === "not_required" ? "Not required for this client — contributes nothing"
       : fwd.instalment ? { amount: money(fwd.instalment.amount), due: fwd.instalment.due, status: status(fwd.instalment.due, fwd.instalment.amount) } : "Not entered yet",
     totalToPlan: fwd.totalToPlan === null ? null : money(fwd.totalToPlan),
