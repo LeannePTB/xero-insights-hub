@@ -11,7 +11,7 @@ import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
 import { useTenantCurrency, formatMoneyExact } from "@/components/dashboard/useTenantCurrency";
 import { CardFreshness } from "@/components/dashboard/CardFreshness";
 import { getLodgedTaxBills } from "@/lib/xero/lodged-tax.functions";
-import { paygMonthState } from "./tax-obligations";
+import { paygMonthState, paygPeriodRows, organisationToday, type PaygRowStatus } from "./tax-obligations";
 import { getStoredTaxPosition } from "@/lib/tax/tax-position.functions";
 
 /**
@@ -31,15 +31,41 @@ function dayLabel(iso: string) {
   return format(new Date(`${iso}T00:00:00`), "d MMM yyyy");
 }
 
+function periodName(cycle: "monthly" | "quarterly", from: string, to: string) {
+  if (cycle === "monthly") return monthLabel(from);
+  return `${format(new Date(`${from}T00:00:00`), "MMM")}–${format(new Date(`${to}T00:00:00`), "MMM yyyy")}`;
+}
+
+function paygRowLabel(status: PaygRowStatus, due: string): string | null {
+  const d = format(new Date(`${due}T00:00:00`), "d MMM");
+  switch (status) {
+    case "accruing": return `Currently accruing · due ${d}`;
+    case "no_pay_runs": return "No pay runs";
+    case "lodged_owing": return `Lodged · still owing · due ${d}`;
+    case "lodged_part_paid": return "Lodged · part paid";
+    case "not_due": return `Not due yet · due ${d}`;
+    case "due_today": return "Due today";
+    case "overdue": return `Overdue · was due ${d}`;
+    case "paid": return "Paid";
+    case "paid_or_older": return "Paid or included in older balance";
+    default: return `Due ${d}`;
+  }
+}
+
 export function PaygWithholdingWidget({
   tenantId,
   tenantName,
   clientId,
+  paygCycle = "monthly",
 }: {
   tenantId: string;
   tenantName: string;
   clientId?: string;
+  /** clients.payg_withholding_cycle, read fresh with the client row. */
+  paygCycle?: string | null;
 }) {
+  const cycle: "monthly" | "quarterly" = paygCycle === "quarterly" ? "quarterly" : "monthly";
+  const title = cycle === "quarterly" ? "PAYG withholding by quarter" : "PAYG withholding by month";
   const fetchPayg = useServerFn(getPaygWithholdingPosition);
   const fetchBills = useServerFn(getLodgedTaxBills);
   const billsQ = useQuery({
@@ -60,7 +86,7 @@ export function PaygWithholdingWidget({
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: paygQueryKey(tenantId, clientId),
-    queryFn: () => staggered(() => fetchPayg({ data: { tenantId, clientId, months: 6 } })),
+    queryFn: () => staggered(() => fetchPayg({ data: { tenantId, clientId, months: 9 } })),
     ...paygQueryLimits,
     ...xeroQueryRetry,
   });
@@ -78,12 +104,12 @@ export function PaygWithholdingWidget({
       : data.reason === 'not_authorised' ? 'Xero has not authorised payroll access for this file.'
       : data.reason === 'no_payroll' ? 'No wages have been paid through payroll in this Xero file.'
       : 'Pay runs could not be read, so monthly withholding is unavailable.';
-    return <CompactCardState label={tenantName} title="PAYG withholding by month" icon={<Receipt className="h-4 w-4"/>} summary={data.status === 'no_payg_accounts' ? 'No PAYG withholding account' : `Monthly figures unavailable${outstanding > 0.005 ? ` · ${fmt(outstanding)} still owing` : ''}`} explanation={explanation} source={data.source} isFetching={isFetching}/>;
+    return <CompactCardState label={tenantName} title={title} icon={<Receipt className="h-4 w-4"/>} summary={data.status === 'no_payg_accounts' ? 'No PAYG withholding account' : `Monthly figures unavailable${outstanding > 0.005 ? ` · ${fmt(outstanding)} still owing` : ''}`} explanation={explanation} source={data.source} isFetching={isFetching}/>;
   }
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
-      <DashboardCardHeader label={tenantName} title="PAYG withholding by month" icon={<Receipt className="h-4 w-4"/>} description="Monthly wage withholding and what is still owing" source={data?.source} isFetching={isFetching} actions={<Button variant="ghost" size="icon-sm" onClick={() => refetch()} disabled={isFetching} title="Refresh" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}/></Button>}/>
+      <DashboardCardHeader label={tenantName} title={title} icon={<Receipt className="h-4 w-4"/>} description={cycle === "quarterly" ? "Quarterly wage withholding (lodged with the BAS) and what is still owing" : "Monthly wage withholding and what is still owing"} source={data?.source} isFetching={isFetching} actions={<Button variant="ghost" size="icon-sm" onClick={() => refetch()} disabled={isFetching} title="Refresh" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}/></Button>}/>
 
       {isLoading ? (
         <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
@@ -139,7 +165,7 @@ export function PaygWithholdingWidget({
                   : available.oldestOwingMonth
                     ? `${fmt(
                         available.outstanding - available.residue,
-                      )} of this is the PAYG withheld in the months ticked below, back to ${monthLabel(
+                      )} of this is the PAYG withheld in the periods below, back to ${monthLabel(
                         available.oldestOwingMonth,
                       )}. Open lodged ATO bills are shown separately below.`
                     : "The months behind this balance could not be identified from this organisation's pay runs."}
@@ -215,32 +241,17 @@ export function PaygWithholdingWidget({
           )}
 
           <ul className="mt-5 divide-y divide-border rounded-xl border border-border">
-            {available.months.map((m) => {
-              const state = paygMonthState(m, billsQ.data?.bills ?? [], billsQ.data?.complete === true);
-              const olderBalance = available.residue > 0.005 && available.residueKind !== "since_last_pay_run";
-              const label = state === "lodged_part_paid" ? "Lodged · part paid" : state === "lodged_owing" ? "Lodged · still owing" : state === "owing" ? "Still owing" : olderBalance ? "Paid or in older balance" : "Paid";
-              return <li key={m.month} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
-                <span className="min-w-0">
-                  <span className="text-sm">{monthLabel(m.month)}</span>
-                  {m.incomplete && (
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      still running — this month is not finished
-                    </span>
-                  )}
-                </span>
+            {paygPeriodRows(available.months, cycle, organisationToday(), billsQ.data?.bills ?? [], billsQ.data?.complete === true, available.residue > 0.005 && available.residueKind !== "since_last_pay_run").map((r) => {
+              const label = paygRowLabel(r.status, r.due);
+              const good = r.status === "paid";
+              const bad = r.status === "overdue";
+              return <li key={r.key} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
+                <span className="min-w-0 text-sm">{periodName(cycle, r.from, r.to)}</span>
                 <span className="flex shrink-0 items-center gap-3">
-                  {state !== "unknown" && (!isPaidUp || state.startsWith("lodged")) && (
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        state !== "paid" || olderBalance
-                          ? "bg-info/10 text-info"
-                          : "bg-success/10 text-success"
-                      }`}
-                    >
-                      {label}
-                    </span>
+                  {label && (!isPaidUp || r.status !== "paid") && (
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${bad ? "bg-destructive/10 text-destructive" : good ? "bg-success/10 text-success" : r.status === "no_pay_runs" ? "bg-muted text-muted-foreground" : "bg-info/10 text-info"}`}>{label}</span>
                   )}
-                  <span className="text-sm tabular-nums">{fmt(m.withheld)}</span>
+                  <span className="text-sm tabular-nums">{r.status === "no_pay_runs" ? "—" : fmt(r.withheld)}</span>
                 </span>
               </li>;
             })}

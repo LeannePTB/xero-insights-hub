@@ -1,3 +1,4 @@
+import { invalidateTaxDerived } from "@/lib/tax/invalidate-tax";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -33,7 +34,7 @@ export function IncomeTaxInstalmentsSection({ clientId, tenantId }: { clientId: 
   const list = useServerFn(listIncomeTaxInstalments);
   const setFrequency = useServerFn(setIncomeTaxInstalmentFrequency);
   const q = useQuery({ queryKey: ["income-tax-instalments", clientId, tenantId], queryFn: () => list({ data: { clientId, tenantId: tenantId! } }), enabled: !!tenantId });
-  const refresh = () => qc.invalidateQueries({ queryKey: ["income-tax-instalments", clientId] });
+  const refresh = () => invalidateTaxDerived(qc);
   const freqMut = useMutation({
     mutationFn: (frequency: InstalmentFrequency) => setFrequency({ data: { clientId, frequency } }),
     onSuccess: async () => { await refresh(); toast.success("Saved"); },
