@@ -94,6 +94,9 @@ export function ScenarioWidget({
             />
           </div>
 
+          <p className="mt-2 text-xs text-muted-foreground">
+            Why this differs from Profit &amp; loss: this card adds up every sales invoice dated in the month (excl. GST), including ones awaiting approval. Profit &amp; loss is the accounting figure — approved invoices only, less credit notes, plus income not invoiced (e.g. interest, direct bank receipts). Use Profit &amp; loss for the month's result; use this card for what-if planning.
+          </p>
           <div className="mt-3 grid grid-cols-3 gap-3">
             <Stat
               label={`Net position · ${monthLabelOf(month)}`}
