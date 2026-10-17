@@ -349,7 +349,7 @@ export function BreakevenWidget({
                       <Link
                         to="/clients/$clientId/settings"
                         params={{ clientId }}
-                        hash="cost-classification"
+                        hash="account-setup-cost"
                         className="font-medium underline underline-offset-2"
                       >
                         Classify accounts
@@ -378,7 +378,7 @@ export function BreakevenWidget({
                 <Link
                   to="/clients/$clientId/settings"
                   params={{ clientId }}
-                  hash="cost-classification"
+                  hash="account-setup-cost"
                   className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-2"
                 >
                   <Settings2 className="h-3 w-3" /> Cost classification settings

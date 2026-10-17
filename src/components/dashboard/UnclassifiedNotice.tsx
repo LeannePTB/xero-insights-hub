@@ -32,7 +32,7 @@ export function UnclassifiedNotice({
             <strong>{count}</strong> expense {count === 1 ? "account is" : "accounts are"} untagged{named}
             and treated as fixed.{" "}
             <Link
-              to="/clients/$clientId/settings/cost-classification"
+              to="/clients/$clientId/settings/account-setup"
               params={{ clientId: clientId! }}
               className="font-medium underline underline-offset-2"
             >

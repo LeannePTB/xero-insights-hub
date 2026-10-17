@@ -18,7 +18,6 @@ import type { SetupChecklist } from "@/lib/setup-checklist.server";
 const REVIEW_TABS = [
   { slug: "cards", title: "Cards & report branding", detail: "Confirm the cards and report logo are right for this client." },
   { slug: "people", title: "People", detail: "Check who can see this client and their access level." },
-  { slug: "banks", title: "Banks & accounts", detail: "Check each bank, card and overdraft is classified correctly." },
 ] as const;
 
 export function ClientSetupSection({ clientId }: { clientId: string }) {
