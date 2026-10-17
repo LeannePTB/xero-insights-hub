@@ -80,7 +80,7 @@ export async function listReportsForClient(supabase: any, clientId: string) {
   const { data, error } = await supabase
     .from("client_reports")
     .select(
-      "id, period_end, version, status, title, complete, payload_version, generated_at, generated_by, sent_at, finalised_at, video_url, video_heading, video_message, video_set_by, video_set_at",
+      "id, period_end, version, status, title, complete, payload_version, generated_at, generated_by, sent_at, finalised_at, video_url, video_heading, video_message, video_set_by, video_set_at, scenario_snapshot",
     )
 
     .eq("client_id", clientId)

@@ -60,7 +60,7 @@ export const getStoredMonthlyReport = createServerFn({ method: "POST" })
     const { data: row, error } = await context.supabase
       .from("client_reports")
       .select(
-        "id, client_id, period_end, version, status, title, complete, payload, payload_version, generated_at, video_url, video_heading, video_message, video_set_by, video_set_at",
+        "id, client_id, period_end, version, status, title, complete, payload, payload_version, generated_at, video_url, video_heading, video_message, video_set_by, video_set_at, scenario_snapshot",
       )
 
       .eq("id", data.reportId)

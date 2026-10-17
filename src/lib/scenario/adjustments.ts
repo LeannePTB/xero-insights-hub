@@ -162,3 +162,13 @@ export function toggleSelectAll(shownIds: string[], selected: Set<string>): Set<
   else shownIds.forEach((id) => next.add(id));
   return next;
 }
+
+export type ScenarioSnapshot = { name: string; rows: { month: string; baselineNet: number; scenarioNet: number; baselineCash: number | null; scenarioCash: number | null }[] };
+
+/** The frozen report table on a report row, or null. Display only. */
+export function scenarioSnapshotFrom(raw: unknown): ScenarioSnapshot | null {
+  const s = raw as any;
+  if (!s || s.kind !== "cashflow_scenario" || !Array.isArray(s.rows) || typeof s.name !== "string") return null;
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  return { name: s.name.slice(0, 120), rows: s.rows.slice(0, 7).map((r: any) => ({ month: String(r.month ?? "").slice(0, 7), baselineNet: n(r.baselineNet) ?? 0, scenarioNet: n(r.scenarioNet) ?? 0, baselineCash: n(r.baselineCash), scenarioCash: n(r.scenarioCash) })) };
+}

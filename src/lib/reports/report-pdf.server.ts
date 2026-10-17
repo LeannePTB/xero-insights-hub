@@ -1,3 +1,4 @@
+import { scenarioSnapshotFrom, type ScenarioSnapshot } from "@/lib/scenario/adjustments";
 import { drawPdfChart } from "@/lib/charts/pdf.server";
 // Server-only: render the Monthly Management Report to PDF, store it in the
 // private `client-reports` bucket and mint a short-lived signed URL.
@@ -106,6 +107,7 @@ export type RenderInput = {
   branding?: { productName: string; primaryLogo: string; clientLogo?: string | null };
   /** "Message from your adviser" — lives on the report row, not the payload. */
   message?: { heading?: string | null; message?: string | null; videoUrl?: string | null } | null;
+  scenario?: ScenarioSnapshot | null;
 };
 
 /** Deterministic render of the stored payload. No network, no Xero. */
@@ -344,6 +346,13 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     heading(input.message?.heading?.trim() || "A message from your adviser");
     for (const para of adviserMessage.split(/\n/)) paragraph(para || " ", { colour: INK.text });
     if (adviserVideo) paragraph(`Video message: ${adviserVideo}`);
+  }
+
+  // Cash flow scenario (frozen into the draft) ---------------------------------
+  if (input.scenario) {
+    heading(`Cash flow scenario: ${input.scenario.name} (projection)`);
+    const money = (n: number | null) => (n === null ? "—" : `${n < 0 ? "-" : ""}A$${Math.abs(Math.round(n)).toLocaleString("en-AU")}`);
+    for (const r of input.scenario.rows) paragraph(`${r.month}: baseline net ${money(r.baselineNet)} · scenario net ${money(r.scenarioNet)}${r.scenarioCash !== null ? ` · scenario closing cash ${money(r.scenarioCash)}` : ""}`, { colour: INK.text });
   }
 
   // Incomplete banner, prominently on page one --------------------------------
@@ -749,6 +758,7 @@ type ReportRow = {
   pdf_path: string | null;
   video_url?: string | null;
   video_heading?: string | null;
+  scenario_snapshot?: unknown;
   video_message?: string | null;
 };
 
@@ -765,7 +775,7 @@ export async function getReportPdfUrl(opts: {
 }): Promise<{ url: string; path: string; status: string; regenerated: boolean }> {
   const { data, error } = await opts.supabase
     .from("client_reports")
-    .select("id, client_id, firm_id, period_end, version, status, title, payload, pdf_path, video_url, video_heading, video_message")
+    .select("id, client_id, firm_id, period_end, version, status, title, payload, pdf_path, video_url, video_heading, video_message, scenario_snapshot")
     .eq("id", opts.reportId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -846,6 +856,7 @@ export async function buildAndStoreReportPdf(report: ReportRow, actor?: { userId
     version: report.version,
     title: report.title ?? "Monthly Management Report",
     message: { heading: report.video_heading ?? null, message: report.video_message ?? null, videoUrl: report.video_url ?? null },
+    scenario: scenarioSnapshotFrom(report.scenario_snapshot),
     branding: { productName: whiteLabel === true ? ((firm as any)?.name ?? platform.productName) : platform.productName, primaryLogo, clientLogo },
   });
 
@@ -871,7 +882,7 @@ export async function ensureFinalReportPdf(reportId: string): Promise<string | n
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data } = await (supabaseAdmin as any)
       .from("client_reports")
-      .select("id, client_id, firm_id, period_end, version, status, title, payload, pdf_path, video_url, video_heading, video_message")
+      .select("id, client_id, firm_id, period_end, version, status, title, payload, pdf_path, video_url, video_heading, video_message, scenario_snapshot")
       .eq("id", reportId)
       .maybeSingle();
     if (!data) return null;
