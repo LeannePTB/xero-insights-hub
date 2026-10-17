@@ -81,7 +81,7 @@ export function CashflowWidget({
       ) : data ? (
         <>
           {/* Current cash position */}
-          <div className="mt-6 rounded-lg border border-border/60 bg-background p-4">
+          <div className="mt-6 rounded-lg border border-border/60 bg-card p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -186,7 +186,7 @@ export function CashflowWidget({
             <VectorChart title="Projected closing cash" currency={currency} points={[{label:'Now',values:[data.totalCash]}, ...data.projection.map((b,i) => ({label:`Day ${(i+1)*30}`,values:[data.projectionComplete === false ? null : b.closingCash]}))]} series={[{label:'Closing cash',kind:'line'}]} />
             {data.projectionComplete === false && <p className="text-xs text-info">Projection unavailable: the full invoice list could not be read.</p>}
             <details><summary className="mb-2 cursor-pointer text-xs text-link">Projection breakdown</summary>
-            <div className="overflow-x-auto rounded-lg border border-border/60 bg-background">
+            <div className="overflow-x-auto rounded-lg border border-border/60 bg-card">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-left text-muted-foreground">
@@ -267,7 +267,7 @@ function Tile({
   currency?: string;
 }) {
   return (
-    <div className="rounded-lg border border-border/60 bg-background p-3">
+    <div className="rounded-lg border border-border/60 bg-card p-3">
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>

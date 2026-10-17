@@ -323,7 +323,7 @@ function AdvisorSettings() {
                 The account is active immediately — no email click required. Share the credentials securely. They can change the password from Account settings after signing in.
               </p>
               {lastCreated && (
-                <div className="mt-3 rounded-md border border-border bg-muted/40 p-3 text-xs">
+                <div className="mt-3 rounded-md border border-border bg-card p-3 text-xs">
                   <div className="mb-2 font-medium text-foreground">New System Administrator credentials</div>
                   <div className="font-mono text-foreground">{lastCreated.email}</div>
                   <div className="font-mono text-foreground">{lastCreated.password}</div>
@@ -384,7 +384,7 @@ function AdvisorSettings() {
                 const isPending = pendingIds.has(a.user_id);
                 const onPracticeTeam = practiceIds.has(a.user_id);
                 return (
-                  <li key={a.id} className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
+                  <li key={a.id} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full bg-primary/10 text-emphasis">
                         <ShieldCheck className="h-4 w-4" />

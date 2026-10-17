@@ -212,7 +212,7 @@ export function CostClassificationPanel({
   const unclassifiedCount = accounts.filter((a) => resolver.resolve(a.name).unclassified).length;
 
   return (
-    <div className="rounded-md border border-border bg-background p-4">
+    <div className="rounded-md border border-border bg-card p-4">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">{tenantName}</p>
@@ -385,7 +385,7 @@ export function CostClassificationPanel({
           ))}
 
           {orphans.length > 0 && (
-            <div className="mt-4 rounded-md border border-border bg-muted/30 p-3">
+            <div className="mt-4 rounded-md border border-border bg-card p-3">
               <p className="text-xs font-semibold">Stale tags</p>
               <p className="mb-2 text-xs text-muted-foreground">
                 These accounts are no longer in Xero — most likely renamed. Their tags do nothing.

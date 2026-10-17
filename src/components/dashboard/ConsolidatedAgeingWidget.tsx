@@ -142,7 +142,7 @@ function AgeingCard({
             />
           </div>
 
-          <div className="mt-6 overflow-x-auto rounded-lg border border-border bg-background">
+          <div className="mt-6 overflow-x-auto rounded-lg border border-border bg-card">
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
@@ -191,7 +191,7 @@ function AgeingCard({
             {showBreakdown && (
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {data.byTenant.map((t) => (
-                  <div key={t.tenantId} className="rounded-lg border border-border bg-background p-3">
+                  <div key={t.tenantId} className="rounded-lg border border-border bg-card p-3">
                     <div className="flex items-center gap-2 text-sm font-medium">
                       <Building2 className="h-4 w-4 text-muted-foreground" />
                       {t.tenantName}
@@ -221,7 +221,7 @@ const tenantIdsPlaceholder: string[] = [];
 
 function Kpi({ title, value, note }: { title: string; value: string; note?: string }) {
   return (
-    <div className="rounded-lg border border-border bg-background p-4">
+    <div className="rounded-lg border border-border bg-card p-4">
       <p className="text-xs text-muted-foreground">{title}</p>
       <p className="mt-1 font-display text-lg font-semibold">{value}</p>
       {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}

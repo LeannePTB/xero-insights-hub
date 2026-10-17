@@ -128,7 +128,7 @@ export function ScenarioWidget({
 
 function Stat({ label, value, tone = "" }: { label: string; value: string; tone?: string }) {
   return (
-    <div className="rounded-lg border border-border/60 bg-background p-3">
+    <div className="rounded-lg border border-border/60 bg-card p-3">
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className={`mt-1 text-lg font-semibold tracking-normal tabular-nums ${tone}`}>{value}</p>
     </div>

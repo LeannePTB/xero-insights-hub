@@ -112,7 +112,7 @@ export function AuditMonitoringCard() {
           </div>
         )}
 
-        <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+        <div className="rounded-lg border bg-card p-4 text-sm">
           <div className="font-medium">Retention</div>
           {r ? (
             <p className="text-muted-foreground">

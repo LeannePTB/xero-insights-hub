@@ -104,13 +104,13 @@ function LoanGroupsTab() {
       {q.error && <p className="mt-4 text-sm text-destructive">{(q.error as Error).message}</p>}
 
       {view && !view.multiCompany && (
-        <p className="mt-6 rounded-lg border border-dashed border-border bg-background p-4 text-sm text-muted-foreground">
+        <p className="mt-6 rounded-lg border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
           Consolidation is part of the multi-company plan. Upgrade this organisation's plan to combine companies.
         </p>
       )}
 
       {view?.multiCompany && groups.length === 0 && (
-        <p className="mt-6 rounded-lg border border-dashed border-border bg-background p-4 text-sm text-muted-foreground">
+        <p className="mt-6 rounded-lg border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
           No consolidation groups yet. Create one and tick the companies to combine.
         </p>
       )}

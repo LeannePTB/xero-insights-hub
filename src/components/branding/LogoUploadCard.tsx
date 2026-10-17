@@ -138,7 +138,7 @@ export function LogoUploadCard({
           "Shown in the header of the monthly management report PDF. PNG or JPEG, up to 2 MB. Reports still generate without a logo."}
       </p>
       <div className="flex flex-wrap items-center gap-4">
-        <div className="flex h-16 w-40 items-center justify-center rounded-lg border border-border bg-background">
+        <div className="flex h-16 w-40 items-center justify-center rounded-lg border border-border bg-card">
           {q.isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           ) : url ? (

@@ -43,7 +43,7 @@ export function UpgradeOptions({
   }
 
   return (
-    <section className="mt-10 rounded-2xl border border-dashed border-border bg-muted/30 p-6">
+    <section className="mt-10 rounded-2xl border border-dashed border-border bg-card p-6">
       <div className="mb-4 flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-emphasis" />
         <h2 className="font-display text-lg font-semibold">Other dashboards available</h2>

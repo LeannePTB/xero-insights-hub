@@ -481,7 +481,7 @@ function ClientViewerList({
               {canManage ? (
                 <select
                   aria-label={`Relationship for ${a.display_name ?? a.inviter_label ?? a.email ?? "person"}`}
-                  className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                  className="h-8 rounded-md border border-input bg-card px-2 text-xs"
                   value={a.relationship ?? "not_set"}
                   onChange={(event) => {
                     if (event.target.value === "not_set") return;

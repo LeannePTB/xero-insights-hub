@@ -221,13 +221,13 @@ function ReportsPage() {
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-2 text-sm">
                 <span>① Period</span>
-                <select className="h-8 max-w-full rounded-md border border-border bg-background px-2 text-sm" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)}>
+                <select className="h-8 max-w-full rounded-md border border-border bg-card px-2 text-sm" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)}>
                   {periods.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                 </select>
               </label>
               {orgs.length > 1 && <label className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
                 <span>Xero file</span>
-                <select className="h-8 max-w-full rounded-md border border-border bg-background px-2 text-sm" value={tenantId} onChange={(e) => setTenantId(e.target.value)}>
+                <select className="h-8 max-w-full rounded-md border border-border bg-card px-2 text-sm" value={tenantId} onChange={(e) => setTenantId(e.target.value)}>
                   <option value="">{orgs[0]?.tenantName} (default)</option>
                   {orgs.map((o) => <option key={o.tenantId} value={o.tenantId}>{o.tenantName}</option>)}
                 </select>

@@ -118,7 +118,7 @@ export function MismatchDetailDialog({
                 {d.differences.map((diff: MismatchDifference) => (
                   <div
                     key={diff.id}
-                    className="rounded-lg border border-border bg-muted/40 p-3 text-sm"
+                    className="rounded-lg border border-border bg-card p-3 text-sm"
                   >
                     <div className="mb-1 flex items-center justify-between gap-2">
                       <Badge variant="outline" className="shrink-0">

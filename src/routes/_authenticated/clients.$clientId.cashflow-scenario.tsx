@@ -464,7 +464,7 @@ function CashflowScenarioPage() {
 
               <div className={`${invoicesOpen ? "" : "hidden"}`}>
                 {canManage && customerNames.length > 0 && (
-                  <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-muted/30 p-3">
+                  <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-card p-3">
                     <span className="text-xs text-muted-foreground">What if</span>
                     <Select value={customer} onValueChange={setCustomer}>
                       <SelectTrigger className="h-9 w-[240px] text-xs">

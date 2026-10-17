@@ -102,13 +102,13 @@ export function ConsolidationGroupsSection({ firmId }: { firmId: string }) {
         {q.error && <p className="text-sm text-destructive">{(q.error as Error).message}</p>}
 
         {view && !view.multiCompany && (
-          <p className="rounded-lg border border-dashed border-border bg-background p-4 text-sm text-muted-foreground">
+          <p className="rounded-lg border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
             Consolidation is part of the multi-company plan. Upgrade this organisation's plan to combine companies.
           </p>
         )}
 
         {view?.multiCompany && view.groups.length === 0 && (
-          <p className="rounded-lg border border-dashed border-border bg-background p-4 text-sm text-muted-foreground">
+          <p className="rounded-lg border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
             No consolidation groups yet. Create one and tick the companies to combine.
           </p>
         )}
@@ -118,7 +118,7 @@ export function ConsolidationGroupsSection({ firmId }: { firmId: string }) {
             {view.groups.map((g) => (
               <li
                 key={g.id}
-                className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border bg-background p-4"
+                className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border bg-card p-4"
               >
                 <div className="min-w-0">
                   <p className="font-medium">{g.name}</p>

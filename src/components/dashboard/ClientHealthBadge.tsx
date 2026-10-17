@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 export function ClientHealthBadge({ summary, loading }: { summary: HealthBadgeSummary | undefined; loading?: boolean }) {
   const text = loading ? "Loading…" : summary ? summary.headline : "No saved figures yet";
   const tone = !summary || summary.counted === 0
-    ? "border-dashed border-border bg-muted/30 text-muted-foreground"
+    ? "border-dashed border-border bg-card text-muted-foreground"
     : summary.onTrack === summary.counted
       ? "border-success/30 bg-success/10 text-success"
       : summary.checks.some((c) => c.status === "red")

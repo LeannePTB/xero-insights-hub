@@ -71,7 +71,7 @@ export function LoanConsolidationWidget({
             <Stat label="Out of balance" value={String(mismatches.length)} tone={mismatches.length ? "text-rose-600" : "text-muted-foreground"} />
           </div>
 
-          <div className="mt-3 rounded-lg border border-border/60 bg-background p-4">
+          <div className="mt-3 rounded-lg border border-border/60 bg-card p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Total difference
             </p>
@@ -114,7 +114,7 @@ export function LoanConsolidationWidget({
 
 function Stat({ label, value, tone }: { label: string; value: string; tone: string }) {
   return (
-    <div className="rounded-lg border border-border/60 bg-background p-3">
+    <div className="rounded-lg border border-border/60 bg-card p-3">
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className={`mt-1 text-lg font-semibold tabular-nums ${tone}`}>{value}</p>
     </div>

@@ -208,7 +208,7 @@ function PropertyDialog({ open, onOpenChange, clientId, tenantId, initial, onSav
             </div>
             <div>
               <Label htmlFor="rent-freq">Per</Label>
-              <select id="rent-freq" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              <select id="rent-freq" className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm"
                 value={draft.frequency} onChange={(e) => setDraft({ ...draft, frequency: e.target.value as RentFrequency })}>
                 <option value="weekly">Week</option>
                 <option value="fortnightly">Fortnight</option>

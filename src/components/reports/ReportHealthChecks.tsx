@@ -4,7 +4,7 @@ const PILL: Record<CheckStatus, string> = {
   green: "border-success/30 bg-success/10 text-success",
   watch: "border-info/30 bg-info/10 text-info",
   red: "border-destructive/30 bg-destructive/10 text-destructive",
-  na: "border-border bg-muted/40 text-muted-foreground",
+  na: "border-border bg-card text-muted-foreground",
 };
 
 /** Light status tint for each check tile, mirroring the dashboard card. */

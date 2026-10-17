@@ -20,7 +20,7 @@ const PILL: Record<CheckStatus, string> = {
   green: "border-success/30 bg-success/10 text-success",
   watch: "border-info/30 bg-info/10 text-info",
   red: "border-destructive/30 bg-destructive/10 text-destructive",
-  na: "border-border bg-muted/40 text-muted-foreground",
+  na: "border-border bg-card text-muted-foreground",
 };
 
 /** Light status tint for each check tile; text stays on the default foreground for AA contrast. */
@@ -28,7 +28,7 @@ const TILE: Record<CheckStatus, string> = {
   green: "border-success/30 bg-success/5",
   watch: "border-info/30 bg-info/5",
   red: "border-destructive/30 bg-destructive/5",
-  na: "border-border/60 bg-background/60",
+  na: "border-border/60 bg-card",
 };
 
 /** Business Health: three plain checks from last night's saved Xero figures. */

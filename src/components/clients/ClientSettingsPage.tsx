@@ -441,7 +441,7 @@ export function ClientSettingsPage({ clientId, section }: { clientId: string; se
             />
           }
         >
-          <div className="mb-4 flex flex-wrap items-end gap-2 rounded-md border border-border bg-muted/30 p-3">
+          <div className="mb-4 flex flex-wrap items-end gap-2 rounded-md border border-border bg-card p-3">
             <div>
               <Label htmlFor="xero-file-allowance">Allowed Xero files</Label>
               <Input
@@ -487,7 +487,7 @@ export function ClientSettingsPage({ clientId, section }: { clientId: string; se
                 return (
                   <li
                     key={o.id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2"
                   >
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">{tenantName}</span>
@@ -523,7 +523,7 @@ export function ClientSettingsPage({ clientId, section }: { clientId: string; se
                             </AlertDialogDescription>
                           </AlertDialogHeader>
 
-                          <div className="rounded-md border border-border bg-background p-3">
+                          <div className="rounded-md border border-border bg-card p-3">
                             <p className="text-sm font-medium">Unlink from this client</p>
                             <p className="mt-1 text-xs text-muted-foreground">
                               Removes the link only. The Xero connection stays live and can be
@@ -597,14 +597,14 @@ export function ClientSettingsPage({ clientId, section }: { clientId: string; se
             </div>
           )}
           {chooserState && availableConns.length === 0 && !optionsQ.isFetching && (
-            <p className="mt-4 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+            <p className="mt-4 rounded-md border border-border bg-card p-3 text-sm text-muted-foreground">
               Those Xero files belong to another organisation, so they can't be linked here. Run
               "Connect a Xero file" again and tick an organisation that belongs to this
               organisation.
             </p>
           )}
           {chooserState && availableConns.length > 0 && (allowance?.remaining ?? 0) < 1 && (
-            <p className="mt-4 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+            <p className="mt-4 rounded-md border border-border bg-card p-3 text-sm text-muted-foreground">
               This client is using {allowance?.used ?? 0} of {allowance?.allowance ?? 0} allowed
               Xero file{(allowance?.allowance ?? 0) === 1 ? "" : "s"}, so no more can be linked.
             </p>
@@ -723,7 +723,7 @@ export function ClientSettingsPage({ clientId, section }: { clientId: string; se
                 {(accessQ.data?.access ?? []).map((a: any) => (
                   <li
                     key={a.id}
-                    className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2"
+                    className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">

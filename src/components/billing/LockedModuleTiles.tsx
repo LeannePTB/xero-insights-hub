@@ -26,7 +26,7 @@ export function LockedModuleTiles({ clientId }: { clientId: string }) {
       {open && (
         <ul className="grid gap-2 border-t border-border p-3 sm:grid-cols-2 lg:grid-cols-4">
           {tiles.map(t => (
-            <li key={t.key} className="flex min-w-0 flex-col gap-1 rounded-md bg-muted/50 p-3">
+            <li key={t.key} className="flex min-w-0 flex-col gap-1 rounded-md bg-card p-3">
               <p className="flex items-center gap-1.5 text-sm font-semibold"><Lock className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />{t.label}</p>
               <p className="line-clamp-2 text-xs text-muted-foreground">{t.description}</p>
               <Link to="/clients/$clientId/advisory" params={{ clientId }} search={{ module: t.key }} className="mt-auto w-fit text-xs font-medium text-link underline-offset-2 hover:underline">Find out more<span className="sr-only"> about {t.label}</span></Link>

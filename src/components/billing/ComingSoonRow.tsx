@@ -52,7 +52,7 @@ function ComingSoonTile({ clientId, entry }: { clientId: string; entry: ComingSo
     onError: (e: any) => toast.error(e?.message ?? 'Your interest could not be recorded.'),
   });
   return (
-    <li className="flex min-w-0 flex-col gap-1 rounded-md bg-muted/50 p-3">
+    <li className="flex min-w-0 flex-col gap-1 rounded-md bg-card p-3">
       <p className="flex items-center gap-1.5 text-sm font-semibold"><Clock className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />{entry.name}</p>
       <p className="line-clamp-2 text-xs text-muted-foreground">{entry.description}</p>
       {entry.timing && <p className="text-xs text-muted-foreground">{entry.timing}</p>}

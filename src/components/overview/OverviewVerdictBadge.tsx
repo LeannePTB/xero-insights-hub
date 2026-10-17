@@ -26,7 +26,7 @@ const SEVERITY_STYLES: Record<string, string> = {
 
 const OK_STYLE =
   "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300";
-const MUTED_STYLE = "border-dashed border-border bg-muted/30 text-muted-foreground";
+const MUTED_STYLE = "border-dashed border-border bg-card text-muted-foreground";
 
 export function OverviewVerdictBadge({ verdict }: { verdict: Verdict | undefined }) {
   if (!verdict) {

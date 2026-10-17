@@ -53,7 +53,7 @@ export function PayablesWidget({
       <DashboardCardHeader label={tenantName} title="Payables" icon={<Wallet className="h-4 w-4"/>} description="Oldest outstanding supplier bills" badge={<BasisBadge basis={basis}/>} source={data?.source} isFetching={isFetching}/>
 
       {data && data.source?.mode !== 'pending' && <VectorChart title="Payables ageing" points={ageingPoints(data.invoices)} series={[{label:'Outstanding',kind:'bar'}]} currency={currency}/>}
-      <div className="mt-6 rounded-lg border border-border bg-background p-4">
+      <div className="mt-6 rounded-lg border border-border bg-card p-4">
         {isLoading ? (
           <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…

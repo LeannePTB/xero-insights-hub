@@ -256,7 +256,7 @@ function AuditPage() {
           </div>
 
           {canManage && selected.size > 0 && (
-            <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm">
               <span className="font-medium">{selected.size} selected</span>
               <Button size="sm" disabled={bulkResolveMut.isPending} onClick={() => bulkResolveMut.mutate()}>
                 <Check className="mr-1 h-3 w-3" /> Mark resolved
@@ -285,7 +285,7 @@ function AuditPage() {
           )}
 
           {visible.length === 0 ? (
-            <p className="rounded border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+            <p className="rounded border bg-card p-6 text-center text-sm text-muted-foreground">
               {!run
                 ? "Run the audit to see findings."
                 : term
@@ -402,7 +402,7 @@ function PaymentRows({ finding }: { finding: any }) {
   const isSameDoc = ev.case === "same_document";
   const docNumber: string | null = Array.isArray(ev.invoices) ? (ev.invoices[0] ?? null) : null;
   return (
-    <div className="mt-2 rounded-md border bg-muted/30 px-3 py-2">
+    <div className="mt-2 rounded-md border bg-card px-3 py-2">
       <p className="text-xs font-medium">
         {isSameDoc
           ? `Payments against ${docNumber ? `${finding.entity_type === "Invoice" ? "invoice" : "bill"} ${docNumber}` : "this document"}`

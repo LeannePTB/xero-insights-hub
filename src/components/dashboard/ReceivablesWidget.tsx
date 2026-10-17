@@ -55,7 +55,7 @@ export function ReceivablesWidget({
 
       {data && data.source?.mode !== 'pending' && <VectorChart title="Receivables ageing" points={ageingPoints(data.invoices)} series={[{label:'Outstanding',kind:'bar'}]} currency={currency}/>}
       <StandardHistoryChart tenantId={tenantId} card="receivables" currency={currency}/>
-      <div className="mt-6 rounded-lg border border-border bg-background p-4">
+      <div className="mt-6 rounded-lg border border-border bg-card p-4">
         {isLoading ? (
           <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…

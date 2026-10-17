@@ -94,7 +94,7 @@ export function OrphanXeroConnectionsCard({ firms }: { firms: FirmOption[] }) {
         {rows.map((c) => (
           <li
             key={c.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-background/60 p-3"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-card p-3"
           >
             <div className="min-w-[14rem]">
               <div className="flex items-center gap-2">
