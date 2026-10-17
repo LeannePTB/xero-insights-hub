@@ -4669,6 +4669,15 @@ export type Database = {
         }
         Returns: string
       }
+      clear_client_income_tax_instalment: {
+        Args: {
+          _client_id: string
+          _period_end: string
+          _period_start: string
+          _tenant_id: string
+        }
+        Returns: boolean
+      }
       client_access_tiers: { Args: { _client_id: string }; Returns: string[] }
       client_allowed_widgets: {
         Args: { _client_id: string }
