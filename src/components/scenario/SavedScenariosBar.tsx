@@ -11,7 +11,7 @@ import { parsePayload, type ScenarioPayload } from "@/lib/scenario/adjustments";
 
 /** Saved scenarios for one client. Editing controls show only to people who
  *  can manage the client; the database enforces the same rule on every write. */
-export function SavedScenariosBar({ clientId, canManage, loaded, monthEnd, monthLabel, currentPayload, reportTable, onLoad }: {
+export function SavedScenariosBar({ clientId, canManage, loaded, monthEnd, monthLabel, currentPayload, reportTable, onLoad, onSaved }: {
   clientId: string;
   canManage: boolean;
   loaded: { id: string; name: string } | null;
@@ -20,6 +20,7 @@ export function SavedScenariosBar({ clientId, canManage, loaded, monthEnd, month
   currentPayload: () => ScenarioPayload;
   reportTable: () => Record<string, unknown> | null;
   onLoad: (s: SavedScenario | null, p: ScenarioPayload | null) => void | Promise<void>;
+  onSaved: (s: { id: string; name: string }) => void;
 }) {
   const qc = useQueryClient();
   const list = useServerFn(listSavedScenarios);
@@ -35,11 +36,9 @@ export function SavedScenariosBar({ clientId, canManage, loaded, monthEnd, month
 
   const saveMut = useMutation({
     mutationFn: (v: { id: string | null; name: string }) => save({ data: { clientId, id: v.id, name: v.name, payload: currentPayload() as any, reportTable: reportTable() } }),
-    onSuccess: async (r, v) => { await refresh(); setName(""); toast.success("Scenario saved"); const s = { id: r.id, name: v.name } as SavedScenario; void onLoadQuiet(s); },
+    onSuccess: async (r, v) => { await refresh(); setName(""); toast.success("Scenario saved"); onSaved({ id: r.id, name: v.name }); },
     onError: (e: any) => toast.error(e?.message ?? "Could not save"),
   });
-  const onLoadQuiet = (s: SavedScenario) => { (loadedRef.current = s); };
-  const loadedRef = { current: null as SavedScenario | null };
   const act = useMutation({
     mutationFn: (fn: () => Promise<unknown>) => fn(),
     onSuccess: () => refresh(),

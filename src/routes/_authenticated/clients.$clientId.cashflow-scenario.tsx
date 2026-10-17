@@ -272,6 +272,7 @@ function CashflowScenarioPage() {
             monthLabel={monthLabelOf(month)}
             currentPayload={currentPayload}
             reportTable={projection ? () => ({ kind: "cashflow_scenario", rows: projection.rows.map((r) => ({ month: r.month, baselineNet: r.baseline.net, scenarioNet: r.scenario.net, baselineCash: r.baseline.closingCash, scenarioCash: r.scenario.closingCash })) }) : () => null}
+            onSaved={(sc) => setLoaded(sc)}
             onLoad={async (sc, payload) => {
               setLoaded(sc ? { id: sc.id, name: sc.name } : null);
               if (!sc || !payload) { setAdjustments([]); setExcludedOverride(null); return; }
