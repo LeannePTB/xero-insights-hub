@@ -4174,6 +4174,90 @@ AS $function$
   ) end
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.save_cashflow_scenario(_client_id uuid, _id uuid, _name text, _payload jsonb, _report_table jsonb)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE v_client uuid; v_id uuid; f uuid; n text := btrim(coalesce(_name,''));
+BEGIN
+  PERFORM app_private.assert_aal2();
+  IF _id IS NOT NULL THEN
+    SELECT client_id INTO v_client FROM public.client_cashflow_scenarios WHERE id = _id;
+    IF v_client IS NULL OR v_client IS DISTINCT FROM _client_id THEN RAISE EXCEPTION 'Scenario not available.' USING ERRCODE='42501'; END IF;
+  ELSE v_client := _client_id; END IF;
+  IF auth.uid() IS NULL OR v_client IS NULL OR NOT app_private.user_can_write_client(auth.uid(), v_client) THEN RAISE EXCEPTION 'Scenario not available.' USING ERRCODE='42501'; END IF;
+  IF length(n) < 1 OR length(n) > 120 OR _payload IS NULL OR jsonb_typeof(_payload) <> 'object' OR pg_column_size(_payload) > 65536
+     OR (_report_table IS NOT NULL AND (jsonb_typeof(_report_table) <> 'object' OR pg_column_size(_report_table) > 16384)) THEN
+    RAISE EXCEPTION 'Invalid scenario.'; END IF;
+  SELECT firm_id INTO f FROM public.clients WHERE id = v_client;
+  IF _id IS NULL THEN
+    INSERT INTO public.client_cashflow_scenarios(client_id, name, payload, report_table, created_by, updated_by)
+      VALUES (v_client, n, _payload, _report_table, auth.uid(), auth.uid()) RETURNING id INTO v_id;
+  ELSE
+    UPDATE public.client_cashflow_scenarios SET name = n, payload = _payload, report_table = _report_table, updated_by = auth.uid(), updated_at = now()
+      WHERE id = _id RETURNING id INTO v_id;
+  END IF;
+  INSERT INTO public.audit_log(id, actor_user_id, firm_id, action, target_type, target_id, meta)
+    VALUES (gen_random_uuid(), auth.uid(), f, CASE WHEN _id IS NULL THEN 'cashflow_scenario_created' ELSE 'cashflow_scenario_updated' END, 'client', v_client, jsonb_build_object('scenario_id', v_id));
+  RETURN v_id;
+END $function$
+;
+CREATE OR REPLACE FUNCTION public.delete_cashflow_scenario(_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE v_client uuid; f uuid;
+BEGIN
+  PERFORM app_private.assert_aal2();
+  SELECT client_id INTO v_client FROM public.client_cashflow_scenarios WHERE id = _id;
+  IF auth.uid() IS NULL OR v_client IS NULL OR NOT app_private.user_can_write_client(auth.uid(), v_client) THEN RAISE EXCEPTION 'Scenario not available.' USING ERRCODE='42501'; END IF;
+  SELECT firm_id INTO f FROM public.clients WHERE id = v_client;
+  DELETE FROM public.client_cashflow_scenarios WHERE id = _id;
+  INSERT INTO public.audit_log(id, actor_user_id, firm_id, action, target_type, target_id, meta)
+    VALUES (gen_random_uuid(), auth.uid(), f, 'cashflow_scenario_deleted', 'client', v_client, jsonb_build_object('scenario_id', _id));
+END $function$
+;
+CREATE OR REPLACE FUNCTION public.set_cashflow_scenario_shared(_id uuid, _shared boolean)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE v_client uuid; f uuid;
+BEGIN
+  PERFORM app_private.assert_aal2();
+  SELECT client_id INTO v_client FROM public.client_cashflow_scenarios WHERE id = _id;
+  IF auth.uid() IS NULL OR v_client IS NULL OR NOT app_private.user_can_write_client(auth.uid(), v_client) THEN RAISE EXCEPTION 'Scenario not available.' USING ERRCODE='42501'; END IF;
+  SELECT firm_id INTO f FROM public.clients WHERE id = v_client;
+  UPDATE public.client_cashflow_scenarios SET shared_with_client = coalesce(_shared, false), updated_by = auth.uid(), updated_at = now() WHERE id = _id;
+  INSERT INTO public.audit_log(id, actor_user_id, firm_id, action, target_type, target_id, meta)
+    VALUES (gen_random_uuid(), auth.uid(), f, CASE WHEN coalesce(_shared,false) THEN 'cashflow_scenario_shared' ELSE 'cashflow_scenario_unshared' END, 'client', v_client, jsonb_build_object('scenario_id', _id));
+END $function$
+;
+CREATE OR REPLACE FUNCTION public.set_cashflow_scenario_report(_id uuid, _period_end date)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE v_client uuid; f uuid;
+BEGIN
+  PERFORM app_private.assert_aal2();
+  SELECT client_id INTO v_client FROM public.client_cashflow_scenarios WHERE id = _id;
+  IF auth.uid() IS NULL OR v_client IS NULL OR NOT app_private.user_can_write_client(auth.uid(), v_client) THEN RAISE EXCEPTION 'Scenario not available.' USING ERRCODE='42501'; END IF;
+  SELECT firm_id INTO f FROM public.clients WHERE id = v_client;
+  IF _period_end IS NOT NULL THEN
+    UPDATE public.client_cashflow_scenarios SET report_period_end = NULL WHERE client_id = v_client AND report_period_end = _period_end AND id <> _id;
+  END IF;
+  UPDATE public.client_cashflow_scenarios SET report_period_end = _period_end, updated_by = auth.uid(), updated_at = now() WHERE id = _id;
+  INSERT INTO public.audit_log(id, actor_user_id, firm_id, action, target_type, target_id, meta)
+    VALUES (gen_random_uuid(), auth.uid(), f, CASE WHEN _period_end IS NULL THEN 'cashflow_scenario_report_cleared' ELSE 'cashflow_scenario_report_set' END, 'client', v_client, jsonb_build_object('scenario_id', _id, 'period_end', _period_end));
+END $function$
+;
 CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -4305,6 +4389,22 @@ BEGIN
   END IF;
  END IF;
  RETURN NEW;
+END $function$
+;
+CREATE OR REPLACE FUNCTION public.attach_report_scenario()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+  IF TG_OP = 'UPDATE' AND OLD.status IN ('final','sent') AND NEW.scenario_snapshot IS DISTINCT FROM OLD.scenario_snapshot THEN
+    RAISE EXCEPTION 'This report is locked.'; END IF;
+  IF NEW.status = 'draft' AND (TG_OP = 'INSERT' OR NEW.generated_at IS DISTINCT FROM OLD.generated_at) THEN
+    SELECT CASE WHEN s.report_table IS NULL THEN NULL ELSE s.report_table || jsonb_build_object('name', s.name) END INTO NEW.scenario_snapshot
+      FROM public.client_cashflow_scenarios s WHERE s.client_id = NEW.client_id AND s.report_period_end = NEW.period_end;
+  END IF;
+  RETURN NEW;
 END $function$
 ;
 alter table public.access_invites enable row level security;
@@ -5660,6 +5760,7 @@ create policy mfa_aal2_required on public.xero_snapshot_runs as restrictive for 
 create policy "entitled users read client snapshots" on public.xero_snapshots as permissive for select to authenticated using ((user_can_access_client(auth.uid(), client_id) AND app_private.user_can_access_tenant(auth.uid(), tenant_id)));
 create policy mfa_aal2_required on public.xero_snapshots as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 CREATE TRIGGER attach_pending_report_video BEFORE INSERT OR UPDATE ON public.client_reports FOR EACH ROW EXECUTE FUNCTION attach_pending_report_video();
+CREATE TRIGGER client_reports_attach_scenario BEFORE INSERT OR UPDATE ON public.client_reports FOR EACH ROW EXECUTE FUNCTION attach_report_scenario();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.client_subscriptions FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER tg_seed_client_cards_from_org_default AFTER INSERT ON public.clients FOR EACH ROW EXECUTE FUNCTION app_private.seed_client_cards_from_org_default();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.firms FOR EACH ROW EXECUTE FUNCTION audit_table_change();
