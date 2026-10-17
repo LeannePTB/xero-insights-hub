@@ -110,7 +110,7 @@ async function backfillFile(db: any, item: Item): Promise<{ cash: number; profit
   const rows = new Map<string, { cash?: number | null; net_profit?: number | null; income?: number | null; expenses?: number | null }>();
   let cashCount = 0;
   if (needBs.length) {
-    const { data: ov } = await db.from("client_statutory_accounts").select("account_name, category").eq("client_id", item.client_id);
+    const { data: ov } = await db.from("account_setup_statutory_v").select("account_name, category").eq("client_id", item.client_id);
     const overrides = statutoryOverrideMap((ov ?? []) as any[]);
     const accountsRaw = await paced<any>("Accounts");
     // Same selected-accounts overlay as today's Cash at bank (current settings).

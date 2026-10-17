@@ -778,7 +778,7 @@ export async function computeMonthlyReport(opts: {
     });
     // Wages split, frozen into this new draft (final/sent are never rebuilt).
     const { wageAccountNames, wagesFromSections } = await import("@/lib/wages-split");
-    const { data: marks } = await opts.supabase.from("client_cost_classifications").select("account_name, classification, is_wages").eq("client_id", opts.clientId).eq("tenant_id", opts.tenantId);
+    const { data: marks } = await opts.supabase.from("account_setup_cost_v").select("account_name, classification, is_wages").eq("client_id", opts.clientId).eq("tenant_id", opts.tenantId);
     const names = wageAccountNames(marks);
     const w = wagesFromSections(parsed.sections, idx, names);
     if (profitAndLoss && w !== null) {

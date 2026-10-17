@@ -115,7 +115,7 @@ export const getProfitAndLoss = createServerFn({ method: "POST" })
     const wageInfo = async () => {
       const [{ data: clientId }, { data: rows }] = await Promise.all([
         (context.supabase as any).rpc("client_for_tenant", { _tenant_id: data.tenantId }),
-        (context.supabase as any).from("client_cost_classifications").select("account_name, classification, is_wages").eq("tenant_id", data.tenantId),
+        (context.supabase as any).from("account_setup_cost_v").select("account_name, classification, is_wages").eq("tenant_id", data.tenantId),
       ]);
       const wageAccounts = ((rows ?? []) as any[]).filter((r) => r.is_wages || r.classification === "wages").map((r) => String(r.account_name));
       return { clientId: (clientId as string | null) ?? null, wageAccounts };

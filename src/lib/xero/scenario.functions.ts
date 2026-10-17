@@ -263,7 +263,7 @@ export const getScenarioData = createServerFn({ method: "POST" })
 
     const [tagsRes, exclRes] = await Promise.all([
       sb
-        .from("client_cost_classifications")
+        .from("account_setup_cost_v")
         .select("account_name, classification, is_wages")
         .eq("client_id", data.clientId)
         .eq("tenant_id", data.tenantId),

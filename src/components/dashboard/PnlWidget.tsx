@@ -128,8 +128,8 @@ export function PnlWidget({
             </>}
             <Kpi label="Net Profit" value={current.netProfit} previous={priorData?.netProfit ?? 0} higherIsBetter currency={currency} priorLabel={priorLabel} />
           </div>
-          {cur?.split && clientId ? <p className="mt-2 text-xs text-muted-foreground">Wages = accounts marked Wages in <Link to="/clients/$clientId/settings/cost-classification" params={{ clientId }} className="text-link hover:underline">Cost classification</Link> ({names.size} account{names.size === 1 ? "" : "s"})</p>
-            : !cur?.split && canManage && clientId ? <p className="mt-2 text-xs text-muted-foreground"><Link to="/clients/$clientId/settings/cost-classification" params={{ clientId }} className="text-link hover:underline">Mark wage accounts in Cost classification</Link> to see wages separately.</p> : null}
+          {cur?.split && clientId ? <p className="mt-2 text-xs text-muted-foreground">Wages = accounts marked Wages in <Link to="/clients/$clientId/settings/account-setup" params={{ clientId }} className="text-link hover:underline">Cost classification</Link> ({names.size} account{names.size === 1 ? "" : "s"})</p>
+            : !cur?.split && canManage && clientId ? <p className="mt-2 text-xs text-muted-foreground"><Link to="/clients/$clientId/settings/account-setup" params={{ clientId }} className="text-link hover:underline">Mark wage accounts in Cost classification</Link> to see wages separately.</p> : null}
         </>
       ) : null}
     </div>

@@ -1246,6 +1246,15 @@
         "args": [
             "_client_id",
             "_tenant_id",
+            "_changes"
+        ],
+        "name": "save_client_account_setup",
+        "required": 3
+    },
+    {
+        "args": [
+            "_client_id",
+            "_tenant_id",
             "_account_id",
             "_classification"
         ],

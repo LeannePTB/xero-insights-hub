@@ -31,7 +31,7 @@ export async function loadStandardHistory(db: any, clientId: string, tenantId: s
   }
   if(card==='pnl') {
     const { wageAccountNames, wagesFromSections } = await import('@/lib/wages-split');
-    const marks = await db.from('client_cost_classifications').select('account_name,classification,is_wages').eq('client_id',clientId).eq('tenant_id',tenantId);
+    const marks = await db.from('account_setup_cost_v').select('account_name,classification,is_wages').eq('client_id',clientId).eq('tenant_id',tenantId);
     const names = wageAccountNames(marks.data);
     result.wagesSplit = names.size > 0;
     const [reports,snapshots,filled] = await Promise.all([

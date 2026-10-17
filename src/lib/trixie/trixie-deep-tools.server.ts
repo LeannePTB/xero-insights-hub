@@ -88,7 +88,7 @@ const dateWhere = (from: string, to: string) => `Date>=${dt(from)} AND Date<=${d
 
 /** Accounts excluded by this client's statutory settings ("None of these"), e.g. notional GST. */
 async function excludedNames(ctx: TrixieContext): Promise<Set<string>> {
-  const { data } = await (ctx.supabase as any).from("client_statutory_accounts").select("account_name, category").eq("client_id", ctx.clientId);
+  const { data } = await (ctx.supabase as any).from("account_setup_statutory_v").select("account_name, category").eq("client_id", ctx.clientId);
   return new Set(((data ?? []) as any[]).filter((r) => r.category === "none").map((r) => String(r.account_name).trim().toLowerCase()));
 }
 

@@ -26,7 +26,7 @@ export async function writeKeyFigures(target: { clientId: string; firmId: string
   for (const r of (rows ?? []) as any[]) if (!latest.has(r.report_key)) latest.set(r.report_key, r);
 
   const { data: ov } = await db
-    .from("client_statutory_accounts")
+    .from("account_setup_statutory_v")
     .select("account_name, category")
     .eq("client_id", target.clientId);
   const overrides = statutoryOverrideMap((ov ?? []) as any[]);
@@ -68,7 +68,7 @@ export async function writeKeyFigures(target: { clientId: string; firmId: string
   // active cash accounts only). Settings that cannot be read, or pulls that
   // did not run, leave it unavailable — never invented.
   const { computeBankReconciliation, oldestReconciledTo } = await import("./bank-reconciliation");
-  const { data: cls, error: clsErr } = await db.from("client_bank_account_classifications").select("account_id, classification").eq("tenant_id", target.tenantId).eq("client_id", target.clientId);
+  const { data: cls, error: clsErr } = await db.from("account_setup_bank_v").select("account_id, classification").eq("tenant_id", target.tenantId).eq("client_id", target.clientId);
   const pull = (key: string, items: string) => {
     const r = latest.get(key);
     return r && Date.now() - new Date(r.fetched_at).getTime() < 36 * 3600 * 1000 ? { items: r.payload?.[items] ?? [], complete: !!r.complete } : null;

@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils";
 /** Same names and order as the Client settings entries in the side menu. */
 export const CLIENT_SETTINGS_TABS = [
   ["general", "General"], ["cards", "Cards & report branding"], ["people", "People"],
-  ["xero", "Xero connections"], ["tax-reporting", "Tax & reporting"], ["banks", "Banks & accounts"],
-  ["cost-classification", "Cost classification"], ["danger", "Danger zone"],
+  ["xero", "Xero connections"], ["tax-reporting", "Tax & reporting"], ["account-setup", "Account setup"],
+  ["danger", "Danger zone"],
 ] as const;
 
 /** Which tab owns each section anchor; old General#anchor links redirect here. */
@@ -15,9 +15,12 @@ export const TAB_BY_ANCHOR: Record<string, string> = {
   "report-basis": "tax-reporting",
   "gst-method": "tax-reporting",
   "income-tax-instalments": "tax-reporting",
-  "statutory-accounts": "tax-reporting",
-  "cost-classification": "cost-classification",
-  "bank-accounts": "banks",
+  "statutory-accounts": "account-setup",
+  "cost-classification": "account-setup",
+  "bank-accounts": "account-setup",
+  "account-setup-cost": "account-setup",
+  "account-setup-tax": "account-setup",
+  "account-setup-bank": "account-setup",
   cards: "cards",
 };
 

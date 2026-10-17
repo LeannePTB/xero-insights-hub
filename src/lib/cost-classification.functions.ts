@@ -19,7 +19,7 @@ export const listCostClassifications = createServerFn({ method: "POST" })
     await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
     const [rowsRes, clientRes] = await Promise.all([
       context.supabase
-        .from("client_cost_classifications" as any)
+        .from("account_setup_cost_v" as any)
         .select("account_name, classification, is_wages")
         .eq("client_id", data.clientId)
         .eq("tenant_id", data.tenantId),
@@ -39,35 +39,6 @@ export const listCostClassifications = createServerFn({ method: "POST" })
     };
   });
 
-export const setCostClassifications = createServerFn({ method: "POST" })
-  .middleware([requireAal2])
-  .inputValidator(
-    (input: {
-      clientId: string;
-      tenantId: string;
-      entries: { accountName: string; classification: Classification; isWages: boolean }[];
-    }) => input,
-  )
-  .handler(async ({ data, context }) => {
-    const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
-    await assertClientDataAccessForClient(context.userId, data.clientId);
-    const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
-    await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
-    if (data.entries.length === 0) return { ok: true };
-    const payload = data.entries.map((e) => ({
-      client_id: data.clientId,
-      tenant_id: data.tenantId,
-      account_name: e.accountName,
-      classification: e.classification,
-      is_wages: e.isWages,
-    }));
-    const { error } = await context.supabase
-      .from("client_cost_classifications" as any)
-      .upsert(payload, { onConflict: "client_id,tenant_id,account_name" });
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
-
 export const setCostClassificationEnabled = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((input: { clientId: string; enabled: boolean }) => input)
@@ -78,32 +49,6 @@ export const setCostClassificationEnabled = createServerFn({ method: "POST" })
       .from("clients")
       .update({ cost_classification_enabled: data.enabled } as any)
       .eq("id", data.clientId);
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
-
-/**
- * Remove stored tags. Used both to return an active account to Unclassified and
- * to clear stale rows whose account no longer exists in Xero. "Unclassified"
- * is therefore absence of a row, never a value stored in `classification`.
- */
-export const removeCostClassifications = createServerFn({ method: "POST" })
-  .middleware([requireAal2])
-  .inputValidator(
-    (input: { clientId: string; tenantId: string; accountNames: string[] }) => input,
-  )
-  .handler(async ({ data, context }) => {
-    const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
-    await assertClientDataAccessForClient(context.userId, data.clientId);
-    const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
-    await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
-    if (data.accountNames.length === 0) return { ok: true };
-    const { error } = await context.supabase
-      .from("client_cost_classifications" as any)
-      .delete()
-      .eq("client_id", data.clientId)
-      .eq("tenant_id", data.tenantId)
-      .in("account_name", data.accountNames);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

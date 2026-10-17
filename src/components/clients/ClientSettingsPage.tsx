@@ -15,8 +15,6 @@ import {
   updateClientLodgementCycles,
   setClientXeroAllowance,
 } from "@/lib/clients.functions";
-import { StatutoryAccountsSection } from "@/components/clients/StatutoryAccountsSection";
-import { BankAccountsSection } from "@/components/clients/BankAccountsSection";
 import { ClientSetupSection } from "@/components/clients/ClientSetupSection";
 import { TAB_BY_ANCHOR } from "@/components/clients/ClientSettingsNav";
 import { IncomeTaxInstalmentsSection } from "@/components/clients/IncomeTaxInstalmentsSection";
@@ -72,7 +70,7 @@ import {
 } from "lucide-react";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 import { XeroSyncStatusCard } from "@/components/clients/XeroSyncStatusCard";
-import { CostClassificationPanel } from "@/components/dashboard/CostClassificationPanel";
+import { AccountSetupPanel } from "@/components/clients/AccountSetupPanel";
 import { getClientWidgets } from "@/lib/tier-config.functions";
 // import { SubscriptionPanel } from "@/components/billing/SubscriptionPanel";
 import { Switch } from "@/components/ui/switch";
@@ -81,7 +79,7 @@ import {
   setCostClassificationEnabled,
 } from "@/lib/cost-classification.functions";
 
-export type ClientSettingsSection = "general" | "cards" | "people" | "xero" | "tax-reporting" | "banks" | "cost-classification" | "danger";
+export type ClientSettingsSection = "general" | "cards" | "people" | "xero" | "tax-reporting" | "banks" | "cost-classification" | "account-setup" | "danger";
 const ActiveSettingsSection = createContext<ClientSettingsSection>("general");
 
 export function ClientSettingsPage({ clientId, section }: { clientId: string; section: ClientSettingsSection }) {
@@ -403,29 +401,6 @@ export function ClientSettingsPage({ clientId, section }: { clientId: string; se
                 ?.tenant_id
             }
           />
-        </Section>
-
-        <Section
-          title="How this client codes GST, PAYG and super"
-          id="statutory-accounts"
-          collapsible
-        >
-          <StatutoryAccountsSection
-            clientId={clientId}
-            tenantId={
-              linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
-                ?.tenant_id
-            }
-          />
-        </Section>
-
-        <Section title="Bank accounts & credit cards" id="bank-accounts" collapsible>
-          {linkedOrgs.map((org: any) => org.xero_connections?.tenant_id ? (
-            <div key={org.id} className="space-y-3">
-              <h3 className="text-sm font-medium">{org.xero_connections.tenant_name}</h3>
-              <BankAccountsSection clientId={clientId} tenantId={org.xero_connections.tenant_id} />
-            </div>
-          ) : null)}
         </Section>
 
         {/* Xero orgs */}
@@ -798,8 +773,7 @@ const SETTINGS_SECTION_BY_TITLE: Record<string, ClientSettingsSection> = {
   "GST accounting method": "tax-reporting",
   "Income tax instalments (PAYG instalments)": "tax-reporting",
   "How this client codes GST, PAYG and super": "tax-reporting",
-  "Bank accounts & credit cards": "banks",
-  "Cost classification": "cost-classification",
+  "Account setup": "account-setup",
   "Danger zone": "danger",
 };
 
@@ -915,7 +889,7 @@ function CostClassificationSection({
     {
       forceOpen:
         typeof window !== "undefined" &&
-        window.location.hash.replace("#", "") === "cost-classification",
+        window.location.hash.replace("#", "").startsWith("account-setup") || ["cost-classification", "statutory-accounts", "bank-accounts"].includes(window.location.hash.replace("#", "")),
     },
   );
 
@@ -923,84 +897,67 @@ function CostClassificationSection({
   // Deep link from the Setup checklist: scroll to the first untagged account.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.location.hash.replace("#", "") !== "cost-classification") return;
+    const hash = window.location.hash.replace("#", "");
+    const legacy: Record<string, string> = { "cost-classification": "account-setup-cost", "statutory-accounts": "account-setup-tax", "bank-accounts": "account-setup-bank" };
+    const target = legacy[hash] ?? hash;
+    if (!target.startsWith("account-setup")) return;
     const t = window.setTimeout(() => {
-      document
-        .querySelector<HTMLElement>("[data-unclassified-account='true']")
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const el = target === "account-setup"
+        ? document.querySelector<HTMLElement>("[data-unclassified-account='true']")
+        : document.getElementById(target);
+      el?.scrollIntoView({ behavior: "smooth", block: target === "account-setup" ? "center" : "start" });
     }, 600);
     return () => window.clearTimeout(t);
   }, []);
 
-  if (activeSection !== "cost-classification") return null;
+  if (activeSection !== "account-setup") return null;
   if (widgetsQ.isLoading) return null;
-  if (!usesCostSplit && !usesWages) return null;
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <section
-        id="cost-classification"
+        id="account-setup"
         className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] scroll-mt-6"
       >
         <div className="mb-4 flex items-start justify-between gap-4">
           <CollapsibleTrigger asChild>
             <button className="group flex-1 text-left">
               <div className="flex items-center justify-between gap-2">
-                <h2 className="font-display text-lg font-semibold">Cost classification</h2>
+                <h2 className="font-display text-lg font-semibold">Account setup</h2>
                 <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {usesCostSplit ? (
-                  <>
-                    Tag each expense account as <strong>Unclassified</strong>, <strong>Fixed</strong>, <strong>Variable</strong>,
-                    or <strong>Excluded</strong> for break-even and the cash-flow scenario. Unclassified
-                    accounts are still treated as fixed until decided. Use the
-                    separate <strong>Wages</strong> marker for Business Health only; it does not
-                    change fixed-cost treatment.
-                  </>
-                ) : (
-                  <>
-                    Mark which accounts are <strong>Wages</strong> for Business Health. This
-                    client's dashboard has no break-even cards, so there is nothing to split into
-                    fixed and variable.
-                  </>
-                )}
+                One choice per Xero account: bank and cash, tax and super, and costs. Each row starts
+                with a suggestion from Xero; figures only change once a person accepts or picks a choice.
               </p>
             </button>
           </CollapsibleTrigger>
           <div className="flex shrink-0 items-center gap-2">
-            <span className="text-xs text-muted-foreground">{enabled ? "On" : "Off"}</span>
+            <span className="text-xs text-muted-foreground">{usesCostSplit || usesWages ? `Cost choices ${enabled ? "on" : "off"}` : ""}</span>
             <Switch
               checked={enabled}
               onCheckedChange={(v) => toggleMut.mutate(v)}
               disabled={toggleMut.isPending || enabledQ.isLoading}
-              aria-label="Enable cost classification"
+              aria-label="Use cost choices for break-even"
             />
           </div>
         </div>
         <CollapsibleContent>
           {!enabled ? (
-            <p className="text-sm text-muted-foreground">
-              Cost classification is turned off. Break-Even treats all operating expenses as fixed,
+            <p className="mb-4 text-sm text-muted-foreground">
+              Cost choices are turned off. Break-Even treats all operating expenses as fixed,
               and Cost of Sales as variable.
             </p>
-          ) : linkedOrgs.length === 0 ? (
+          ) : null}
+          {linkedOrgs.length === 0 ? (
             <p className="text-sm text-muted-foreground">Link a Xero organisation first.</p>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-8">
               {linkedOrgs.map((o) => {
                 const tenantId: string | undefined = o.xero_connections?.tenant_id;
                 const tenantName: string = o.xero_connections?.tenant_name ?? "Unknown";
                 if (!tenantId) return null;
-                return (
-                  <CostClassificationPanel
-                    key={o.id}
-                    clientId={clientId}
-                    tenantId={tenantId}
-                    tenantName={tenantName}
-                    wagesOnly={!usesCostSplit}
-                  />
-                );
+                return <AccountSetupPanel key={o.id} clientId={clientId} tenantId={tenantId} tenantName={tenantName} />;
               })}
             </div>
           )}
