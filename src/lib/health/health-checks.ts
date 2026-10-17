@@ -20,6 +20,12 @@ export type HealthCheck = {
   status: CheckStatus;
   /** One short plain sentence on what the status means. */
   meaning: string;
+  /** Panel title for the three-panel layout (presentation only). */
+  title?: string;
+  /** Label + value cells shown in the panel's left column; formatted from the same figures. */
+  rows?: { label: string; value: string }[];
+  /** Short "Analysis" lines for the panel's right column. */
+  analysis?: string[];
 };
 
 export type HealthInfoLine = { key: "next_tax" | "old_debts"; text: string };
@@ -558,7 +564,17 @@ export function computeHealthChecks(input: HealthInputs): HealthChecks {
       : status === "green" ? "Profitable this financial year, with a healthy margin."
       : status === "watch" ? "Making a profit, but only a thin one."
       : "Spending more than is coming in this financial year.";
-    checks.push({ key: "profit", question: "Making money?", figure, detail: null, status, meaning });
+    const word = status === "green" ? "Healthy" : status === "watch" ? "Thin" : status === "red" ? "Loss" : "Too early";
+    const analysis = status === "green"
+      ? ["Check profit margin against your industry standards.", "Are you charging enough? Can you automate or systemize better?"]
+      : [meaning];
+    checks.push({ key: "profit", question: "Making money?", figure, detail: null, status, meaning, title: "Profit",
+      rows: [
+        { label: "Current Financial Year", value: `${np < 0 ? "-" : ""}${money(Math.abs(np))}` },
+        { label: "Margin", value: margin === null ? "—" : `${margin.toFixed(1)}%` },
+        { label: "Profit Health", value: word },
+      ],
+      analysis });
   }
 
   // 2. Cash cover
@@ -579,6 +595,16 @@ export function computeHealthChecks(input: HealthInputs): HealthChecks {
       detail: `Cash ${haveDebtors ? "+ recent debtors " : ""}${money(available)} against monthly costs of ~${money(m.average)} (wages ${money(m.wages)} · other ${money(m.other)})${m.months < 3 ? ` — average of ${m.months} month${m.months === 1 ? "" : "s"}` : ""}`,
       status,
       meaning: cashCoverMeaning(months, haveDebtors),
+      title: "Cash Cover",
+      rows: [
+        { label: "Current Coverage (mths)", value: Math.max(0, months).toFixed(1) },
+        { label: "Cash Health", value: status === "green" ? "Ok" : status === "watch" ? "Low" : "Critical" },
+      ],
+      analysis: [
+        `Cash ${haveDebtors ? "+ recent debtors " : ""}= ${money(available)}`,
+        `Monthly costs = ${money(m.average)} (${money(m.wages)} wages + ${money(m.other)} other)`,
+        `${cashCoverText(months).replace(/^a/, "A")} of normal costs.`,
+      ],
     });
   }
 
@@ -599,6 +625,13 @@ export function computeHealthChecks(input: HealthInputs): HealthChecks {
       meaning: status === "green" ? "Most customers are paying on time."
         : status === "watch" ? "A fair share of recent invoices are running late — worth a follow-up."
         : "Most recent invoices are overdue — chase them up.",
+      title: "Customers Paying",
+      rows: [
+        { label: "Late Payers", value: `${share.toFixed(0)}%` },
+        { label: `${LATE_AFTER_DAYS} Days Overdue`, value: money(debtors.late) },
+        { label: `${RECENT_DEBTOR_DAYS} Days`, value: money(debtors.recent) },
+      ],
+      analysis: [status === "green" ? "Most customers are paying on time." : "Follow up on late invoices required"],
     });
   }
 
@@ -623,5 +656,9 @@ export function computeHealthChecks(input: HealthInputs): HealthChecks {
     profitHeldBack,
   };
 }
+
+/** Pill wording for the three-panel Business Health layout (owner mockup, 17 Oct). */
+export const PANEL_STATUS_LABEL: Record<CheckStatus, string> = { green: "Good", watch: "Monitor", red: "Alert", na: "No data" };
+export const PANEL_TITLE: Record<CheckKey, string> = { profit: "Profit", cash_cover: "Cash Cover", paying_on_time: "Customers Paying" };
 
 export const STATUS_LABEL: Record<CheckStatus, string> = { green: "Good", watch: "Watch", red: "Needs attention", na: "Not available" };
