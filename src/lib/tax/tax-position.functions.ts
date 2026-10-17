@@ -10,10 +10,10 @@ import type { ForwardTax } from "@/components/dashboard/tax-obligations";
  */
 export const getStoredTaxPosition = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .inputValidator((input: unknown) => z.object({ tenantId: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ tenantId: z.string().uuid(), widget: z.enum(["tax_obligations", "payg_withholding"]).default("tax_obligations") }).parse(input))
   .handler(async ({ data, context }): Promise<{ tax: ForwardTax | null }> => {
     const { assertWidgetAccess } = await import("@/lib/xero/access.server");
-    await assertWidgetAccess(context.supabase, data.tenantId, "tax_obligations");
+    await assertWidgetAccess(context.supabase, data.tenantId, data.widget);
     const { data: clientId, error } = await context.supabase.rpc("client_for_tenant", { _tenant_id: data.tenantId });
     if (error || !clientId) throw new Error("Tax position unavailable.");
     const { loadStoredForward } = await import("./forward-tax.server");

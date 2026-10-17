@@ -79,7 +79,7 @@ export function TaxObligationsWidget({
   const fetchPosition = useServerFn(getStoredTaxPosition);
   const positionQuery = useQuery({
     queryKey: ["tax-position", clientId, tenantId],
-    queryFn: () => fetchPosition({ data: { tenantId } }),
+    queryFn: () => fetchPosition({ data: { tenantId, widget: "tax_obligations" } }),
     staleTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
