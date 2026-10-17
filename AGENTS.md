@@ -31,3 +31,5 @@
 - WIP early access (`org_early_access`) resolves only inside `client_cards_v2` for active org members, keeping one visibility path.
 - Period video uses separate storage, caller-scoped audited RPCs and a draft-only attachment trigger; the unchanged notes builder preserves generation snapshots.
 - Health uses the DB visibility/release rule; tax bill labels share `lodgedAtoBills` through a stored-only, card-gated reader (no access grant).
+- Surfaces: every box (cards, tables incl. body rows, panels, inputs, dialogs, tiles) uses `bg-card` (white); only the page uses `bg-background`. Header rows may use a light `bg-muted/30` tint; muted grey is for secondary text/badges only — keeps the white-on-grey look consistent.
+- Retired catalogue cards (`status = 'retired'`) stay in code and tables but are refused by every `status = 'available'` gate and dropped by `mapCatalogue`; restore by status change only.
