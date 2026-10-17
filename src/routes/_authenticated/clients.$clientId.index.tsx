@@ -406,7 +406,7 @@ function ClientDashboard() {
         {card.node}
       </div>
     ) : card.node;
-    return { ...card, node: <CardTitleProvider title={entry?.label}>{node}</CardTitleProvider>, fullWidth: meta.fullWidth, group: meta.group, groupLabel: meta.label };
+    return { ...card, node: <CardTitleProvider title={entry?.label}>{node}</CardTitleProvider>, fullWidth: meta.fullWidth, group: meta.group, groupLabel: meta.group === 'standard' ? undefined : meta.label };
   }).sort((a, b) => {
     const left = dashboardCardMeta(a.id, catalogue); const right = dashboardCardMeta(b.id, catalogue);
     return left.groupRank - right.groupRank || left.rank - right.rank || a.id.localeCompare(b.id);
