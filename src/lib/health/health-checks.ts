@@ -78,13 +78,35 @@ export function xeroDateISO(s: unknown): string | null {
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-/** "$31.7k", "$118k", "$4,980", "-$2.1k". */
+/** One style throughout: "$31.7k", "$118k", "$5.1k", "-$2.1k", "$850". */
 export function money(n: number): string {
   const sign = n < 0 ? "-" : "";
   const a = Math.abs(n);
-  if (a >= 100_000) return `${sign}$${Math.round(a / 1000)}k`;
-  if (a >= 10_000) return `${sign}$${(a / 1000).toFixed(1)}k`;
-  return `${sign}$${Math.round(a).toLocaleString("en-AU")}`;
+  if (a >= 99_950) return `${sign}$${Math.round(a / 1000)}k`;
+  if (a >= 1_000) return `${sign}$${(a / 1000).toFixed(1)}k`;
+  return `${sign}$${Math.round(a)}`;
+}
+
+/**
+ * Plain sentence describing the actual cover figure (never the band's
+ * threshold). Under one month → weeks; otherwise months to the nearest half.
+ */
+export function cashCoverText(months: number): string {
+  const m = Math.max(0, months);
+  if (m < 1) {
+    const weeks = Math.round(m * 52 / 12 * 2) / 2;
+    if (weeks < 1) return "less than a week";
+    const w = weeks % 1 ? `${Math.floor(weeks)}½` : String(weeks);
+    return `about ${w} week${weeks === 1 ? "" : "s"}`;
+  }
+  const half = Math.round(m * 2) / 2;
+  const t = half % 1 ? `${Math.floor(half)}½` : String(half);
+  return `about ${t} month${half === 1 ? "" : "s"}`;
+}
+
+export function cashCoverMeaning(months: number, includesDebtors: boolean): string {
+  const who = includesDebtors ? "Cash and recent debtors" : "Cash";
+  return `${who} would cover ${cashCoverText(months)} of normal costs.`;
 }
 
 function dayLabel(iso: string): string {
@@ -556,9 +578,7 @@ export function computeHealthChecks(input: HealthInputs): HealthChecks {
       figure: `${Math.max(0, months).toFixed(1)} months of costs`,
       detail: `Cash ${haveDebtors ? "+ recent debtors " : ""}${money(available)} against monthly costs of ~${money(m.average)} (wages ${money(m.wages)} · other ${money(m.other)})${m.months < 3 ? ` — average of ${m.months} month${m.months === 1 ? "" : "s"}` : ""}`,
       status,
-      meaning: status === "green" ? "Enough cash and money coming in to cover a couple of months of costs."
-        : status === "watch" ? "Cash would cover less than two months of normal costs."
-        : "Cash would cover less than two weeks of normal costs.",
+      meaning: cashCoverMeaning(months, haveDebtors),
     });
   }
 
