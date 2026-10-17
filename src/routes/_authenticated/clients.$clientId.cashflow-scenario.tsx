@@ -5,7 +5,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { ChevronRight, Loader2, RefreshCw, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { AdjustmentsPanel } from "@/components/scenario/AdjustmentsPanel";
+import { ScenarioResults } from "@/components/scenario/ScenarioResults";
+import { SavedScenariosBar } from "@/components/scenario/SavedScenariosBar";
+import { breakEvenImpact, filterInvoices, monthsAhead, project, selectAllState, toggleSelectAll, type Adjustment, type Baseline } from "@/lib/scenario/adjustments";
 import {
   Select,
   SelectContent,
@@ -144,6 +149,13 @@ function CashflowScenarioPage() {
   });
 
   const [customer, setCustomer] = useState<string>("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [adjustments, setAdjustments] = useState<Adjustment[]>([]);
+  const [horizon, setHorizon] = useState(3);
+  const [openingCash, setOpeningCash] = useState<number | null>(null);
+  const [loaded, setLoaded] = useState<{ id: string; name: string } | null>(null);
+  /** Exclusions from a saved scenario opened read-only (never written). */
+  const [excludedOverride, setExcludedOverride] = useState<Set<string> | null>(null);
   const [scope, setScope] = useState<"month" | "all">("month");
   const [matrixOpen, setMatrixOpen] = useState(false);
   const [invoicesOpen, setInvoicesOpen] = useState(false);
@@ -151,6 +163,7 @@ function CashflowScenarioPage() {
     `scenario-cost-basis:${clientId}:${tenantId ?? "none"}`,
   );
 
+  const invoices = useMemo(() => (data?.invoices ?? []).map((i: ScenarioInvoice) => excludedOverride ? { ...i, excluded: excludedOverride.has(i.id) } : i), [data, excludedOverride]);
   const view = useMemo(() => {
     if (!data) return null;
     const months = data.months;
@@ -169,23 +182,23 @@ function CashflowScenarioPage() {
       fixed: resolveGroupCost(actuals.fixed, avg?.fixed ?? null, costBasis.fixed),
       variable: resolveGroupCost(actuals.variable, avg?.variable ?? null, costBasis.variable),
     };
-    const monthTotals = computeTotals(data.invoices, data.expenses, month);
+    const monthTotals = computeTotals(invoices, data.expenses, month);
     const appliedCosts = applied.cogs + applied.fixed + applied.variable;
     return {
       months,
       month,
-      matrix: buildMatrix(data.customers, data.invoices, months),
+      matrix: buildMatrix(data.customers, invoices, months),
       monthTotals,
       costActuals: actuals,
       costAvg: avg,
       costApplied: applied,
       scenarioNet: monthTotals.revenue - appliedCosts,
-      rangeTotals: computeTotals(data.invoices, data.expenses, null),
-      monthInvoices: data.invoices.filter((i: ScenarioInvoice) => monthKey(i.issue_date) === month),
+      rangeTotals: computeTotals(invoices, data.expenses, null),
+      monthInvoices: invoices.filter((i: ScenarioInvoice) => monthKey(i.issue_date) === month),
       monthExpenses,
       monthPnl: (data.pnl ?? []).find((p) => p.month === month) ?? null,
     };
-  }, [data, month, costBasis]);
+  }, [data, invoices, month, costBasis]);
 
 
 
@@ -197,13 +210,31 @@ function CashflowScenarioPage() {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [data]);
 
-  const customerInvoiceIds = useMemo(() => {
-    if (!customer) return [] as string[];
-    const pool = (scope === "month" ? view?.monthInvoices : data?.invoices) ?? [];
-    return (pool as ScenarioInvoice[])
-      .filter((i) => (i.customer_id ?? "Unassigned") === customer)
-      .map((i) => i.id);
-  }, [customer, scope, view, data]);
+  const shown = useMemo(() => filterInvoices(((scope === "month" ? view?.monthInvoices : invoices) ?? []) as ScenarioInvoice[], customer), [customer, scope, view, invoices]);
+  const shownIds = shown.map((i) => i.id);
+  const selState = selectAllState(shownIds, selected);
+  const selectedShown = shown.filter((i) => selected.has(i.id));
+
+  const projection = useMemo(() => {
+    if (!view || !data) return null;
+    const byCustomer: Record<string, number> = {};
+    for (const inv of view.monthInvoices as ScenarioInvoice[]) if (!inv.excluded) byCustomer[inv.customer_id ?? "Unassigned"] = (byCustomer[inv.customer_id ?? "Unassigned"] ?? 0) + inv.amount;
+    const accounts: Baseline["accounts"] = {};
+    for (const e of view.monthExpenses as ScenarioExpense[]) {
+      const group = e.section === "cogs" && e.type === "Variable" ? "cogs" : e.type === "Fixed" ? "fixed" : "variable";
+      accounts[e.name] = { amount: (accounts[e.name]?.amount ?? 0) + e.amount, group };
+    }
+    const baseline: Baseline = { revenue: view.monthTotals.revenue, revenueByCustomer: byCustomer, costs: view.costApplied, accounts };
+    const months = monthsAhead(month, horizon + 1);
+    const rows = project(baseline, adjustments, months, openingCash);
+    return { baseline, rows, months, breakEven: breakEvenImpact(baseline, rows), accountNames: Object.keys(accounts).sort() };
+  }, [view, data, month, horizon, adjustments, openingCash]);
+
+  const currentPayload = () => ({
+    version: 1 as const, month, horizon, openingCash, adjustments,
+    excludedInvoiceIds: invoices.filter((i) => i.excluded).map((i) => i.id),
+    costBasis,
+  });
 
   return (
     <div className="min-h-screen bg-background">
