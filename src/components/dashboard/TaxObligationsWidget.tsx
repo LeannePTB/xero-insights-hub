@@ -67,7 +67,7 @@ export function TaxObligationsWidget({
   });
   const paygQuery = useQuery({
     queryKey: paygQueryKey(tenantId, clientId),
-    queryFn: () => staggered(() => fetchPayg({ data: { tenantId, clientId, months: 6 } })),
+    queryFn: () => staggered(() => fetchPayg({ data: { tenantId, clientId, months: 9 } })),
     ...paygQueryLimits,
     ...xeroQueryRetry,
     enabled: paygRegistered,

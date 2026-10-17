@@ -1,3 +1,4 @@
+import { invalidateTaxDerived } from "@/lib/tax/invalidate-tax";
 
 import { useCanManageClient } from "@/hooks/useCanManageClient";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -1109,7 +1110,7 @@ function LodgementCyclesSection({
     mutationFn: (patch: { gstCycle?: GstCycle; paygWithholdingCycle?: PaygCycle }) =>
       saveFn({ data: { clientId, ...patch } }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["client", clientId] });
+      void invalidateTaxDerived(qc);
       toast.success("Lodgement cycle saved");
     },
     onError: (e: any) => toast.error(e?.message ?? "Could not save the lodgement cycle"),

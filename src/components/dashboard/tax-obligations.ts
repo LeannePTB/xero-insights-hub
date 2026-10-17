@@ -203,3 +203,53 @@ export function pickCurrentInstalment<T extends { amount: number; periodEnd: str
   }
   return best;
 }
+
+export type PaygRowStatus = "accruing" | "no_pay_runs" | "lodged_owing" | "lodged_part_paid" | "not_due" | "due_today" | "overdue" | "paid" | "paid_or_older" | "unknown";
+export type PaygPeriodRow = { key: string; from: string; to: string; withheld: number; payRuns: number; due: string; status: PaygRowStatus };
+
+/** ATO due date for PAYG withholding of the period ending `to`. */
+export function paygPeriodDue(cycle: "monthly" | "quarterly", to: string): string {
+  const y = +to.slice(0, 4), m = +to.slice(5, 7);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  if (cycle === "quarterly") return m === 12 ? `${y + 1}-02-28` : `${y}-${pad(m + 1)}-28`;
+  return m === 12 ? `${y + 1}-01-21` : `${y}-${pad(m + 1)}-21`;
+}
+
+/**
+ * The PAYG card's rows, following the client's withholding cycle: months, or
+ * BAS quarters built from the same monthly pay-run figures. "Paid" only when the
+ * ledger shows the balance fell (month not owing); no pay runs is never "Paid".
+ */
+export function paygPeriodRows(
+  months: readonly { month: string; withheld: number; payRuns: number; owing: boolean; incomplete: boolean }[],
+  cycle: "monthly" | "quarterly",
+  today: string,
+  bills: readonly LodgedAtoBill[],
+  billsComplete: boolean,
+  olderBalance: boolean,
+): PaygPeriodRow[] {
+  const groups = new Map<string, typeof months[number][]>();
+  for (const m of months) {
+    const y = +m.month.slice(0, 4), mo = +m.month.slice(5, 7);
+    const start = cycle === "quarterly" ? Math.floor((mo - 1) / 3) * 3 + 1 : mo;
+    const key = `${y}-${String(start).padStart(2, "0")}-01`;
+    groups.set(key, [...(groups.get(key) ?? []), m]);
+  }
+  return [...groups].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([from, ms]) => {
+    const y = +from.slice(0, 4), mo = +from.slice(5, 7);
+    const to = new Date(Date.UTC(y, mo - 1 + (cycle === "quarterly" ? 3 : 1), 0)).toISOString().slice(0, 10);
+    const due = paygPeriodDue(cycle, to);
+    const withheld = Math.round(ms.reduce((s, m) => s + m.withheld, 0) * 100) / 100;
+    const payRuns = ms.reduce((s, m) => s + m.payRuns, 0);
+    const running = to >= today;
+    const matched = running ? [] : lodgedBillsForPeriod(bills, from, to);
+    let status: PaygRowStatus;
+    if (running) status = "accruing";
+    else if (payRuns === 0) status = "no_pay_runs";
+    else if (matched.length) status = matched.some((b) => b.total !== undefined && b.total > b.amount + 0.005) ? "lodged_part_paid" : "lodged_owing";
+    else if (ms.some((m) => m.owing)) status = today < due ? "not_due" : today === due ? "due_today" : "overdue";
+    else if (!billsComplete) status = "unknown";
+    else status = olderBalance ? "paid_or_older" : "paid";
+    return { key: from, from, to, withheld, payRuns, due, status };
+  });
+}

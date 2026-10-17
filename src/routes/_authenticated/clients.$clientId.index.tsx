@@ -335,7 +335,7 @@ function ClientDashboard() {
         !structurallyHidden(tenantId, "payg_withholding") &&
         client?.payg_withholding_cycle !== "not_registered"
       )
-        block.payg = <PaygWithholdingWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} />;
+        block.payg = <PaygWithholdingWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} paygCycle={client?.payg_withholding_cycle ?? null} />;
 
 
       if (widgets.includes("rental_properties"))

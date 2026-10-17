@@ -647,7 +647,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
           ["Cost of sales (excl. wages)", money(p.totals.wagesSplit.costOfSalesExWages)],
           ["Wages", money(p.totals.wagesSplit.wages)],
           ["Gross Profit", money(p.totals.grossProfit)],
-          ["Overheads (excl. wages)", money(p.totals.wagesSplit.overheadsExWages)],
+          ["Overheads (operating expenses, excl. wages)", money(p.totals.wagesSplit.overheadsExWages)],
         ] : [
           ["Cost of sales", money(p.totals.costOfSales)],
           ["Gross Profit", money(p.totals.grossProfit)],

@@ -553,7 +553,7 @@ export function MonthlyReportPreview({
                   ["Cost of sales (excl. wages)", payload.profitAndLoss.totals.wagesSplit.costOfSalesExWages],
                   ["Wages", payload.profitAndLoss.totals.wagesSplit.wages],
                   ["Gross Profit", payload.profitAndLoss.totals.grossProfit],
-                  ["Overheads (excl. wages)", payload.profitAndLoss.totals.wagesSplit.overheadsExWages],
+                  ["Overheads (operating expenses, excl. wages)", payload.profitAndLoss.totals.wagesSplit.overheadsExWages],
                 ] : [
                   ["Cost of sales", payload.profitAndLoss.totals.costOfSales],
                   ["Gross Profit", payload.profitAndLoss.totals.grossProfit],

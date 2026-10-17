@@ -120,7 +120,7 @@ export function PnlWidget({
               <Kpi label="Cost of sales (excl. wages)" value={cur.costOfSalesExWages} previous={pri?.costOfSalesExWages ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
               <Kpi label="Wages" value={cur.wages} previous={pri?.wages ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
               <Kpi label="Gross Profit" value={current.grossProfit} previous={priorData?.grossProfit ?? 0} higherIsBetter currency={currency} priorLabel={priorLabel} />
-              <Kpi label="Overheads (excl. wages)" value={cur.overheadsExWages} previous={pri?.overheadsExWages ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
+              <Kpi label="Overheads (operating expenses, excl. wages)" value={cur.overheadsExWages} previous={pri?.overheadsExWages ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
             </> : <>
               <Kpi label="Cost of Sales" value={current.totalCostOfSales} previous={priorData?.totalCostOfSales ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
               <Kpi label="Gross Profit" value={current.grossProfit} previous={priorData?.grossProfit ?? 0} higherIsBetter currency={currency} priorLabel={priorLabel} />
