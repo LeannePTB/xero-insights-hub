@@ -21,6 +21,12 @@
     },
     {
         "args": [
+        ],
+        "name": "admin_alert_address_suppression",
+        "required": 0
+    },
+    {
+        "args": [
             "_user_id"
         ],
         "name": "admin_assert_can_sign_out_user",
@@ -194,6 +200,13 @@
     },
     {
         "args": [
+            "_email"
+        ],
+        "name": "admin_set_main_contact_email",
+        "required": 1
+    },
+    {
+        "args": [
             "_firm_id",
             "_card_key",
             "_enabled",
@@ -268,6 +281,12 @@
             "_from"
         ],
         "name": "admin_trixie_usage",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "admin_unblock_alert_address",
         "required": 0
     },
     {
@@ -807,6 +826,12 @@
         "args": [
         ],
         "name": "get_platform_branding",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "get_platform_contact",
         "required": 0
     },
     {
