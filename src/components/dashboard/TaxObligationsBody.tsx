@@ -71,8 +71,7 @@ export function TaxObligationsBody({ forward, buildingLabel, money, partPaid, pa
           </> : <>
             <p className="mt-3 font-semibold">Nothing owing</p>
             <p className="mt-1 text-xs text-muted-foreground">$0 instalment for the period due {day(forward.instalment.due)}</p>
-          </>)
-          </> : <>
+          </>) : <>
             <p className="mt-3 font-semibold">Not entered yet</p>
             {settingsLink && <div className="mt-2 text-xs">{settingsLink}</div>}
           </>}
