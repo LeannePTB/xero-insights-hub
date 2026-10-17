@@ -167,7 +167,7 @@ describe("Next tax payment: due now vs still building", () => {
     expect(n.amount).toBe(4_500);
     expect(n.building).toBe(1_705);
     expect(n.periodEnd).toBe("2026-09-30");
-    expect(nextTaxText(n)).toBe("Next tax payment: ~$4,500 due 21 Oct · building for next period: ~$1,705");
+    expect(nextTaxText(n)).toBe("Next tax payment: ~$4.5k due 21 Oct · building for next period: ~$1.7k");
   });
   it("a payment since the period end reduces due now, never below zero", () => {
     const n = nextTaxPayment({ gstCycle: "monthly", paygCycle: "not_registered", today: "2026-10-16", current: { gst: 300, payg: 0 },
@@ -215,4 +215,15 @@ describe("lodged ATO activity-statement bills", () => {
     const next = nextTaxPayment({ gstCycle: "monthly", paygCycle: "monthly", today: "2026-10-25", current: { gst: 0, payg: 0 }, periodEnd: () => null, lodged: lodgedAtoBills([bill()]) });
     expect(taxPaymentAlert({ next, today: "2026-10-25", cashAtBank: 100000, recentDebtors: 0, pastDueOwing: 0 }).level).toBe("action");
   });
+});
+
+import { cashCoverMeaning, cashCoverText, cashCoverStatus as _ccs, money as _money } from "./health-checks";
+describe("cash cover wording describes the actual figure", () => {
+  it("0.8 months reads as about 3½ weeks, naming debtors", () =>
+    expect(cashCoverMeaning(14200 / 18500, true)).toBe("Cash and recent debtors would cover about 3½ weeks of normal costs."));
+  it("1.4 months reads as about 1½ months", () => expect(cashCoverText(1.4)).toBe("about 1½ months"));
+  it("3 months", () => expect(cashCoverText(3.1)).toBe("about 3 months"));
+  it("cash only when no debtors", () => expect(cashCoverMeaning(2, false)).toMatch(/^Cash would cover/));
+  it("0.8 months is Watch (0.5–2 months)", () => expect(_ccs(0.8)).toBe("watch"));
+  it("one money style", () => { expect(_money(5066)).toBe("$5.1k"); expect(_money(13400)).toBe("$13.4k"); expect(_money(850)).toBe("$850"); });
 });
