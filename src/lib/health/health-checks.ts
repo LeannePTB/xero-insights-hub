@@ -156,13 +156,15 @@ export function profitStatus(netProfit: number, revenue: number | null): CheckSt
 // ---------------------------------------------------------------------------
 export type DebtorSplit = { recent: number; late: number; old: number; oldestOldDue: string | null };
 
-export function splitDebtors(invoices: { AmountDue?: unknown; DueDate?: unknown; DueDateString?: unknown }[] | null | undefined, today: string): DebtorSplit {
+export function splitDebtors(invoices: { AmountDue?: unknown; DueDate?: unknown; DueDateString?: unknown; Status?: unknown }[] | null | undefined, today: string): DebtorSplit {
   const t = dayNumber(today);
   let recent = 0, late = 0, old = 0;
   let oldestOldDue: string | null = null;
   for (const inv of invoices ?? []) {
     const due = parseAmount(inv.AmountDue as any);
     if (due <= 0) continue;
+    // Only approved invoices are in Accounts Receivable; "Awaiting approval" (SUBMITTED) and drafts are not.
+    if (inv.Status !== undefined && inv.Status !== "AUTHORISED") continue;
     const dueISO = xeroDateISO(inv.DueDateString) ?? xeroDateISO(inv.DueDate);
     const overdueDays = dueISO ? t - dayNumber(dueISO) : 0;
     if (overdueDays > RECENT_DEBTOR_DAYS) {
@@ -586,22 +588,27 @@ export function computeHealthChecks(input: HealthInputs): HealthChecks {
   } else {
     const available = input.cashAtBank + (haveDebtors ? debtors.recent : 0);
     const months = available / input.monthly.average;
-    const status = cashCoverStatus(months);
+    // An overdrawn bank never reads better than Monitor, whatever debtors add.
+    const overdrawn = input.cashAtBank < 0;
+    const banded = cashCoverStatus(months);
+    const status = overdrawn && banded === "green" ? "watch" : banded;
+    const cashPart = `Cash ${money(input.cashAtBank)}${overdrawn ? " (overdrawn)" : ""}${haveDebtors ? ` + recent debtors ${money(debtors.recent)}` : ""}`;
     const m = input.monthly;
     checks.push({
       key: "cash_cover",
       question: "Cash cover",
       figure: `${Math.max(0, months).toFixed(1)} months of costs`,
-      detail: `Cash ${haveDebtors ? "+ recent debtors " : ""}${money(available)} against monthly costs of ~${money(m.average)} (wages ${money(m.wages)} · other ${money(m.other)})${m.months < 3 ? ` — average of ${m.months} month${m.months === 1 ? "" : "s"}` : ""}`,
+      detail: `${cashPart} = ${money(available)} against monthly costs of ~${money(m.average)} (wages ${money(m.wages)} · other ${money(m.other)})${m.months < 3 ? ` — average of ${m.months} month${m.months === 1 ? "" : "s"}` : ""}`,
       status,
-      meaning: cashCoverMeaning(months, haveDebtors),
+      meaning: cashCoverMeaning(months, haveDebtors) + (overdrawn ? " The bank is overdrawn, so cash cover relies on debtors paying." : ""),
       title: "Cash Cover",
       rows: [
         { label: "Current Coverage (mths)", value: Math.max(0, months).toFixed(1) },
         { label: "Cash Health", value: status === "green" ? "Ok" : status === "watch" ? "Low" : "Critical" },
       ],
       analysis: [
-        `Cash ${haveDebtors ? "+ recent debtors " : ""}= ${money(available)}`,
+        `${cashPart} = ${money(available)}`,
+        ...(haveDebtors ? [`Recent debtors = unpaid invoices no more than ${RECENT_DEBTOR_DAYS} days overdue.`] : []),
         `Monthly costs = ${money(m.average)} (${money(m.wages)} wages + ${money(m.other)} other)`,
         `${cashCoverText(months).replace(/^a/, "A")} of normal costs.`,
       ],
@@ -629,7 +636,8 @@ export function computeHealthChecks(input: HealthInputs): HealthChecks {
       rows: [
         { label: "Late Payers", value: `${share.toFixed(0)}%` },
         { label: `${LATE_AFTER_DAYS} Days Overdue`, value: money(debtors.late) },
-        { label: `${RECENT_DEBTOR_DAYS} Days`, value: money(debtors.recent) },
+        { label: `${RECENT_DEBTOR_DAYS}+ Days Overdue`, value: money(debtors.old) },
+        { label: "Total Owing", value: money(debtors.recent + debtors.old) },
       ],
       analysis: [status === "green" ? "Most customers are paying on time." : "Follow up on late invoices required"],
     });
