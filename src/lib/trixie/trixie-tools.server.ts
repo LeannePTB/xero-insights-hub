@@ -132,7 +132,7 @@ async function readPnl(ctx: TrixieContext) {
       const w = splitWages({ costOfSales: s.totalCostOfSales, expenses: s.totalExpenses, cogsLines: s.cogsLines, expenseLines: s.expenseLines }, names);
       const base = { from: s.fromDate ?? null, to: s.toDate ?? null, income: money(s.totalIncome), grossProfit: money(s.grossProfit), netProfit: money(s.netProfit) };
       return w.split
-        ? { ...base, costOfSalesExclWages: money(w.costOfSalesExWages), wages: money(w.wages), overheadsExclWages: money(w.overheadsExWages), wagesNote: `Wages = accounts marked Wages in Cost classification (${names.size}); gross and net profit are unchanged` }
+        ? { ...base, costOfSalesExclWages: money(w.costOfSalesExWages), wages: money(w.wages), overheadsExclWages: money(w.overheadsExWages), wagesNote: `Wages = accounts set to Wages in Account setup → Costs (${names.size}); gross and net profit are unchanged` }
         : { ...base, costOfSales: money(s.totalCostOfSales), operatingExpenses: money(s.totalExpenses), wagesNote: "No wage accounts are marked in Cost classification, so wages are not shown separately" };
     };
     return {
