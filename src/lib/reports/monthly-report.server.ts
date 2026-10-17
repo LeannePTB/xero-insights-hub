@@ -807,38 +807,9 @@ export async function computeMonthlyReport(opts: {
   }
 
 
-  // --- Notes (the client's existing notes, read under the caller's RLS)
-  if (inc("notes")) try {
-    const { data: rows, error } = await opts.supabase
-      .from("client_notes")
-      .select("body, author_id, created_at")
-      .eq("client_id", opts.clientId)
-      // Notes are internal unless staff deliberately marked them for the report.
-      .eq("include_in_report", true)
-      .order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
-    const ids = Array.from(new Set((rows ?? []).map((r: any) => r.author_id).filter(Boolean)));
-    let names = new Map<string, string>();
-    if (ids.length) {
-      // Display name only — never a sign-in email. This label is printed in a
-      // report that goes to the client (Spec §10 / backlog 22).
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: profiles } = await supabaseAdmin
-        .from("profiles")
-        .select("id, display_name")
-        .in("id", ids as string[]);
-      names = new Map(
-        (profiles ?? []).map((p: any) => [p.id, p.display_name ?? "Positive Traction"]),
-      );
-    }
-    notes = (rows ?? []).map((r: any) => ({
-      body: r.body,
-      author: names.get(r.author_id) ?? "Unknown",
-      createdAt: r.created_at,
-    }));
-  } catch (e: any) {
-    failed.push({ section: "notes", message: e?.message ?? "Notes could not be read." });
-  }
+  // --- Notes: retired. New drafts never read client_notes; the adviser's
+  // "Message to client" lives on the report row instead. Finalised and sent
+  // reports keep the notes snapshot already frozen in their payload.
 
   // --- Business Health: the same three checks as the dashboard card, from
   // the one shared builder over stored figures (caller-scoped reads). The old

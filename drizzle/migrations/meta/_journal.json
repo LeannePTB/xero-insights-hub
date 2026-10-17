@@ -512,6 +512,13 @@
       "when": 1792223657034,
       "tag": "0072_instalment_audit_old_new_and_clear",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1792226616223,
+      "tag": "0073_message_to_client",
+      "breakpoints": true
     }
   ]
 }

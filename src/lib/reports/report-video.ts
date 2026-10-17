@@ -29,21 +29,21 @@ export function parseLoomId(url: string | null | undefined): string | null {
 }
 
 export type ReportVideo = {
-  url: string;
+  /** Optional: a message may be sent without a video. */
+  url: string | null;
   heading?: string | null;
   message?: string | null;
 };
 
 /** The video to render for a report row, or null when there is nothing to show. */
 export function reportVideoFrom(row: any): ReportVideo | null {
-  const url = (row?.video_url as string | null) ?? null;
-  if (!url || !parseLoomId(url)) return null;
-  return {
-    url,
-    heading: (row?.video_heading as string | null) ?? null,
-    message: (row?.video_message as string | null) ?? null,
-  };
+  const raw = (row?.video_url as string | null) ?? null;
+  const url = raw && parseLoomId(raw) ? raw : null;
+  const heading = ((row?.video_heading as string | null) ?? "").trim() || null;
+  const message = ((row?.video_message as string | null) ?? "").trim() || null;
+  if (!url && !heading && !message) return null;
+  return { url, heading, message };
 }
 
 export const VIDEO_HEADING_MAX = 120;
-export const VIDEO_MESSAGE_MAX = 600;
+export const VIDEO_MESSAGE_MAX = 2000;

@@ -35,11 +35,11 @@ export const ReportVideoEditor = forwardRef<ReportVideoEditorHandle, {
   const invalid = !!url.trim() && !parseLoomId(url.trim());
   async function save(clear = false) {
     if (!clear && !dirty) return;
-    if (invalid && !clear) throw new Error("Paste a valid Loom share link before generating.");
+    if (invalid && !clear) throw new Error("Paste a valid Loom share link, or leave it empty, before generating.");
     setBusy(true);
     try {
       await saveFn({ data: { clientId, periodEnd, reportId: report?.id ?? null,
-        url: clear ? null : url, heading, message } });
+        url: clear ? null : url, heading: clear ? null : heading, message: clear ? null : message } });
       if (clear) { setUrl(""); setHeading(""); setMessage(""); }
       setDirty(false); await q.refetch(); onSaved();
     } finally { setBusy(false); }
@@ -47,19 +47,22 @@ export const ReportVideoEditor = forwardRef<ReportVideoEditorHandle, {
   useImperativeHandle(ref, () => ({ save: () => save() }));
   const edit = (setter: (v: string) => void, v: string) => { setter(v); setDirty(true); };
   const disabled = busy || q.isLoading || !!q.error;
+  const hasSaved = !!(initial?.video_url || initial?.video_heading || initial?.video_message);
   return <section className="min-w-0">
-    <h3 className="mb-3 text-sm font-medium">③ Personal video <span className="ml-2 text-xs font-normal text-muted-foreground">{report ? `Draft v${report.version}` : "Next draft"}</span></h3>
-    <div className="space-y-2">
-      <div><Label htmlFor="video-url">Loom link</Label><Input className="h-8" id="video-url" value={url} disabled={disabled} onChange={(e) => edit(setUrl, e.target.value)} placeholder="https://www.loom.com/share/…" aria-invalid={invalid} />
-        {invalid && <p className="mt-1 text-xs text-destructive">Paste a valid Loom share link.</p>}</div>
+    <h3 className="mb-3 text-sm font-medium">Message to client <span className="ml-2 text-xs font-normal text-muted-foreground">{report ? `Draft v${report.version}` : "Next draft"}</span></h3>
+    <div className="grid gap-2 sm:grid-cols-2">
       <div><Label htmlFor="video-heading">Heading</Label><Input className="h-8" id="video-heading" value={heading} disabled={disabled} maxLength={VIDEO_HEADING_MAX} onChange={(e) => edit(setHeading, e.target.value)} placeholder={DEFAULT_VIDEO_HEADING} /></div>
-      <div><Label htmlFor="video-message">Short message</Label><Textarea id="video-message" value={message} disabled={disabled} rows={2} maxLength={VIDEO_MESSAGE_MAX} onChange={(e) => edit(setMessage, e.target.value)} /></div>
-      {q.error && <p className="text-xs text-destructive">Video could not be loaded.</p>}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="outline" disabled={disabled || invalid || !dirty} onClick={() => save().then(() => toast.success("Video saved")).catch((e) => toast.error(e.message))}>
-          {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}Save video</Button>
-        {url && <Button size="sm" variant="ghost" disabled={disabled} onClick={() => save(true).then(() => toast.success("Video removed")).catch((e) => toast.error(e.message))}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Remove</Button>}
-      </div>
+      <div><Label htmlFor="video-url">Loom link <span className="font-normal text-muted-foreground">(optional)</span></Label><Input className="h-8" id="video-url" value={url} disabled={disabled} onChange={(e) => edit(setUrl, e.target.value)} placeholder="https://www.loom.com/share/…" aria-invalid={invalid} />
+        {invalid && <p className="mt-1 text-xs text-destructive">Paste a valid Loom share link.</p>}</div>
+      <div className="sm:col-span-2"><Label htmlFor="video-message">Message</Label><Textarea id="video-message" value={message} disabled={disabled} rows={4} maxLength={VIDEO_MESSAGE_MAX} onChange={(e) => edit(setMessage, e.target.value)} />
+        <p className="mt-1 text-right text-xs text-muted-foreground">{message.length} / {VIDEO_MESSAGE_MAX}</p></div>
+    </div>
+    {q.error && <p className="text-xs text-destructive">Message could not be loaded.</p>}
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <Button size="sm" variant="outline" disabled={disabled || invalid || !dirty} onClick={() => save().then(() => toast.success("Message saved")).catch((e) => toast.error(e.message))}>
+        {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}Save</Button>
+      {!dirty && hasSaved && <span className="text-xs text-muted-foreground">Saved</span>}
+      {hasSaved && <Button size="sm" variant="ghost" disabled={disabled} onClick={() => save(true).then(() => toast.success("Message cleared")).catch((e) => toast.error(e.message))}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Clear</Button>}
     </div>
   </section>;
 });

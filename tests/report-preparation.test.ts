@@ -76,28 +76,64 @@ describe('owner-approved report video preparation', () => {
   });
 });
 
-describe('unchanged notes snapshot at generation', () => {
-  it('only ticked notes are captured, later edits/deletes leave a final report visible to its Business Owner unchanged', async () => {
-    const source = [
-      {body:'Included original note',author_id:null,created_at:'2026-01-01T00:00:00Z',include_in_report:true},
-      {body:'Internal only',author_id:null,created_at:'2026-09-01T00:00:00Z',include_in_report:false},
-    ];
-    const filters: Array<[string,unknown]> = [];
+describe('Message to client (owner decision 17 Oct)', () => {
+  const p2 = '2026-10-31';
+  const saveAs = (uid: string, url: string | null, heading: string | null, message: string | null, id: string | null = null) =>
+    asUser(uid, () => db.query('select public.save_report_video($1,$2,$3,$4,$5,$6)', [client, p2, id, url, heading, message]));
+  const pending = () => db.query<any>(`select video_url, video_heading, video_message from public.client_report_pending_videos where client_id=$1 and period_end=$2`, [client, p2]);
+  it('a message without a video is kept and reaches the draft', async () => {
+    await saveAs(owner, null, 'October', 'Line one\nLine two');
+    expect((await pending()).rows[0]).toEqual({ video_url: null, video_heading: 'October', video_message: 'Line one\nLine two' });
+    await db.exec(`insert into public.client_reports(id,client_id,firm_id,report_key,period_end,status,version,payload,generated_at) values('c0000009-1111-4111-8111-111111111111','${client}','${org}','monthly_management','${p2}','draft',1,'{}',now())`);
+    const r = await db.query<any>(`select video_message, video_set_by from public.client_reports where id='c0000009-1111-4111-8111-111111111111'`);
+    expect(r.rows[0]?.video_message).toBe('Line one\nLine two');
+    expect(r.rows[0]?.video_set_by).toBe(owner);
+  });
+  it('allows a message up to 2,000 characters and refuses longer', async () => {
+    await saveAs(staff, null, null, 'x'.repeat(2000));
+    await expect(saveAs(staff, null, null, 'x'.repeat(2001))).rejects.toThrow();
+  });
+  it('video only works', async () => {
+    await saveAs(staff, 'https://www.loom.com/share/1234567890abcdef', null, null);
+    expect((await pending()).rows[0]).toEqual({ video_url: 'https://www.loom.com/share/1234567890abcdef', video_heading: null, video_message: null });
+  });
+  it('all three empty clears it and audits as cleared', async () => {
+    await saveAs(staff, '', ' ', '');
+    expect((await pending()).rows[0]).toEqual({ video_url: null, video_heading: null, video_message: null });
+    const a = await db.query(`select 1 from public.audit_log where action='client_report_video_cleared' and actor_user_id=$1`, [staff]);
+    expect(a.rows.length).toBe(1);
+  });
+  it('is locked once finalised', async () => {
+    await db.query(`update public.client_reports set status='final' where id='c0000009-1111-4111-8111-111111111111'`);
+    await expect(saveAs(staff, null, null, 'Late', 'c0000009-1111-4111-8111-111111111111')).rejects.toThrow('locked');
+  });
+  it('Business Owner and Viewer cannot edit', async () => {
+    await expect(saveAs(business, null, null, 'Mine')).rejects.toThrow();
+    await expect(saveAs(viewer, null, null, 'Mine')).rejects.toThrow();
+  });
+});
+
+describe('Notes retired', () => {
+  it('new drafts never read client_notes', async () => {
     const sb = {rpc:async () => ({data:['notes'],error:null}),from:(table:string) => {
-      if(table==='card_catalogue'||table==='card_modules'){const c:any={select:async () => ({data:[],error:null})};return c;}
-      if(table!=='client_notes') throw new Error('Unexpected read');
-      const q:any={select:() => q,eq:(key:string,value:unknown) => {filters.push([key,value]);return q;},order:async () => ({data:source.filter(n=>n.include_in_report),error:null})};return q;
+      if(table==='client_notes') throw new Error('Notes must not be read');
+      return {select:async () => ({data:[],error:null})} as any;
     }};
     const payload = await computeMonthlyReport({supabase:sb,userId:staff,clientId:client,tenantId:'synthetic',tenantName:'Synthetic file',clientName:'Synthetic client',organisationName:'Synthetic organisation',periodEnd:'2026-09-30',currency:'AUD'});
-    expect(filters).toContainEqual(['include_in_report',true]);
-    expect(payload.notes?.map(n=>n.body)).toEqual(['Included original note']);
-    await db.query(`update public.client_reports set payload=$1 where id=$2`,[JSON.stringify(payload),report]);
-    source[0].body='Edited later'; source.splice(0,1);
+    expect(payload.notes ?? null).toBeNull();
+  });
+  it('an old finalised report keeps its notes snapshot', async () => {
+    await db.query(`update public.client_reports set payload=$1 where id=$2`,[JSON.stringify({notes:[{body:'Included original note'}]}),report]);
     const stored = await asUser(business, () => db.query<{payload:{notes:Array<{body:string}>}}>(`select payload from public.client_reports where id=$1`,[report]));
     expect(stored.rows[0]?.payload.notes.map(n=>n.body)).toEqual(['Included original note']);
-    expect(payload.notes?.[0]?.body).toBe('Included original note');
-    const notes = await asUser(business, () => db.query(`select * from public.client_notes where client_id=$1`,[client]));
-    expect(notes.rows).toHaveLength(0);
+  });
+  it('nobody signed in can write notes any more', async () => {
+    await expect(asUser(owner, () => db.query(`insert into public.client_notes(client_id, body) values($1,'x')`,[client]))).rejects.toThrow();
+  });
+  it('the Notes card is not in the catalogue', () => {
+    const cat = readFileSync('tests/fixtures/card-catalogue.sql','utf8');
+    const line = cat.split('\n').find((l) => l.includes("'notes'")) ?? '';
+    expect(line === '' || line.includes("'retired'")).toBe(true);
   });
 });
 

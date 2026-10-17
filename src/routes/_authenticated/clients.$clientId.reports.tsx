@@ -17,7 +17,6 @@ import {
   listMonthlyReports,
 } from "@/lib/reports/monthly-report.functions";
 import { MonthlyReportPreview } from "@/components/reports/MonthlyReportPreview";
-import { NotesCard } from "@/components/dashboard/NotesCard";
 import {
   DeleteReportDialog,
   FinaliseReportDialog,
@@ -233,8 +232,7 @@ function ReportsPage() {
                 </select>
               </label>}
             </div>
-            <div className="grid min-w-0 gap-5 md:grid-cols-2">
-              <NotesCard clientId={clientId} canEdit={true} compact />
+            <div className="min-w-0">
               <ReportVideoEditor key={`${clientId}:${periodEnd}:${editorDraft?.id ?? "pending"}`} ref={videoEditor}
                 clientId={clientId} periodEnd={periodEnd} report={editorDraft}
                 onSaved={() => { qc.invalidateQueries({ queryKey: ["monthly-reports", clientId] }); }} />
@@ -244,10 +242,10 @@ function ReportsPage() {
                 {genMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                 {genMut.isPending ? "Generating…" : "④ Generate draft"}
               </Button>
-              <p className="text-xs text-muted-foreground">Tick notes before generating; finalised and sent reports are never overwritten.</p>
+              <p className="text-xs text-muted-foreground">Save the message before generating; finalised and sent reports are never overwritten.</p>
               <details className="text-xs text-muted-foreground">
                 <summary className="cursor-pointer">How versions work</summary>
-                <p className="mt-2 max-w-xl">Generating refreshes the current draft or creates a new version after finalisation. Included notes are captured at generation. Draft PDFs are watermarked; final PDFs are frozen. Current calculation: v{MONTHLY_REPORT_PAYLOAD_VERSION}.</p>
+                <p className="mt-2 max-w-xl">Generating refreshes the current draft or creates a new version after finalisation. The message to client is carried into each draft and new version, and locked once finalised. Draft PDFs are watermarked; final PDFs are frozen. Current calculation: v{MONTHLY_REPORT_PAYLOAD_VERSION}.</p>
               </details>
             </div>
           </section>

@@ -237,17 +237,17 @@ export function MonthlyReportPreview({
           {showWorkflowDetails ? ` · payload v${payload.payloadVersion}` : ""} · amounts in {m.currency}
         </p>
 
-        {loomId ? (
+        {video ? (
           <div className="mt-5 rounded-xl border border-primary/30 bg-primary/5 p-4">
             <h3 className="font-display text-base font-semibold">
               {video?.heading?.trim() || DEFAULT_VIDEO_HEADING}
             </h3>
             {video?.message?.trim() ? (
-              <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">
+              <p className="mt-1 whitespace-pre-line text-sm text-foreground">
                 {video.message.trim()}
               </p>
             ) : null}
-            <div className="mt-3 aspect-video w-full overflow-hidden rounded-lg bg-card">
+            {loomId ? <div className="mt-3 aspect-video w-full overflow-hidden rounded-lg bg-card">
               {/* APPROVED IFRAME BUILDER — the only iframe in the app. The src
                   is rebuilt from parseLoomId()'s alphanumeric id, never from
                   the stored string, and the frame is sandboxed so a compromised
@@ -262,7 +262,7 @@ export function MonthlyReportPreview({
                 allowFullScreen
                 className="h-full w-full border-0"
               />
-            </div>
+            </div> : null}
           </div>
         ) : null}
       </header>
