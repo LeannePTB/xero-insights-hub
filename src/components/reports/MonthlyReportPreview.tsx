@@ -283,6 +283,7 @@ export function MonthlyReportPreview({
               <tbody>{scenario.rows.map((r) => <tr key={r.month} className="border-b border-border/50"><td className="py-2 pr-3">{r.month}</td><td className="px-2 py-2 text-right tabular-nums">{scenarioMoney(r.baselineNet)}</td><td className="px-2 py-2 text-right font-semibold tabular-nums">{scenarioMoney(r.scenarioNet)}</td>{scenario.rows.some((x) => x.scenarioCash !== null) && <td className="py-2 pl-2 text-right tabular-nums">{r.scenarioCash === null ? "—" : scenarioMoney(r.scenarioCash)}</td>}</tr>)}</tbody>
             </table>
           </div>
+          {(scenario.extras ?? []).length > 0 && <ul className="mt-3 space-y-1 text-sm">{scenario.extras.map((e) => <li key={e.label}><span className="text-muted-foreground">{e.label}:</span> {e.value}</li>)}</ul>}
         </section>
       )}
 

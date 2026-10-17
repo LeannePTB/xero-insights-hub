@@ -77,3 +77,4 @@ export const setScenarioReport = createServerFn({ method: "POST" })
     if (error) throw new Error(GENERIC);
     return { ok: true };
   });
+

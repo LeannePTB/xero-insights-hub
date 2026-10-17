@@ -1,4 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { PlanningPanel, type PlanningState } from "@/components/scenario/PlanningPanel";
+import { getScenarioContext } from "@/lib/tax/tax-position.functions";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -10,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { AdjustmentsPanel } from "@/components/scenario/AdjustmentsPanel";
 import { ScenarioResults } from "@/components/scenario/ScenarioResults";
 import { SavedScenariosBar } from "@/components/scenario/SavedScenariosBar";
-import { breakEvenImpact, filterInvoices, monthsAhead, project, selectAllState, toggleSelectAll, type Adjustment, type Baseline } from "@/lib/scenario/adjustments";
+import { debtAdjustment, lowestCash, salesForTarget, taxSetAside, belowZeroMonths, caseAdjustments, breakEvenImpact, filterInvoices, monthsAhead, project, selectAllState, toggleSelectAll, type Adjustment, type Baseline } from "@/lib/scenario/adjustments";
 import {
   Select,
   SelectContent,
@@ -132,6 +134,18 @@ function CashflowScenarioPage() {
   const [adjustments, setAdjustments] = useState<Adjustment[]>([]);
   const [horizon, setHorizon] = useState(3);
   const [openingCash, setOpeningCash] = useState<number | null>(null);
+  const [cashEdited, setCashEdited] = useState(false);
+  const [planning, setPlanning] = useState<PlanningState>({ cases: null, target: null, debts: [], tax: null });
+  const ctxQ = useQuery({
+    queryKey: ["scenario-context", clientId, tenantId],
+    enabled: !!tenantId,
+    retry: false,
+    queryFn: () => getScenarioContext({ data: { tenantId: tenantId! } }),
+  });
+  // Opening cash defaults to Cash Cover's cash at bank until someone edits it.
+  useEffect(() => {
+    if (!cashEdited && ctxQ.data?.cashAtBank != null) setOpeningCash(ctxQ.data.cashAtBank);
+  }, [ctxQ.data, cashEdited]);
   const [loaded, setLoaded] = useState<{ id: string; name: string } | null>(null);
   /** Exclusions from a saved scenario opened read-only (never written). */
   const [excludedOverride, setExcludedOverride] = useState<Set<string> | null>(null);
@@ -205,12 +219,53 @@ function CashflowScenarioPage() {
     }
     const baseline: Baseline = { revenue: view.monthTotals.revenue, revenueByCustomer: byCustomer, costs: view.costApplied, accounts };
     const months = monthsAhead(month, horizon + 1);
-    const rows = project(baseline, adjustments, months, openingCash);
-    return { baseline, rows, months, breakEven: breakEvenImpact(baseline, rows), accountNames: Object.keys(accounts).sort() };
-  }, [view, data, month, horizon, adjustments, openingCash]);
+    const debtAdj = debtAdjustment(planning.debts);
+    const allAdj = debtAdj ? [...adjustments, debtAdj] : adjustments;
+    const rows = project(baseline, allAdj, months, openingCash);
+    const paid = (view.monthInvoices as ScenarioInvoice[]).filter((i) => !i.excluded);
+    const averageInvoice = paid.length ? paid.reduce((t, i) => t + i.amount, 0) / paid.length : null;
+    return { baseline, rows, months, allAdj, averageInvoice, breakEven: breakEvenImpact(baseline, rows), accountNames: Object.keys(accounts).sort() };
+  }, [view, data, month, horizon, adjustments, openingCash, planning.debts]);
+
+  // Recent GST + PAYG as a share of income: the accruing period's tax over its months of sales.
+  const defaultTaxPct = useMemo(() => {
+    const b = ctxQ.data?.building;
+    if (!b?.amount || !projection || projection.baseline.revenue <= 0) return null;
+    const [fy, fm] = b.from.slice(0, 7).split("-").map(Number);
+    const [ty, tm] = (ctxQ.data!.today ?? b.to).slice(0, 7).split("-").map(Number);
+    const n = Math.max(1, (ty! - fy!) * 12 + (tm! - fm!) + 1);
+    return Math.round((b.amount / (projection.baseline.revenue * n)) * 1000) / 10;
+  }, [ctxQ.data, projection]);
+
+  const reportExtras = (): { label: string; value: string }[] => {
+    if (!projection) return [];
+    const out: { label: string; value: string }[] = [];
+    const low = lowestCash(projection.rows);
+    if (low) out.push({ label: "Lowest cash point", value: `${fmt(low.amount)} (${low.month})` });
+    if (planning.cases) for (const k of ["worst", "best"] as const) {
+      const r = project(projection.baseline, caseAdjustments(projection.allAdj, planning.cases[k], projection.months[0]!), projection.months, openingCash);
+      const l = lowestCash(r);
+      out.push({ label: k === "best" ? "Best case net (total)" : "Worst case net (total)", value: `${fmt(r.reduce((t, x) => t + x.scenario.net, 0))}${l ? ` · lowest cash ${fmt(l.amount)}` : ""}` });
+    }
+    if (planning.target) {
+      const last = projection.rows[projection.rows.length - 1]!;
+      const t = salesForTarget({ baseline: projection.baseline, fixedCosts: last.scenario.costs - projection.baseline.costs.cogs - projection.baseline.costs.variable, targetPerMonth: planning.target.per === "year" ? planning.target.amount / 12 : planning.target.amount, averageInvoice: projection.averageInvoice });
+      if (t) out.push({ label: "Sales needed per month", value: `${fmt(t.salesNeeded)} (${t.gap >= 0 ? "+" : ""}${fmt(t.gap)})` });
+    }
+    if (planning.debts.length) {
+      const below = belowZeroMonths(projection.rows);
+      out.push({ label: "Debt repayments", value: `${planning.debts.length} debt${planning.debts.length === 1 ? "" : "s"}${below.length ? ` · cash below zero in ${below.join(", ")}` : ""}` });
+    }
+    if (planning.tax) {
+      const sa = taxSetAside(projection.rows.map((r) => ({ month: r.month, amount: r.scenario.revenue })), planning.tax.pct, planning.tax.instalmentPct, ctxQ.data?.dues ?? []);
+      const short = sa.checks.filter((c) => !c.covered).length;
+      out.push({ label: "Tax set-aside", value: `${fmt(sa.monthly[0] ?? 0)}/month${sa.checks.length ? ` · ${short ? `short for ${short} of ${sa.checks.length} tax dues` : "covers the tax due shown"}` : ""}` });
+    }
+    return out;
+  };
 
   const currentPayload = () => ({
-    version: 1 as const, month, horizon, openingCash, adjustments,
+    version: 1 as const, month, horizon, openingCash: cashEdited ? openingCash : null, adjustments, ...planning,
     excludedInvoiceIds: invoices.filter((i) => i.excluded).map((i) => i.id),
     costBasis,
   });
@@ -271,14 +326,15 @@ function CashflowScenarioPage() {
             monthEnd={toStr}
             monthLabel={monthLabelOf(month)}
             currentPayload={currentPayload}
-            reportTable={projection ? () => ({ kind: "cashflow_scenario", rows: projection.rows.map((r) => ({ month: r.month, baselineNet: r.baseline.net, scenarioNet: r.scenario.net, baselineCash: r.baseline.closingCash, scenarioCash: r.scenario.closingCash })) }) : () => null}
+            reportTable={projection ? () => ({ kind: "cashflow_scenario", extras: reportExtras(), rows: projection.rows.map((r) => ({ month: r.month, baselineNet: r.baseline.net, scenarioNet: r.scenario.net, baselineCash: r.baseline.closingCash, scenarioCash: r.scenario.closingCash })) }) : () => null}
             onSaved={(sc) => setLoaded(sc)}
             onLoad={async (sc, payload) => {
               setLoaded(sc ? { id: sc.id, name: sc.name } : null);
-              if (!sc || !payload) { setAdjustments([]); setExcludedOverride(null); return; }
+              if (!sc || !payload) { setAdjustments([]); setExcludedOverride(null); setPlanning({ cases: null, target: null, debts: [], tax: null }); setCashEdited(false); return; }
               setAdjustments(payload.adjustments);
               setHorizon(payload.horizon);
-              setOpeningCash(payload.openingCash);
+              setPlanning({ cases: payload.cases ?? null, target: payload.target ?? null, debts: payload.debts ?? [], tax: payload.tax ?? null });
+              if (payload.openingCash !== null) { setCashEdited(true); setOpeningCash(payload.openingCash); } else { setCashEdited(false); setOpeningCash(ctxQ.data?.cashAtBank ?? null); }
               if (payload.costBasis && typeof payload.costBasis === "object") for (const g of ["cogs", "fixed", "variable"] as const) { const b = (payload.costBasis as any)[g]; if (b?.mode) setCostBasis(g, b); }
               const saved = new Set(payload.excludedInvoiceIds);
               if (!canManage) { setExcludedOverride(saved); return; }
@@ -412,11 +468,16 @@ function CashflowScenarioPage() {
                       <SelectContent>{[3, 4, 5, 6].map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</SelectContent>
                     </Select>
                   </label>
-                  <label className="flex flex-col gap-1 text-xs text-muted-foreground">Opening cash (A$, optional)
-                    <Input className="h-9 w-[180px]" type="number" value={openingCash ?? ""} disabled={!canManage} onChange={(e) => setOpeningCash(e.target.value === "" ? null : Number(e.target.value))} />
+                  <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                    {!cashEdited && ctxQ.data?.cashAtBank != null ? `Opening cash from Xero (as at ${ctxQ.data.cashAsAt ?? "latest"}) · edit` : "Opening cash (A$)"}
+                    <Input className="h-9 w-[180px]" type="number" value={openingCash ?? ""} disabled={!canManage} onChange={(e) => { setCashEdited(true); setOpeningCash(e.target.value === "" ? null : Number(e.target.value)); }} />
                   </label>
+                  {cashEdited && ctxQ.data?.cashAtBank != null && canManage && <Button size="sm" variant="ghost" onClick={() => { setCashEdited(false); setOpeningCash(ctxQ.data!.cashAtBank); }}>Use Xero figure</Button>}
                 </div>
                 <ScenarioResults rows={projection.rows} fmt={fmt} breakEven={projection.breakEven} title={loaded ? `${loaded.name} · compare with baseline` : undefined} />
+                <PlanningPanel state={planning} onChange={setPlanning} readOnly={!canManage} fmt={fmt} baseline={projection.baseline}
+                  adjustments={projection.allAdj} months={projection.months} openingCash={openingCash} rows={projection.rows}
+                  averageInvoice={projection.averageInvoice} knownDebts={ctxQ.data?.knownDebts ?? []} dues={ctxQ.data?.dues ?? []} defaultTaxPct={defaultTaxPct} />
               </>
             )}
 

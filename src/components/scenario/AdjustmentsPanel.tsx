@@ -26,6 +26,8 @@ export function blankAdjustment(kind: Adjustment["kind"], month: string): Adjust
     case "slower_pay": return { id, kind, label: "Customers pay slower", days: 30, start: month };
     case "one_off": return { id, kind, label: "One-off purchase", amount: 0, month };
     case "injection": return { id, kind, label: "Cash injection", amount: 0, month, repayment: 0 };
+    case "cost_change": return { id, kind, label: "Cost change", pct: 0, start: month };
+    case "debt_repayment": return { id, kind, label: "Debt repayments", amounts: {} };
   }
 }
 

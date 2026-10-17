@@ -84,7 +84,33 @@ const PERIOD_END_MAX_AGE_DAYS = 200;
 /** Ignore stored rows older than this: a week-old balance is not "the" balance. */
 const MAX_AGE_DAYS = 7;
 
-export type HealthChecksResult = HealthChecks & { source: SnapshotSource; tenantId: string | null };
+export type KnownDebt = { name: string; balance: number };
+export type HealthChecksResult = HealthChecks & {
+  source: SnapshotSource; tenantId: string | null;
+  /** Cash Cover's cash at bank (cards never reduce it) and its balance-sheet date. */
+  cashAtBank?: number | null; cashAsAt?: string | null;
+  /** Loan / ATO liability lines from the same saved balance sheet. */
+  knownDebts?: KnownDebt[];
+};
+
+const DEBT_NAME = /loan|\bato\b|integrated client|finance|hire purchase|chattel|equipment|overdraft|director/i;
+/** Liability rows that look like borrowings or ATO debts (display/prefill only). */
+export function knownDebtLines(bsPayload: any): KnownDebt[] {
+  const out: KnownDebt[] = [];
+  const walk = (rows: any[], inLiab: boolean) => {
+    for (const r of rows ?? []) {
+      const liab = inLiab || /liabilit/i.test(String(r?.Title ?? ""));
+      if (Array.isArray(r?.Rows)) walk(r.Rows, liab);
+      else if (liab && r?.RowType === "Row" && Array.isArray(r.Cells)) {
+        const name = String(r.Cells[0]?.Value ?? "");
+        const v = Number(String(r.Cells[1]?.Value ?? "").replace(/,/g, ""));
+        if (DEBT_NAME.test(name) && Number.isFinite(v) && v > 0) out.push({ name: name.slice(0, 80), balance: Math.round(v * 100) / 100 });
+      }
+    }
+  };
+  walk(bsPayload?.Reports?.[0]?.Rows ?? [], false);
+  return out.slice(0, 20);
+}
 
 function fyLabelFor(today: string): string {
   const s = +startOfFinancialYear(today).slice(0, 4);
@@ -218,7 +244,7 @@ export async function loadHealthChecks(
         }
       : { mode: "pending", asAt: null, fetchedAt: null, stale: false, complete: true, connection: "unknown", reason: "missing" };
 
-    out.set(t.clientId, { ...checks, source, tenantId });
+    out.set(t.clientId, { ...checks, source, tenantId, cashAtBank, cashAsAt: bs?.as_at ? sydneyDate(new Date(bs.as_at)) : null, knownDebts: bs ? knownDebtLines(bs.payload) : [] });
   }
   return out;
 }
