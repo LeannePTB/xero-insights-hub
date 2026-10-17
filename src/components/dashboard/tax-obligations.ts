@@ -61,9 +61,22 @@ export function basDueDate(kind: "month" | "quarter", periodEnd: string): string
   return iso(new Date(Date.UTC(y, m, 28)));
 }
 
+/** A finished period with no lodged activity statement in Xero: amount read from the ledger balances. */
+export type UnlodgedTax = { kind: "gst" | "payg"; from: string; to: string; amount: number; due: string; overdue: boolean; estimate: boolean };
+
 export type ForwardTax = {
   owing: { amount: number; reference: string; due: string; overdue: boolean }[];
-  building: { gst: number | null; payg: number | null; total: number | null; due: string; from: string; to: string };
+  /** Only when no lodged bill exists: last finished period(s), from Xero balances, not a lodged statement. */
+  unlodged?: UnlodgedTax[];
+  building: {
+    gst: number | null; payg: number | null; total: number | null;
+    /** Earliest of the component due dates (kept for older readers). */
+    due: string; from: string; to: string;
+    /** Per-component due dates following the client's lodgement settings. */
+    gstDue?: string; paygDue?: string;
+    /** PAYG on pay runs in the running period, when PAYG accruing came from the ledger and differs. */
+    paygPayRuns?: number | null;
+  };
   instalment: { amount: number; due: string } | null;
   /** "not_required" contributes nothing; "unset" means nobody has chosen yet. */
   instalmentSetting?: "not_required" | "quarterly" | "annual" | "unset";
@@ -78,13 +91,36 @@ export function forwardTax(input: {
   gst: number | null; payg: number | null; paygRegistered: boolean;
   instalment: { amount: number; due: string } | null;
   instalmentSetting?: "not_required" | "quarterly" | "annual" | "unset";
+  /** Last finished period(s) from ledger balances; ignored when lodged bills exist. */
+  unlodged?: UnlodgedTax[];
+  /** PAYG withholding cycle, so the PAYG accruing due date follows the client's setting. */
+  paygCycle?: string | null;
+  paygPayRuns?: number | null;
 }): ForwardTax {
   const owing = input.bills.map(b => ({ amount: b.amount, reference: b.reference, due: b.due, overdue: b.due < input.today }));
+  const unlodged = owing.length ? [] : (input.unlodged ?? []).filter((u) => u.amount > 0.005);
   const payg = input.paygRegistered ? input.payg : 0;
   const total = input.gst !== null && payg !== null ? Math.round((input.gst + payg) * 100) / 100 : null;
   const instalment = input.instalmentSetting !== "not_required" && input.instalment && input.instalment.due >= input.today ? input.instalment : null;
-  const totalToPlan = total === null ? null : Math.round((owing.reduce((s, o) => s + o.amount, 0) + total + (instalment?.amount ?? 0)) * 100) / 100;
-  return { owing, building: { gst: input.gst, payg: input.paygRegistered ? input.payg : null, total, due: basDueDate(input.period.kind, input.period.asAt), from: input.period.from, to: input.period.asAt }, instalment, instalmentSetting: input.instalmentSetting, totalToPlan };
+  const sum = (xs: { amount: number }[]) => xs.reduce((s, o) => s + o.amount, 0);
+  const totalToPlan = total === null ? null : Math.round((sum(owing) + sum(unlodged) + total + (instalment?.amount ?? 0)) * 100) / 100;
+  const gstDue = basDueDate(input.period.kind, input.period.asAt);
+  const paygDue = paygRunningDue(input.paygCycle ?? null, input.today) ?? gstDue;
+  const due = input.paygRegistered && input.payg ? (paygDue < gstDue ? paygDue : gstDue) : gstDue;
+  return { owing, unlodged, building: { gst: input.gst, payg: input.paygRegistered ? input.payg : null, total, due, from: input.period.from, to: input.period.asAt, gstDue, paygDue: input.paygRegistered ? paygDue : undefined, paygPayRuns: input.paygPayRuns ?? null }, instalment, instalmentSetting: input.instalmentSetting, totalToPlan };
+}
+
+/** Due date of PAYG withholding still accruing on `today`: monthly → 21st of next month; quarterly → with the BAS. */
+export function paygRunningDue(cycle: string | null, today: string): string | null {
+  if (cycle !== "monthly" && cycle !== "quarterly") return null;
+  const p = currentGstPeriod(cycle, today);
+  return basDueDate(p.kind, p.asAt);
+}
+
+/** What is due first: lodged bills, otherwise the unlodged finished periods. */
+export function dueNowItems(fwd: ForwardTax): { amount: number; due: string; overdue: boolean; label: string; lodged: boolean }[] {
+  if (fwd.owing.length) return fwd.owing.map((o) => ({ amount: o.amount, due: o.due, overdue: o.overdue, label: o.reference || "Lodged activity statement", lodged: true }));
+  return (fwd.unlodged ?? []).map((u) => ({ amount: u.amount, due: u.due, overdue: u.overdue, label: u.kind === "gst" ? "GST" : "PAYG withholding", lodged: false }));
 }
 
 /** Organisations are Western Australian practices; no per-organisation

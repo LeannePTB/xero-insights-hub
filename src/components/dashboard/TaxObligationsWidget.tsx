@@ -13,6 +13,7 @@ import { listIncomeTaxInstalments } from "@/lib/income-tax-instalments.functions
 import { completedGstPeriod, type GstCycle } from "./recon-periods";
 import { latestCompletedPaygMonth, netGstAmount, currentGstPeriod, forwardTax, pickCurrentInstalment, organisationToday } from "./tax-obligations";
 import { getLodgedTaxBills } from "@/lib/xero/lodged-tax.functions";
+import { getStoredTaxPosition } from "@/lib/tax/tax-position.functions";
 import { formatMoneyExact, useTenantCurrency } from "./useTenantCurrency";
 import { TaxObligationsBody } from "./TaxObligationsBody";
 
@@ -75,6 +76,13 @@ export function TaxObligationsWidget({
     queryKey: ["income-tax-instalments", clientId, tenantId],
     queryFn: () => listInstalments({ data: { clientId, tenantId } }),
   });
+  const fetchPosition = useServerFn(getStoredTaxPosition);
+  const positionQuery = useQuery({
+    queryKey: ["tax-position", clientId, tenantId],
+    queryFn: () => fetchPosition({ data: { tenantId } }),
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
   const billsQuery = useQuery({
     queryKey: ["lodged-tax-bills", tenantId, "tax_obligations"],
     queryFn: () => fetchBills({ data: { tenantId, widget: "tax_obligations" } }),
@@ -97,7 +105,9 @@ export function TaxObligationsWidget({
     instalmentSetting: frequency ?? "unset",
   });
   const accountGap = run && run.closingBalance !== null && run.statementNet !== null ? Math.round((run.closingBalance - run.statementNet) * 100) / 100 : null;
-  const busy = gstQuery.isLoading || paygQuery.isLoading || instalmentsQuery.isLoading || runGstQuery.isLoading;
+  // One shared tax position (same as Business Health, Overview and reports); live figures only as a fallback.
+  const shown = positionQuery.data?.tax ?? fwd;
+  const busy = positionQuery.isLoading || gstQuery.isLoading || paygQuery.isLoading || instalmentsQuery.isLoading || runGstQuery.isLoading;
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
@@ -107,12 +117,12 @@ export function TaxObligationsWidget({
         <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</p>
       ) : (
         <TaxObligationsBody
-          forward={fwd}
+          forward={shown}
           money={money}
           paygRegistered={paygRegistered}
           buildingLabel={runPeriod.kind === "quarter"
-            ? `${format(new Date(`${fwd.building.from}T00:00:00`), "MMM")}–${format(new Date(`${fwd.building.to}T00:00:00`), "MMM yyyy")}`
-            : format(new Date(`${fwd.building.from}T00:00:00`), "MMMM")}
+            ? `${format(new Date(`${shown.building.from}T00:00:00`), "MMM")}–${format(new Date(`${shown.building.to}T00:00:00`), "MMM yyyy")}`
+            : format(new Date(`${shown.building.from}T00:00:00`), "MMMM")}
           partPaid={(billsQuery.data?.bills ?? []).map((bill) => bill.total !== undefined && bill.total > bill.amount + 0.005)}
           today={todayIso}
           instalmentDisplay={frequency === "not_required" ? "not_required" : "required"}

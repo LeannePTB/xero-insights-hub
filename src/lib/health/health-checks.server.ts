@@ -12,7 +12,8 @@ import { computeHealthChecks, monthlyCosts, normaliseName, type HealthChecks } f
 import type { SnapshotSource } from "@/lib/xero/snapshot-source";
 import { analyseBalanceSheet, countsTowardProtected, type StatutoryOverrides } from "@/lib/xero/tax-lines";
 import { applyBankClassifications, type BankClassificationRow } from "@/lib/xero/bank-classifications";
-import { lodgedAtoBills, nextTaxPayment, withForwardBuilding, type TaxBalances } from "./health-checks";
+import { lodgedAtoBills, nextTaxPayment, type TaxBalances } from "./health-checks";
+import { nextTaxFromForward } from "@/lib/tax/forward-stored";
 
 /**
  * GST and PAYG withholding owed on one balance sheet, for the cycles the client
@@ -198,7 +199,8 @@ export async function loadHealthChecks(
       cashAtBank,
       invoices: inv ? (inv.payload?.Invoices ?? []) : null,
       monthly,
-      nextTax: withForwardBuilding(nextTax, forward.get(t.clientId)?.tax),
+      // One tax-position reader: lodged bills, unlodged finished periods and accruing tax all come from the shared forward summary.
+      nextTax: forward.has(t.clientId) ? nextTaxFromForward(forward.get(t.clientId)?.tax) : nextTax,
       gstCycle,
       paygCycle,
     });

@@ -5,6 +5,7 @@
 //
 // Staff-only: nothing here is rendered on a client-facing surface.
 
+import { nextTaxFromForward } from "@/lib/tax/forward-stored";
 import { SNAPSHOT_PAYLOAD_VERSION, STALENESS_SECONDS } from "@/lib/xero/snapshot-keys";
 import {
   buildProtectedMoney,
@@ -28,7 +29,6 @@ import {
   debtorAlert,
   lateSharePct,
   nextTaxPayment,
-  withForwardBuilding,
   lodgedAtoBills,
   oldDebtsText,
   splitDebtors,
@@ -330,14 +330,16 @@ export function ruleProtectedMoneyVsCash(
   }
   const cashAmount = analysed.cashAtBank.total;
   const total = protectedMoney.total;
-  const nextTax = withForwardBuilding(nextTaxPayment({
+  const ledgerNext = nextTaxPayment({
     gstCycle: tax.gstCycle,
     paygCycle: tax.paygCycle,
     today: tax.today,
     current: taxBalancesFromLines(analysed.taxLines.lines, tax.gstCycle ?? null, tax.paygCycle ?? null),
     periodEnd: tax.periodEnd ?? (() => null),
     lodged: payables ? lodgedAtoBills(payables.payload) : null,
-  }), tax.forward);
+  });
+  // One tax-position reader: the shared forward summary when present (same as card, Health and report).
+  const nextTax = tax.forward ? nextTaxFromForward(tax.forward) : ledgerNext;
   const pastDue = payables ? pastDueTaxBills(payables.payload, statutoryAccountIds, tax.today) : 0;
   const alert = taxPaymentAlert({ next: nextTax, today: tax.today, cashAtBank: cashAmount, recentDebtors: tax.recentDebtors, pastDueOwing: pastDue });
 
