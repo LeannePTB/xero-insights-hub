@@ -219,16 +219,16 @@ function buildChecklist(
   if (client.cost_classification_enabled === false) {
     items.push({
       key: "cost_classification",
-      title: "Cost classification",
+      title: "Account setup — costs",
       status: "not_applicable",
       detail:
         "Turned off deliberately. Break-even treats all operating expenses as fixed, and cost of sales as variable.",
-      anchor: "cost-classification",
+      anchor: "account-setup-cost",
     });
   } else if (linkedFiles === 0) {
     items.push({
       key: "cost_classification",
-      title: "Cost classification",
+      title: "Account setup — costs",
       status: "unknown",
       detail: "Link a Xero file first — expense accounts come from the file.",
       anchor: "xero-organisations",
@@ -236,23 +236,23 @@ function buildChecklist(
   } else if (counts.expense === 0) {
     items.push({
       key: "cost_classification",
-      title: "Cost classification",
+      title: "Account setup — costs",
       status: "unknown",
       detail:
         "The account list for this file has not been read yet, so untagged accounts cannot be counted.",
-      anchor: "cost-classification",
+      anchor: "account-setup-cost",
     });
   } else {
     const untagged = Math.max(0, counts.expense - counts.classified);
     items.push({
       key: "cost_classification",
-      title: "Cost classification",
+      title: "Account setup — costs",
       status: untagged > 0 ? "needs_attention" : "done",
       detail:
         untagged > 0
-          ? `${untaggedSummary(counts.untaggedNames ?? [], untagged)} ${untagged} of ${counts.expense} expense accounts are untagged, so break-even and the cash-flow scenario are working from an incomplete split.`
-          : `All ${counts.expense} expense accounts are tagged.`,
-      anchor: "cost-classification",
+          ? `${untaggedSummary(counts.untaggedNames ?? [], untagged)} ${untagged} of ${counts.expense} expense accounts still have an unconfirmed suggestion on Account setup.`
+          : `All ${counts.expense} expense accounts are confirmed.`,
+      anchor: "account-setup-cost",
     });
   }
 
@@ -283,7 +283,7 @@ function buildChecklist(
       status: "not_applicable",
       detail:
         "Not registered for GST and does not withhold PAYG, so there is no statutory coding to set.",
-      anchor: "statutory-accounts",
+      anchor: "account-setup-tax",
     });
   } else if (statutoryAck) {
     items.push({
@@ -291,7 +291,7 @@ function buildChecklist(
       title: "GST, PAYG and super coding",
       status: "done",
       detail: `Confirmed ${formatDate(statutoryAck)} — name matching on the Xero file is being relied on.`,
-      anchor: "statutory-accounts",
+      anchor: "account-setup-tax",
     });
   } else if (missing.length > 0) {
     items.push({
@@ -299,7 +299,7 @@ function buildChecklist(
       title: "GST, PAYG and super coding",
       status: "needs_attention",
       detail: `No account is coded for ${missing.map((m) => labels[m]).join(", ")}, so those balances rely on account names matching.`,
-      anchor: "statutory-accounts",
+      anchor: "account-setup-tax",
       acknowledge: {
         label: "Name matching is fine for this client",
         choice: "name_matching_accepted",
@@ -312,7 +312,7 @@ function buildChecklist(
       title: "GST, PAYG and super coding",
       status: "done",
       detail: `Accounts coded for ${required.map((m) => labels[m]).join(", ")}.`,
-      anchor: "statutory-accounts",
+      anchor: "account-setup-tax",
     });
   }
 

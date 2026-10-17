@@ -39,35 +39,6 @@ export const listCostClassifications = createServerFn({ method: "POST" })
     };
   });
 
-export const setCostClassifications = createServerFn({ method: "POST" })
-  .middleware([requireAal2])
-  .inputValidator(
-    (input: {
-      clientId: string;
-      tenantId: string;
-      entries: { accountName: string; classification: Classification; isWages: boolean }[];
-    }) => input,
-  )
-  .handler(async ({ data, context }) => {
-    const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
-    await assertClientDataAccessForClient(context.userId, data.clientId);
-    const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
-    await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
-    if (data.entries.length === 0) return { ok: true };
-    const payload = data.entries.map((e) => ({
-      client_id: data.clientId,
-      tenant_id: data.tenantId,
-      account_name: e.accountName,
-      classification: e.classification,
-      is_wages: e.isWages,
-    }));
-    const { error } = await context.supabase
-      .from("account_setup_cost_v" as any)
-      .upsert(payload, { onConflict: "client_id,tenant_id,account_name" });
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
-
 export const setCostClassificationEnabled = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((input: { clientId: string; enabled: boolean }) => input)

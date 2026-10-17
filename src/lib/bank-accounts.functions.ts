@@ -20,10 +20,3 @@ export const listBankAccounts = createServerFn({ method: 'POST' }).middleware([r
     return { rows: (payload.Accounts ?? []).filter(a => a.Type === 'BANK' && a.Status === 'ACTIVE').map(a => ({ accountId: a.AccountID, name: a.Name, detected: a.BankAccountType === 'CREDITCARD' || a.Class === 'LIABILITY' ? 'credit_card' : 'bank', stored: stored.get(a.AccountID) ?? null })) };
   });
 
-export const saveBankAccount = createServerFn({ method: 'POST' }).middleware([requireAal2])
-  .inputValidator(input => scope.extend({ accountId: z.string().uuid(), classification: z.enum(['bank', 'credit_card', 'overdraft', 'excluded']).nullable() }).parse(input))
-  .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.rpc('save_client_bank_account_classification', { _client_id: data.clientId, _tenant_id: data.tenantId, _account_id: data.accountId, _classification: data.classification as string });
-    if (error) throw new Error('The account classification could not be saved.');
-    return { ok: true };
-  });
