@@ -24,9 +24,9 @@ type Bucket = OverviewRow["bucket"];
 const BUCKETS: { key: Bucket; label: string }[] = [
   { key: "critical", label: "In trouble" },
   { key: "warning", label: "Needs attention" },
-  { key: "watch", label: "Watch" },
-  { key: "ok", label: "All clear" },
-  { key: "cant_assess", label: "Can't assess" },
+  { key: "watch", label: "Monitor" },
+  { key: "ok", label: "Good" },
+  { key: "cant_assess", label: "No data" },
 ];
 
 function money(n: number | null) {
