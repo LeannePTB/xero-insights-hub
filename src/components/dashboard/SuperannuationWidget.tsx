@@ -117,7 +117,7 @@ export function SuperannuationWidget({
             {/* A residue is stated for what it is, never attributed to an
                 older payday. */}
             {available.residue > 0.005 && (
-              <p className="mt-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
+              <p className="mt-2 rounded-lg border border-border bg-card px-3 py-2 text-sm">
                 {available.residueKind === "since_last_pay_run" ? (
                   <>
                     <span className="font-medium tabular-nums">{fmt(available.residue)}</span>{" "}

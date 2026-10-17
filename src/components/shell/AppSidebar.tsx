@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Activity,
+  ArrowLeft,
   BarChart3,
   Briefcase,
   Building2,
@@ -177,6 +178,15 @@ export function AppSidebar({ badges = {} }: { badges?: Record<string, number> })
       : group.items,
   }));
 
+  // Back links are presentation only: they appear only when the caller-scoped
+  // organisation list already includes the destination; each page keeps its own guard.
+  const backLink: { label: string; to: string; params: Record<string, string> } | null =
+    workspace.kind === "client" && clientRow?.firm_id && clientOrgName
+      ? { label: `Back to ${clientOrgName}`, to: "/firms/$firmId", params: { firmId: clientRow.firm_id } }
+      : workspace.kind === "organisation" && organisations.length > 1
+        ? { label: "All organisations", to: "/overview", params: {} }
+        : null;
+
   const onNavigate = () => {
     if (isMobile) setOpenMobile(false);
   };
@@ -205,9 +215,23 @@ export function AppSidebar({ badges = {} }: { badges?: Record<string, number> })
       </SidebarHeader>
 
       <SidebarContent>
+        {backLink && (
+          <SidebarGroup className="pb-0">
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip={backLink.label}>
+                  <Link to={backLink.to as any} params={backLink.params as any} onClick={onNavigate} className="text-muted-foreground">
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="truncate">{backLink.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
         {groups.map((group) => (
           <SidebarGroup key={group.id}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            {group.id !== "practice" && group.id !== "client" && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.map((item) => {

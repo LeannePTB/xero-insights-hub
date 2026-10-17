@@ -56,6 +56,10 @@ export async function enqueueAppEmail(opts: {
     }
   }
 
+  // Platform emails reply to Traction Advisory's main contact. Organisation-sent
+  // mail (firmId given, e.g. client reports) keeps its own or no reply address.
+  const replyTo = opts.replyTo ?? (opts.firmId || opts.templateName === "report-ready" ? undefined : branding.mainContactEmail);
+
   const template = TEMPLATES[opts.templateName];
   if (!template) {
     console.error("Template not found", { templateName: opts.templateName });
@@ -116,7 +120,7 @@ export async function enqueueAppEmail(opts: {
       idempotency_key: idempotencyKey,
       unsubscribe_token: unsubscribeToken,
       queued_at: new Date().toISOString(),
-      ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
+      ...(replyTo ? { reply_to: replyTo } : {}),
     },
   });
   if (enqErr) {

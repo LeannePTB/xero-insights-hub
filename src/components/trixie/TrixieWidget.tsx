@@ -42,7 +42,7 @@ const TOOL_LABELS: Record<string, string> = {
   pay_runs: "Read pay runs",
   compare_periods: "Compared two periods",
   activity_statement: "Read activity statement figures",
-  find_issues: "Ran bookkeeping checks",
+  find_issues: "Ran file checks",
   practice_overview: "Read the organisation Overview",
   ask_about_client: "Read a client's saved figures",
 };
@@ -190,7 +190,7 @@ export function TrixieWidget() {
         </>
       )}
       {open && (
-        <div role="dialog" aria-label="Trixie" className="fixed inset-0 z-50 flex flex-col overflow-hidden border border-border bg-background shadow-2xl sm:inset-auto sm:bottom-5 sm:right-5 sm:h-[640px] sm:max-h-[calc(100vh-2.5rem)] sm:w-[400px] sm:rounded-2xl">
+        <div role="dialog" aria-label="Trixie" className="fixed inset-0 z-50 flex flex-col overflow-hidden border border-border bg-card shadow-2xl sm:inset-auto sm:bottom-5 sm:right-5 sm:h-[640px] sm:max-h-[calc(100vh-2.5rem)] sm:w-[400px] sm:rounded-2xl">
           {view === "history" ? (
             <TrixieHistory
               activeId={loaded?.threadId ?? null}
@@ -437,7 +437,7 @@ function TrixieChat({ pathname, threadId, initialMessages, onThread, onHistory, 
         </ConversationContent>
         <ConversationScrollButton />
       </Conversation>
-      <div className="border-t border-border bg-background p-3">
+      <div className="border-t border-border bg-card p-3">
         <PromptInput onSubmit={(message) => ask(message.text)}>
           <PromptInputTextarea placeholder="Ask Trixie…" disabled={busy} autoFocus />
           <PromptInputFooter className="justify-end"><PromptInputSubmit status={status} onStop={stop} /></PromptInputFooter>

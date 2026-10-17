@@ -136,7 +136,7 @@ function MfaEnrollPage() {
                   <code className="break-all text-xs text-muted-foreground">{enroll.secret}</code>
                 </div>
               ) : (
-                <div className="mt-2 flex h-44 items-center justify-center rounded-md border bg-muted/30">
+                <div className="mt-2 flex h-44 items-center justify-center rounded-md border bg-card">
                   {errorMsg ? (
                     <span className="text-xs text-muted-foreground">Enrollment unavailable</span>
                   ) : (

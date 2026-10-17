@@ -365,6 +365,9 @@ export async function buildOverview(
     const cashNote = stmtPos
       ? `Reconciled bank position ${stmtPos.reconciled.toLocaleString("en-AU", { style: "currency", currency: "AUD", signDisplay: "negative" })} — ${Math.abs(stmtPos.unreconciled).toLocaleString("en-AU", { style: "currency", currency: "AUD" })} not yet reconciled in Xero (last 90 days).`
       : null;
+    const cashNoteShort = stmtPos
+      ? `${Math.round(Math.abs(stmtPos.unreconciled)).toLocaleString("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0 })} unreconciled`
+      : null;
     out.push({
       clientId: c.client_id,
       clientName: c.client_name,
@@ -408,6 +411,7 @@ export async function buildOverview(
       bankReconciledTo,
       bankReconWarning: bankRecon?.text ?? null,
       cashNote,
+      cashNoteShort,
       lastXeroLoginAt: kfRows.find((k: any) => k.last_xero_login_at != null)?.last_xero_login_at ?? null,
       cashSpark: (ctx.keyFigures.get(c.client_id) ?? [])
         .filter((k) => k.as_at >= addDays(ctx.today, -30) && k.cash !== null)

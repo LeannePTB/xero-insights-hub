@@ -223,7 +223,7 @@ export function AddOrganisationDialog({
         ) : done.mode === "password" ? (
           <div className="space-y-2">
             <p className="text-sm">✓ Organisation created. The owner can sign in right now with these details.</p>
-            <div className="rounded-md border border-border bg-muted/40 p-3 font-mono text-xs space-y-1">
+            <div className="rounded-md border border-border bg-card p-3 font-mono text-xs space-y-1">
               <div>{done.email}</div>
               <div>{done.password}</div>
             </div>

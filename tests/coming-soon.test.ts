@@ -40,9 +40,9 @@ describe('Automatic Coming soon teasers for Work-in-progress cards (owner 15 Oct
     expect(fn).toContain("c.status = 'wip'");
     expect(fn).toContain('not c.hide_from_coming_soon');
   });
-  it('a shown manual entry suppresses the automatic teaser (no duplicate wording)', () => {
+  it('an entry linked to the card (edited override, shown or hidden) replaces the automatic teaser', () => {
     const fn = fixture.slice(fixture.indexOf('app_private.coming_soon_rows'));
-    expect(fn).toMatch(/not exists \(select 1 from public\.coming_soon_entries e\s+where e\.is_shown and e\.card_key = c\.card_key\)/);
+    expect(fn).toMatch(/not exists \(select 1 from public\.coming_soon_entries e where e\.card_key = c\.card_key\)/);
   });
   it('the public website reader stays manual-only', () => {
     expect(fixture).toContain('show_on_website and app_private.coming_soon_still_coming');

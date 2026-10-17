@@ -100,7 +100,7 @@ export function NotesCard({ clientId, canEdit, compact = false }: { clientId: st
               <Plus className="mr-2 h-4 w-4" /> Add note
             </Button>
           ) : (
-            <div className="space-y-2 rounded-lg border border-border bg-background/50 p-3">
+            <div className="space-y-2 rounded-lg border border-border bg-card p-3">
               <Textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
@@ -151,7 +151,7 @@ export function NotesCard({ clientId, canEdit, compact = false }: { clientId: st
           {notes.map((n) => {
             const isEditing = editingId === n.id;
             return (
-              <li key={n.id} className="rounded-lg border border-border bg-background/30 p-3">
+              <li key={n.id} className="rounded-lg border border-border bg-card p-3">
                 <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
                   <span className="flex flex-wrap items-center gap-2">
                     <span>

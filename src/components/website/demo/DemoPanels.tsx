@@ -124,7 +124,7 @@ export function DemoGroup() {
         </tbody>
       </table>
     </div>
-    <div className="mt-4 rounded-lg border border-border bg-background p-4">
+    <div className="mt-4 rounded-lg border border-border bg-card p-4">
       <p className="text-xs font-semibold uppercase text-muted-foreground">Inter-company loans</p>
       <div className="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
         {c.filter((r) => r.loan !== 0).map((r) => <div key={r.name} className="flex justify-between gap-3"><span className="truncate">{r.name}</span><span className="shrink-0 tabular-nums">{aud(r.loan)}</span></div>)}
@@ -141,9 +141,9 @@ export function DemoTrixie() {
       <h3 className="flex items-center gap-2 font-display text-base font-semibold"><img src={trixieIcon} alt="Trixie" className="h-5 w-5 object-contain" />Trixie</h3>
       <div className="mt-4 space-y-4">
         <div className="ml-auto w-fit max-w-[85%] rounded-lg bg-primary px-4 py-2.5 text-sm text-primary-foreground">{DEMO_TRIXIE.question}</div>
-        <div className="max-w-[92%] space-y-2 rounded-lg border border-border bg-background px-4 py-3 text-sm leading-relaxed">{DEMO_TRIXIE.answer.map((a) => <p key={a}>{a}</p>)}</div>
+        <div className="max-w-[92%] space-y-2 rounded-lg border border-border bg-card px-4 py-3 text-sm leading-relaxed">{DEMO_TRIXIE.answer.map((a) => <p key={a}>{a}</p>)}</div>
       </div>
-      <div className="mt-4 rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground">Ask about {DEMO_BUSINESS}…</div>
+      <div className="mt-4 rounded-md border border-input bg-card px-3 py-2 text-sm text-muted-foreground">Ask about {DEMO_BUSINESS}…</div>
     </div>
     <aside className="rounded-lg border border-border bg-card p-4 shadow-soft">
       <p className="flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground"><Sparkles className="h-3.5 w-3.5" />Key numbers</p>

@@ -126,6 +126,11 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Screen signal only: whether the caller (aal2, auth.uid()) can manage one client, using the same user_can_write_client predicate as client writes. Grants nothing.",
   "public.rename_my_organisation":
     "Owner renames their own organisation after aal2 and an owner-only check (firms.owner_user_id = auth.uid()), with an audit row in the same transaction.",
+  "public.get_platform_contact":
+    "Documented anon-callable exception: returns only the platform's main contact email (Traction Advisory metadata) for the website, auth pages and email Reply-To. No organisation, client or personal data.",
+  "public.admin_set_main_contact_email": "System Administrator (assert_aal2 + assert_super_admin) sets the platform main contact email; audited as platform_main_contact_changed. Path C metadata.",
+  "public.admin_alert_address_suppression": "System Administrator (aal2) reads whether ONLY the configured enquiry alert address is on the suppression list; returns that address, flag, reason and date.",
+  "public.admin_unblock_alert_address": "System Administrator (aal2) removes ONLY the configured enquiry alert address from suppressed_emails; audited as alert_address_unblocked. Never automatic; no address parameter.",
   "public.get_platform_branding":
     "Documented anon-callable exception: returns only public platform display branding (product name, logos, favicon, sender name) so sign-in pages can show it. No organisation, client or personal data.",
   "public.get_public_website_settings": "Owner-approved anonymous reader: only booking, public media, walkthrough and price display fields; never client data or actor identity.",

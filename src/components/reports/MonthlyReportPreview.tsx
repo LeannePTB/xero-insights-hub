@@ -154,7 +154,7 @@ function AgeingTable({ detail, label }: { detail: AgeingDetail; label: string })
       {/* Stacked blocks below 900px — every row still renders. */}
       <div className="space-y-3 min-[900px]:hidden">
         {detail.rows.map((r) => (
-          <div key={r.name} className="rounded-lg border border-border/60 bg-background p-3 text-sm">
+          <div key={r.name} className="rounded-lg border border-border/60 bg-card p-3 text-sm">
             <p className="font-medium break-words">{r.name}</p>
             <dl className="mt-2 grid grid-cols-2 gap-2">
               {r.buckets.map((v, i) => (
@@ -170,7 +170,7 @@ function AgeingTable({ detail, label }: { detail: AgeingDetail; label: string })
             </div>
           </div>
         ))}
-        <div className="rounded-lg border border-border bg-background p-3 text-sm font-semibold">
+        <div className="rounded-lg border border-border bg-card p-3 text-sm font-semibold">
           <div className="flex justify-between gap-3">
             <span>Total</span>
             <span className="tabular-nums">{money(detail.total, { cents: true })}</span>
@@ -247,7 +247,7 @@ export function MonthlyReportPreview({
                 {video.message.trim()}
               </p>
             ) : null}
-            <div className="mt-3 aspect-video w-full overflow-hidden rounded-lg bg-background">
+            <div className="mt-3 aspect-video w-full overflow-hidden rounded-lg bg-card">
               {/* APPROVED IFRAME BUILDER — the only iframe in the app. The src
                   is rebuilt from parseLoomId()'s alphanumeric id, never from
                   the stored string, and the frame is sandboxed so a compromised
@@ -305,7 +305,7 @@ export function MonthlyReportPreview({
            must be read first. Do not move this above the verdict. Hidden on
            the client-facing token route unless the caller explicitly opts in. */}
       {showWarnings && (payload.warnings ?? []).length > 0 && (
-        <div className="rounded-2xl border border-border bg-muted/40 p-4 text-sm">
+        <div className="rounded-2xl border border-border bg-card p-4 text-sm">
           <p className="font-medium">Worth knowing about this report</p>
           <ul className="mt-2 space-y-1 text-muted-foreground">
             {(payload.warnings ?? []).map((w, i) => (
@@ -329,7 +329,7 @@ export function MonthlyReportPreview({
             {[...payload.notes]
               .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
               .map((n, i) => (
-                <li key={i} className="rounded-lg bg-background p-3 text-sm">
+                <li key={i} className="rounded-lg bg-card p-3 text-sm">
                   <p className="whitespace-pre-wrap break-words">{n.body}</p>
                 </li>
               ))}
@@ -402,7 +402,7 @@ export function MonthlyReportPreview({
               {payload.keyFigures.map((k) => {
                 const f = (n: number) => (k.unit === "money" ? money(n) : pct(n));
                 return (
-                  <div key={k.key} className="rounded-lg border border-border/60 bg-background p-3 text-sm">
+                  <div key={k.key} className="rounded-lg border border-border/60 bg-card p-3 text-sm">
                     <p className="font-medium break-words">{k.label}</p>
                     <dl className="mt-2 grid grid-cols-2 gap-2">
                       <Field label={m.monthLabel}>{f(k.month)}</Field>
@@ -522,7 +522,7 @@ export function MonthlyReportPreview({
               {payload.profitAndLoss.lines.map((l, i) => (
                 <div
                   key={`${l.section}-${l.name}-${i}-stacked`}
-                  className={`rounded-lg border bg-background p-3 text-sm ${
+                  className={`rounded-lg border bg-card p-3 text-sm ${
                     l.isTotal ? "border-border font-semibold" : "border-border/60"
                   }`}
                 >
@@ -561,12 +561,12 @@ export function MonthlyReportPreview({
                 ]),
                 ["Net Profit/Loss", payload.profitAndLoss.totals.netProfit],
               ].map(([label, value]) => (
-                <div key={label as string} className="flex justify-between gap-3 rounded-lg bg-background px-3 py-2">
+                <div key={label as string} className="flex justify-between gap-3 rounded-lg bg-card px-3 py-2">
                   <dt className="text-muted-foreground">{label as string}</dt>
                   <dd className="font-medium tabular-nums">{money(value as number)}</dd>
                 </div>
               ))}
-              <div className="flex justify-between gap-3 rounded-lg bg-background px-3 py-2">
+              <div className="flex justify-between gap-3 rounded-lg bg-card px-3 py-2">
                 <dt className="text-muted-foreground">Net margin</dt>
                 <dd className="font-medium tabular-nums">{pct(payload.profitAndLoss.totals.netMargin)}</dd>
               </div>

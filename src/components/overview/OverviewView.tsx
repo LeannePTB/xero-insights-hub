@@ -163,11 +163,11 @@ export function OverviewView({ firmId, title }: { firmId?: string; title?: strin
       ) : !rows.length ? (
         <p className="text-sm text-muted-foreground">No clients to show.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
+        <div className="overflow-x-auto rounded-lg border bg-card">
+          <table className="w-full min-w-[72rem] text-sm">
+            <thead className="bg-muted/30 text-left text-xs text-muted-foreground">
               <tr>
-                <th className="p-3">Client</th>
+                <th className="sticky left-0 z-10 bg-card p-3">Client</th>
                 <th className="p-3">Status</th>
                 <th className="p-3 text-right">Cash at bank</th>
                 <th className="p-3 text-right">Net cash</th>
@@ -201,7 +201,7 @@ function GroupRows({ name, rows, onOpen, queue }: { name: string | null; rows: O
   return (
     <>
       {name && (
-        <tr className="border-y bg-muted/60">
+        <tr className="border-y bg-muted/30">
           <td colSpan={11} className="px-3 py-2.5">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold uppercase tracking-wide">{name}</span>
@@ -219,8 +219,8 @@ function GroupRows({ name, rows, onOpen, queue }: { name: string | null; rows: O
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-info" aria-label={staleTitle} />
         ) : null;
         return (
-        <tr key={r.clientId} className="cursor-pointer border-t hover:bg-muted/30" onClick={() => onOpen(r.clientId)}>
-          <td className="p-3">
+        <tr key={r.clientId} className="group cursor-pointer border-t bg-card hover:bg-muted/30" onClick={() => onOpen(r.clientId)}>
+          <td className="sticky left-0 z-10 min-w-[11rem] bg-card p-3 group-hover:bg-muted">
             <Link to="/clients/$clientId" params={{ clientId: r.clientId }} className="font-medium" onClick={(e) => e.stopPropagation()}>
               {r.clientName}
             </Link>
@@ -237,7 +237,7 @@ function GroupRows({ name, rows, onOpen, queue }: { name: string | null; rows: O
               <Sparkline values={r.cashSpark} />
               {money(r.cash)}
             </div>
-            {r.cashNote && <div className="mt-0.5 text-right text-xs font-normal text-muted-foreground">{r.cashNote}</div>}
+            {r.cashNote && <div className="mt-0.5 whitespace-nowrap text-right text-xs font-normal text-muted-foreground" title={r.cashNote}><abbr className="no-underline" title={r.cashNote}>{r.cashNoteShort ?? r.cashNote}</abbr></div>}
           </td>
           <td
             className="p-3 text-right tabular-nums"
@@ -258,10 +258,10 @@ function GroupRows({ name, rows, onOpen, queue }: { name: string | null; rows: O
               {r.cashChange7d === null ? "—" : `${r.cashChange7d >= 0 ? "+" : ""}${money(r.cashChange7d)}`}
             </span>
           </td>
-          <td className="p-3 text-right tabular-nums" onClick={e => e.stopPropagation()}>
+          <td className="min-w-[14rem] p-3 text-right tabular-nums" onClick={e => e.stopPropagation()}>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-auto flex-col items-end gap-0.5 py-1" aria-label={`Tax and super owed for ${r.clientName}`}>
+                <Button variant="ghost" size="sm" className="h-auto max-w-[16rem] flex-col items-end gap-0.5 whitespace-normal py-1 text-right" aria-label={`Tax and super owed for ${r.clientName}`}>
                   <span className={r.taxNext?.overdue ? "font-semibold text-destructive" : ""}>
                     {r.taxNext ? `Next due: ${money(r.taxNext.amount)} · ${dayMonth(r.taxNext.due)} · ${statusText(r.taxNext.due, r.taxNext.amount)}` : "—"}
                   </span>

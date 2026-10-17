@@ -279,7 +279,7 @@ export function GstReconciliationWidget({
             </div>
           )}
 
-          <div className="mt-4 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs">
+          <div className="mt-4 rounded-lg border border-border bg-card px-3 py-2 text-xs">
             <p className="font-semibold text-foreground">
               Estimate only — check against Xero before lodging.
             </p>
@@ -300,7 +300,7 @@ export function GstReconciliationWidget({
                 type="button"
                 onClick={() => setDetailOpen(!detailOpen)}
                 aria-expanded={detailOpen}
-                className="flex w-full items-center justify-between rounded-xl border border-border bg-background/60 px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/40"
+                className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/40"
               >
                 <span>Check the figures tie (preparer only)</span>
                 <span className="flex items-center gap-2">

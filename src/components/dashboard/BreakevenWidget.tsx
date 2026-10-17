@@ -79,14 +79,14 @@ export function BreakevenWidget({
         </div>
       ) : s.data && f ? (
         s.income <= 0 || s.grossMargin <= 0 ? (
-          <div className="mt-6 flex items-start gap-3 rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
+          <div className="mt-6 flex items-start gap-3 rounded-lg bg-card p-4 text-sm text-muted-foreground">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>Not enough income in this period to work out a break-even — income did not cover the costs that rise and fall with the work.</span>
           </div>
         ) : (
           <>
             {s.months < 1 && (
-              <p className="mt-4 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              <p className="mt-4 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
                 This period is shorter than a full month, so the monthly figures below
                 are scaled up from what has happened so far. Treat them as a running
                 estimate, not a settled month.
@@ -171,7 +171,7 @@ export function BreakevenWidget({
               </table>
             </div>
 
-            <details className="mt-3 rounded-lg border border-border/60 bg-background/50">
+            <details className="mt-3 rounded-lg border border-border/60 bg-card">
               <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground">
                 Show calculation breakdown
               </summary>

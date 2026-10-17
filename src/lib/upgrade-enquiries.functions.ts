@@ -15,7 +15,7 @@ export const submitUpgradeEnquiry=createServerFn({method:'POST'}).middleware([re
   try{ notification=await queueEnquiryAlert(context.supabase,id as string,data.firmId); }catch(e){ console.error('enquiry alert failed',e instanceof Error?e.message:'unknown'); }
   return {id,notification};
 });
-const MODULE_LABELS:Record<string,string>={cash_flow:'Cash flow',profit:'Profit',tax_compliance:'Tax & compliance',bookkeeping_checks:'Bookkeeping checks'};
+const MODULE_LABELS:Record<string,string>={cash_flow:'Cash flow',profit:'Profit',tax_compliance:'Tax & compliance'};
 export function perthTime(iso:string){return new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Perth',dateStyle:'medium',timeStyle:'short'}).format(new Date(iso));}
 async function queueEnquiryAlert(supabase:any,enquiryId:string,firmId:string):Promise<'queued'|'failed'>{
   // Caller-scoped reads: the submitter's own enquiry row and their visible client names.
@@ -70,4 +70,19 @@ export const setUpgradeEnquiryStatus=createServerFn({method:'POST'}).middleware(
   const {error}=await context.supabase.rpc('set_upgrade_enquiry_status',{_id:data.id,_status:data.status});
   if(error) throw new Error('The enquiry status could not be changed.');
   return {ok:true};
+});
+
+/** System Administrator: is the configured alert address on the suppression list? (aal2 + role in the database) */
+export const getAlertAddressSuppression=createServerFn({method:'POST'}).middleware([requireAal2]).handler(async({context})=>{
+  const {data,error}=await (context.supabase as any).rpc('admin_alert_address_suppression');
+  if(error) throw new Error(/NO_ACCESS|super|Forbidden|insufficient/i.test(error.message)?'Forbidden':'Delivery status unavailable.');
+  const r=((data??[]) as any[])[0];
+  return r?{address:String(r.address),suppressed:!!r.suppressed,reason:(r.reason??null) as string|null,suppressedAt:(r.suppressed_at??null) as string|null}:null;
+});
+
+/** System Administrator: remove ONLY the configured alert address from the suppression list (audited). */
+export const unblockAlertAddress=createServerFn({method:'POST'}).middleware([requireAal2]).handler(async({context})=>{
+  const {data,error}=await (context.supabase as any).rpc('admin_unblock_alert_address');
+  if(error) throw new Error(/NO_ACCESS|super|Forbidden|insufficient/i.test(error.message)?'Forbidden':'The address could not be unblocked.');
+  return {removed:Number(data??0)};
 });

@@ -24,12 +24,12 @@ export function ComingSoonRow({ clientId, alwaysOpen = false }: { clientId: stri
   // Collapsed by default on mobile until the person opens it.
   const open = alwaysOpen || (isMobile && !touched ? false : stored);
   return (
-    <section aria-label="Coming soon" className="mt-4 rounded-lg border border-border bg-card">
+    <section aria-label="Roadmap" className="mt-4 rounded-lg border border-border bg-card">
       {alwaysOpen ? (
-        <h2 className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium"><Clock className="h-3.5 w-3.5 text-emphasis" aria-hidden />Coming soon</h2>
+        <h2 className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium"><Clock className="h-3.5 w-3.5 text-emphasis" aria-hidden />Roadmap</h2>
       ) : (
         <button type="button" onClick={() => { setTouched(true); setOpen(!open); }} aria-expanded={open} className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left text-sm font-medium">
-          <span className="flex items-center gap-2"><Clock className="h-3.5 w-3.5 text-emphasis" aria-hidden />Coming soon</span>
+          <span className="flex items-center gap-2"><Clock className="h-3.5 w-3.5 text-emphasis" aria-hidden />Roadmap</span>
           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
         </button>
       )}
@@ -52,10 +52,10 @@ function ComingSoonTile({ clientId, entry }: { clientId: string; entry: ComingSo
     onError: (e: any) => toast.error(e?.message ?? 'Your interest could not be recorded.'),
   });
   return (
-    <li className="flex min-w-0 flex-col gap-1 rounded-md bg-muted/50 p-3">
+    <li className="flex min-w-0 flex-col gap-1 rounded-md bg-card p-3">
       <p className="flex items-center gap-1.5 text-sm font-semibold"><Clock className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />{entry.name}</p>
       <p className="line-clamp-2 text-xs text-muted-foreground">{entry.description}</p>
-      {entry.timing && <p className="text-xs text-muted-foreground">{entry.timing}</p>}
+      {entry.timing && <p className="text-xs text-muted-foreground">Expected: {entry.timing}</p>}
       <div className="mt-auto pt-1">
         {entry.earlyAccess ? (
           <span className="inline-flex items-center gap-1 text-xs font-medium text-link"><FlaskConical className="h-3 w-3" aria-hidden />You have early access</span>

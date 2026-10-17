@@ -115,7 +115,7 @@ export function DataSourceLine({
  */
 export function AwaitingSnapshot({ children }: { children?: React.ReactNode }) {
   return (
-    <div className="mt-6 rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+    <div className="mt-6 rounded-lg border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
       Figures are being prepared. Refresh to load them now.
       {children ? <div className="mt-2">{children}</div> : null}
     </div>

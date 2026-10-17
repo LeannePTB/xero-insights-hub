@@ -2261,6 +2261,7 @@ export type Database = {
           id: boolean
           logo_dark: string | null
           logo_light: string | null
+          main_contact_email: string | null
           product_name: string | null
           updated_at: string
           updated_by: string | null
@@ -2274,6 +2275,7 @@ export type Database = {
           id?: boolean
           logo_dark?: string | null
           logo_light?: string | null
+          main_contact_email?: string | null
           product_name?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -2287,6 +2289,7 @@ export type Database = {
           id?: boolean
           logo_dark?: string | null
           logo_light?: string | null
+          main_contact_email?: string | null
           product_name?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -4167,6 +4170,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      admin_alert_address_suppression: {
+        Args: never
+        Returns: {
+          address: string
+          reason: string
+          suppressed: boolean
+          suppressed_at: string
+        }[]
+      }
       admin_assert_can_sign_out_user: {
         Args: { _user_id: string }
         Returns: undefined
@@ -4322,6 +4334,10 @@ export type Database = {
         Args: { _firm_id: string; _is_demo: boolean }
         Returns: undefined
       }
+      admin_set_main_contact_email: {
+        Args: { _email: string }
+        Returns: undefined
+      }
       admin_set_org_early_access: {
         Args: {
           _card_key: string
@@ -4423,6 +4439,7 @@ export type Database = {
           reasoning_tokens: number
         }[]
       }
+      admin_unblock_alert_address: { Args: never; Returns: number }
       admin_upgrade_enquiries: {
         Args: never
         Returns: {
@@ -4836,6 +4853,12 @@ export type Database = {
           logo_light: string
           product_name: string
           updated_at: string
+        }[]
+      }
+      get_platform_contact: {
+        Args: never
+        Returns: {
+          main_contact_email: string
         }[]
       }
       get_public_website_settings: { Args: never; Returns: Json }

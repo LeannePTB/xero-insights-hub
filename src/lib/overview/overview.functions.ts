@@ -54,6 +54,8 @@ export type OverviewRow = {
   /** Named stale-account warning; null when fine or when data is missing/unclear. */
   bankReconWarning: string | null;
   cashNote: string | null;
+  /** One-line form of cashNote for the table; the full sentence is the tooltip. */
+  cashNoteShort?: string | null;
   /** Most recent Xero sign-in by anyone in the file (Finance API), from the nightly key figures. */
   lastXeroLoginAt: string | null;
   historyNote: string | null;

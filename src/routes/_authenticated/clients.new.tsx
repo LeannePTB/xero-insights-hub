@@ -79,7 +79,7 @@ function NewClient() {
           </div>
 
           {standing.length > 0 && (
-            <p className="rounded-lg bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+            <p className="rounded-lg bg-card px-3 py-2 text-sm text-muted-foreground">
               {standing.map((v) => v.displayName ?? v.email).join(", ")}{" "}
               {standing.length === 1 ? "already sees" : "already see"} every client in this
               organisation, so {standing.length === 1 ? "they" : "they"} will be able to see this new

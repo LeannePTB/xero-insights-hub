@@ -169,8 +169,9 @@ export function clientFileItems(files: ClientXeroFile[]): NavItem[] {
           children: files.map((f) => ({ id: `${kind}-${f.tenantId}`, label: f.name, icon, to: `/clients/$clientId/${kind}/${f.tenantId}`, cardKey: CARD[kind] })),
         };
   return [{
-    id: "xero-files", label: "Xero files", icon: "link", to: `/clients/$clientId/audit/${files[0].tenantId}`,
-    children: [make("payables", "Payables", "file"), make("receivables", "Receivables", "file"), make("audit", "Xero audit", "activity")],
+    // The Xero file audit is retired (Bookkeeping checks); its page stays in code, unlinked.
+    id: "xero-files", label: "Xero files", icon: "link", to: `/clients/$clientId/payables/${files[0].tenantId}`,
+    children: [make("payables", "Payables", "file"), make("receivables", "Receivables", "file")],
   }];
 }
 

@@ -110,7 +110,7 @@ create table public.org_early_access (firm_id uuid, card_key text, granted_by uu
 create table public.org_subscription_options (firm_id uuid, client_limit integer, advisory_enabled boolean, consolidation_enabled boolean, billing_mode text, created_at timestamp with time zone, updated_at timestamp with time zone, trial_advisory_enabled boolean, trial_consolidation_enabled boolean, trial_ends_at timestamp with time zone, branding_enabled boolean, trial_branding_enabled boolean, white_label_enabled boolean, trial_white_label_enabled boolean);
 create table public.overview_alert_states (id uuid, client_id uuid, event_key text, severity_at_ack smallint, acknowledged_by uuid, acknowledged_at timestamp with time zone, snoozed_by uuid, snoozed_at timestamp with time zone, snoozed_until timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.plan_levels (id uuid, scope text, key text, label text, description text, client_limit integer, xero_org_limit integer, allows_multi_org boolean, widgets text[], sort_order integer, enabled boolean, created_at timestamp with time zone, updated_at timestamp with time zone, allowed_tiers text[], is_free boolean);
-create table public.platform_branding (id boolean, product_name text, logo_light text, logo_dark text, favicon text, email_sender_name text, updated_at timestamp with time zone, updated_by uuid, website_settings jsonb, enquiry_alert_email text, business_health_released boolean);
+create table public.platform_branding (id boolean, product_name text, logo_light text, logo_dark text, favicon text, email_sender_name text, updated_at timestamp with time zone, updated_by uuid, website_settings jsonb, enquiry_alert_email text, business_health_released boolean, main_contact_email text);
 create table public.practice_team (user_id uuid, added_by uuid, created_at timestamp with time zone);
 create table public.profiles (id uuid, email text, display_name text, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.rate_limit_buckets (key text, window_start timestamp with time zone, count integer);
@@ -3798,8 +3798,11 @@ CREATE OR REPLACE FUNCTION app_private.coming_soon_still_coming(_module text, _c
  SET search_path TO 'public'
 AS $function$
   select case
-    when _card is not null then not exists (select 1 from public.card_catalogue where card_key = _card and status = 'available')
-    when _module is not null then not exists (select 1 from public.card_catalogue where module_key = _module and status = 'available')
+    when _card is not null then not exists (select 1 from public.card_catalogue where card_key = _card and status in ('available','retired'))
+    when _module is not null then
+      not exists (select 1 from public.card_catalogue where module_key = _module and status = 'available')
+      and not (exists (select 1 from public.card_catalogue where module_key = _module)
+               and not exists (select 1 from public.card_catalogue where module_key = _module and status <> 'retired'))
     else true end
 $function$
 ;
@@ -3820,23 +3823,22 @@ CREATE OR REPLACE FUNCTION app_private.coming_soon_rows(_firm_id uuid)
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-  select * from (
-    select e.entry_key, e.name, e.description, e.timing,
+  select r.entry_key, r.name, r.description, r.timing, r.early_access from (
+    select e.entry_key, e.name, e.description, e.timing, e.sort_order as so,
            exists (select 1 from unnest(app_private.firm_early_access_cards(_firm_id)) k
                     join public.card_catalogue c on c.card_key = k
-                   where k = e.card_key or (e.module_key is not null and c.module_key = e.module_key))
+                   where k = e.card_key or (e.module_key is not null and c.module_key = e.module_key)) as early_access
       from public.coming_soon_entries e
      where e.is_shown and app_private.coming_soon_still_coming(e.module_key, e.card_key)
     union all
-    select 'auto_' || c.card_key, c.label, c.description, null::text,
+    select 'auto_' || c.card_key, c.label, c.description, null::text, 1000,
            exists (select 1 from unnest(app_private.firm_early_access_cards(_firm_id)) k where k = c.card_key)
       from public.card_catalogue c
      where c.status = 'wip'
        and not c.hide_from_coming_soon
-       and not exists (select 1 from public.coming_soon_entries e
-                        where e.is_shown and e.card_key = c.card_key)
+       and not exists (select 1 from public.coming_soon_entries e where e.card_key = c.card_key)
   ) r
-  order by r.entry_key like 'auto_%', r.name
+  order by r.so, r.name
 $function$
 ;
 CREATE OR REPLACE FUNCTION public.coming_soon_for_client(_client_id uuid)
@@ -5646,4 +5648,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: d5d5697b45d5f14441dd137b63c0ae0ee21dbfcd2a9eb7d0344d84050b5faf51
+-- catalogue-fingerprint: b6b7ce3310ec2dfdeff9610bdc5c6f05d29f330501eb40a26e5f0c776c6e1586

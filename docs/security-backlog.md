@@ -1931,3 +1931,8 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - New column `clients.income_tax_instalment_frequency`, written by audited aal2 `set_client_income_tax_instalment_frequency` (organisation-team write predicate). Read via caller-scoped `client_income_tax_instalment_frequency`.
 - OPEN (low): `authenticated` holds table-level UPDATE on `clients`, so an organisation owner (the only UPDATE policy) could change this column directly without the audit row — same as other existing client setting columns. No widening of who can write. Decide whether to move client setting columns to column-level grants.
 - No per-organisation timezone is stored; bill status uses the Perth calendar day for all organisations.
+
+## 17 Oct 2026 — Batch 2 (owner requests)
+- CLOSED (by design): Bookkeeping checks (`xero_audit`, `transaction_search`) set to `retired` with audit rows; every `status='available'` gate (card_group_cards → client_cards_v2 → assert_widget_access / client_can_use_widget) now refuses them for all roles incl. System Administrator. Code, audit_runs/audit_findings and client ticks kept. `admin_set_card_status` accepts `retired` (aal2, super admin, audited).
+- NEW definers (registered): `get_platform_contact` (anon-safe, contact email only), `admin_set_main_contact_email`, `admin_alert_address_suppression`, `admin_unblock_alert_address` (removes only the configured alert address; never automatic).
+- OPEN (owner decision): Trixie `find_issues` (snapshot-based file checks, used by BAS sense-check) kept and renamed "File checks"; it never read Xero file audit results.

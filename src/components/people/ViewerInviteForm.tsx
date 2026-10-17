@@ -195,7 +195,7 @@ export function ViewerInviteForm({ firmId, clients }: { firmId: string; clients:
         </div>
       )}
 
-      <p className="rounded-lg bg-muted/40 px-3 py-2 text-sm text-muted-foreground">{summary}</p>
+      <p className="rounded-lg bg-card px-3 py-2 text-sm text-muted-foreground">{summary}</p>
 
       <Button
         onClick={() => mut.mutate()}

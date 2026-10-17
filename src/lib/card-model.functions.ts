@@ -482,7 +482,16 @@ async function canManageCards(db: any, firmId: string | null): Promise<boolean> 
 export const getCardCatalogue = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: unknown) => z.object({ includeWip: z.boolean().optional() }).strict().optional().parse(i))
-  .handler(async ({ data, context }) => ({ catalogue: await readCatalogue(context.supabase as any, data?.includeWip === true) }));
+  .handler(async ({ data, context }) => {
+    const catalogue = await readCatalogue(context.supabase as any, data?.includeWip === true);
+    // Retired cards (System Admin list only; display, never offered). RLS decides who receives rows.
+    let retired: { key: string; label: string; module: string | null }[] = [];
+    if (data?.includeWip === true) {
+      const r = await (context.supabase as any).from("card_catalogue").select("card_key, label, module_key").eq("status", "retired").order("sort_order");
+      retired = r.error ? [] : ((r.data ?? []) as any[]).map((x) => ({ key: x.card_key, label: x.label, module: x.module_key ?? null }));
+    }
+    return { catalogue, retired };
+  });
 
 /**
  * Catalogue for one client's dashboard: offered cards, WIP rows RLS returns to
@@ -577,7 +586,7 @@ export const saveCardComingSoon = createServerFn({ method: "POST" })
     const { error } = await (context.supabase as any).rpc("admin_set_card_coming_soon", { _card_key: data.cardKey, _hidden: data.hidden });
     if (error) {
       if (/Forbidden|NO_ACCESS|insufficient|super/i.test(error.message)) throw new Error("Forbidden");
-      throw new Error("The Coming soon setting could not be saved.");
+      throw new Error("The Roadmap setting could not be saved.");
     }
     return { ok: true };
   });

@@ -26,7 +26,7 @@ export function PnlKpi({
   const Icon = flat ? Minus : up ? TrendingUp : TrendingDown;
   const tone = flat ? "text-muted-foreground" : good ? "text-emerald-600" : "text-rose-600";
   return (
-    <div className="rounded-lg border border-border/60 bg-background p-3">
+    <div className="rounded-lg border border-border/60 bg-card p-3">
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>

@@ -92,11 +92,11 @@ describe("client Xero file items", () => {
   });
   it("links straight through with one file", () => {
     const [xero] = clientFileItems([{ tenantId: "t1", name: "A" }]);
-    expect(xero.to).toBe("/clients/$clientId/audit/t1");
+    // Xero file audit retired 17 Oct 2026: no audit link.
+    expect(xero.to).toBe("/clients/$clientId/payables/t1");
     expect(xero.children?.map((child) => child.to)).toEqual([
       "/clients/$clientId/payables/t1",
       "/clients/$clientId/receivables/t1",
-      "/clients/$clientId/audit/t1",
     ]);
   });
   it("lists each file as a sub-item with several", () => {
@@ -138,7 +138,8 @@ describe("client menu follows the client's visible cards (client_visible_cards)"
   it("Advisory and Consolidation items appear only when their card is visible", () => {
     const ids = flat(clientNav(files, [...STANDARD, "cashflow_scenario", "xero_audit", "loan_consolidation"])).map((i) => i.id);
     expect(ids).not.toContain("cashflow"); // removed 14 Oct: the card's Open button is the entry point
-    expect(ids).toEqual(expect.arrayContaining(["loans", "loan-matrix", "loan-accounts", "audit"]));
+    expect(ids).toEqual(expect.arrayContaining(["loans", "loan-matrix", "loan-accounts"]));
+    expect(ids).not.toContain("audit"); // retired 17 Oct 2026
   });
 
   it("an unknown or failed card list hides every card item (fail closed)", () => {

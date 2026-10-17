@@ -36,7 +36,7 @@ export function ClientTrialNotice({ clientId }: { clientId: string }) {
       className={
         t.endingSoon
           ? "mt-6 flex items-start gap-2 rounded-md border border-info/30 bg-info/10 px-4 py-3 text-sm"
-          : "mt-6 flex items-start gap-2 rounded-md border bg-muted/40 px-4 py-3 text-sm"
+          : "mt-6 flex items-start gap-2 rounded-md border bg-card px-4 py-3 text-sm"
       }
     >
       <Clock

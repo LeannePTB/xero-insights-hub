@@ -38,7 +38,7 @@ export function TaxObligationsBody({ forward, buildingLabel, money, partPaid, pa
   const instalmentStatus = forward.instalment ? billStatus(forward.instalment.due, today, forward.instalment.amount) : null;
   return <div className="mt-4 text-sm">
     <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-3" data-tax-tiles>
-      <section aria-label="Lodged" className={`min-w-0 rounded-md border bg-background p-4 ${overdue ? "border-destructive border-t-2" : "border-border"}`}>
+      <section aria-label="Lodged" className={`min-w-0 rounded-md border bg-card p-4 ${overdue ? "border-destructive border-t-2" : "border-border"}`}>
         <p className="text-xs font-semibold uppercase text-muted-foreground">Lodged</p>
         {forward.owing.length === 0 ? <p className="mt-3 font-semibold">Nothing owing</p> :
           <div className="mt-3 space-y-4">{forward.owing.map((bill, index) => <div key={`${bill.reference}:${bill.due}:${index}`}>
@@ -50,7 +50,7 @@ export function TaxObligationsBody({ forward, buildingLabel, money, partPaid, pa
             <p className="mt-2 text-xs text-muted-foreground">{partPaid[index] ? "Lodged, part paid" : "Lodged, still owing"}</p>
           </div>)}</div>}
       </section>
-      <section aria-label="Currently accruing" className="min-w-0 rounded-md border border-border bg-background p-4">
+      <section aria-label="Currently accruing" className="min-w-0 rounded-md border border-border bg-card p-4">
         <p className="text-xs font-semibold uppercase text-muted-foreground">Currently accruing ({buildingLabel})</p>
         <p className="mt-3 font-display text-2xl font-semibold tabular-nums break-words">{estimate(forward.building.total)}</p>
         <p className="mt-1 text-xs">due {day(forward.building.due)}</p>
@@ -59,7 +59,7 @@ export function TaxObligationsBody({ forward, buildingLabel, money, partPaid, pa
           {paygRegistered && <p>PAYG {estimate(forward.building.payg)}</p>}
         </div>
       </section>
-      <section aria-label="Income tax instalment" className="flex min-w-0 flex-col rounded-md border border-border bg-background p-4">
+      <section aria-label="Income tax instalment" className="flex min-w-0 flex-col rounded-md border border-border bg-card p-4">
         <p className="text-xs font-semibold uppercase text-muted-foreground">Income tax instalment</p>
         {instalmentDisplay === "not_required" ? <p className="mt-3 font-semibold">Not required</p>
           : forward.instalment && instalmentStatus ? <>

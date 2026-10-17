@@ -81,7 +81,7 @@ export function XeroLoadPrompt({
   onLoad: () => void;
 }) {
   return (
-    <div className="mt-4 rounded-lg border border-dashed border-border bg-background p-4">
+    <div className="mt-4 rounded-lg border border-dashed border-border bg-card p-4">
       <p className="text-sm text-muted-foreground">{description}</p>
       <Button size="sm" variant="outline" className="mt-3" onClick={onLoad}>
         {label}
@@ -105,7 +105,7 @@ export function XeroErrorNotice({
   if (isGateWait(error)) {
     // Still queued after every automatic retry: keep it calm, never an error.
     return (
-      <div className="mt-4 flex items-center gap-2 rounded-lg border border-border bg-muted/50 p-4 text-sm text-muted-foreground" role="status">
+      <div className="mt-4 flex items-center gap-2 rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground" role="status">
         {isRetrying ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         <span>{GATE_WAIT_MESSAGE}.</span>
         <Button size="sm" variant="ghost" className="ml-auto" onClick={onRetry} disabled={isRetrying}>Load now</Button>
@@ -113,7 +113,7 @@ export function XeroErrorNotice({
     );
   }
   return (
-    <div className="mt-4 rounded-lg border border-border bg-muted/50 p-4 text-sm text-foreground">
+    <div className="mt-4 rounded-lg border border-border bg-card p-4 text-sm text-foreground">
       <div className="flex items-start gap-2">
         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
         <p>{friendlyXeroError(error)}</p>

@@ -144,7 +144,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
         {!q.data?.modelActive && " The new model is not switched on yet, so this is not live."}
       </p>
 
-      <div className="rounded-md border bg-muted/30 p-3">
+      <div className="rounded-md border bg-card p-3">
         <p className="text-xs font-medium uppercase text-muted-foreground">Available now</p>
         <div className="mt-2 flex flex-wrap gap-2">
           {availableNow.map((option) => (
