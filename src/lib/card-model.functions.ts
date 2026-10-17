@@ -586,7 +586,7 @@ export const saveCardComingSoon = createServerFn({ method: "POST" })
     const { error } = await (context.supabase as any).rpc("admin_set_card_coming_soon", { _card_key: data.cardKey, _hidden: data.hidden });
     if (error) {
       if (/Forbidden|NO_ACCESS|insufficient|super/i.test(error.message)) throw new Error("Forbidden");
-      throw new Error("The Coming soon setting could not be saved.");
+      throw new Error("The Roadmap setting could not be saved.");
     }
     return { ok: true };
   });

@@ -77,7 +77,7 @@ async function queueInterestAlert(r: { id: string; name: string; email: string; 
       organisation: r.organisation,
       submitterName: r.name,
       submitterEmail: r.email,
-      modules: [`Coming soon: ${r.entry}`],
+      modules: [`Roadmap: ${r.entry}`],
       clients: [r.client],
       message: `Interested in: ${r.entry}`,
       submittedAt: perthTime(r.createdAt),
@@ -108,7 +108,7 @@ export const listComingSoonAdmin = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .handler(async ({ context }): Promise<{ rows: AdminComingSoonRow[] }> => {
     const { data, error } = await (context.supabase as any).rpc("admin_coming_soon_list");
-    if (error) throw new Error("Coming soon entries are unavailable.");
+    if (error) throw new Error("Roadmap entries are unavailable.");
     return {
       rows: ((data ?? []) as any[]).map((r) => ({
         key: r.entry_key,
