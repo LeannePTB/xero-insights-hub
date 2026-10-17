@@ -279,7 +279,7 @@ function CashflowScenarioPage() {
               setAdjustments(payload.adjustments);
               setHorizon(payload.horizon);
               setOpeningCash(payload.openingCash);
-              if (payload.costBasis) setCostBasis(payload.costBasis as any);
+              if (payload.costBasis && typeof payload.costBasis === "object") for (const g of ["cogs", "fixed", "variable"] as const) { const b = (payload.costBasis as any)[g]; if (b?.mode) setCostBasis(g, b); }
               const saved = new Set(payload.excludedInvoiceIds);
               if (!canManage) { setExcludedOverride(saved); return; }
               // Managers: re-apply the saved exclusions through the audited writes.
