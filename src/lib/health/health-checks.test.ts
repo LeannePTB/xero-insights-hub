@@ -167,7 +167,7 @@ describe("Next tax payment: due now vs still building", () => {
     expect(n.amount).toBe(4_500);
     expect(n.building).toBe(1_705);
     expect(n.periodEnd).toBe("2026-09-30");
-    expect(nextTaxText(n)).toBe("Next tax payment: ~$4.5k due 21 Oct · building for next period: ~$1.7k");
+    expect(nextTaxText(n)).toBe("Next tax payment: ~$4.5k due 21 Oct · currently accruing for next period: ~$1.7k");
   });
   it("a payment since the period end reduces due now, never below zero", () => {
     const n = nextTaxPayment({ gstCycle: "monthly", paygCycle: "not_registered", today: "2026-10-16", current: { gst: 300, payg: 0 },

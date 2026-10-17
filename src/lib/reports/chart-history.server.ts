@@ -13,6 +13,11 @@ export async function loadReportCharts(sb: any, clientId: string, tenantId: stri
     if(offset===4000) throw new Error('Report history exceeds the bounded window.');
   }
   const charts=freezeReportCharts(rows,reports,{periodEnd,currency,profit},monthEnd);
+  (charts as any).pnlWages=charts.profit.map(p=>{
+    const report=reports.filter(r=>r.period_end===p.date && (r.payload?.basis??'accrual')==='accrual').sort((a,b)=>b.version-a.version)[0];
+    const w=report?.payload?.profitAndLoss?.totals?.wagesSplit?.wages;
+    return typeof w==='number'?w:null;
+  });
   charts.pnl=charts.profit.map(p=>{
     const report=reports.filter(r=>r.period_end===p.date && r.payload?.meta?.currency===currency && (r.payload?.basis??'accrual')==='accrual').sort((a,b)=>b.version-a.version)[0];
     const totals=report?.payload?.profitAndLoss?.totals;

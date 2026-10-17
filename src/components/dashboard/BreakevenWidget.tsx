@@ -211,16 +211,31 @@ export function BreakevenWidget({
                     fixed is counted in fixed costs below, not here.
                   </p>
                 </div>
+                {(() => {
+                  const wl = [...s.fixedLines.map((l) => ({ ...l, tag: "fixed" })), ...s.variableLines.map((l) => ({ ...l, tag: "variable" }))].filter((l) => l.isWages);
+                  if (!wl.length) return null;
+                  return <div>
+                    <p className="mb-1 flex items-center justify-between font-semibold uppercase tracking-wider text-xs text-muted-foreground">
+                      <span>Wages ({wl.length})</span>
+                      <span>{fmtAUD(wl.reduce((t, l) => t + l.amount, 0))}</span>
+                    </p>
+                    <ul className="divide-y divide-border/40">{wl.map((l) => <li key={`w-${l.name}`} className="flex items-center justify-between gap-2 py-1">
+                      <span className="truncate">{l.name}<span className="ml-1.5 text-xs text-muted-foreground">({l.section === "cogs" ? "cost of sales, " : ""}{l.tag})</span></span>
+                      <span className="font-mono tabular-nums text-foreground">{fmtAUD(l.amount)}</span>
+                    </li>)}</ul>
+                    <p className="mt-1 text-xs text-muted-foreground">Shown separately; each wage account still counts as its fixed or variable tag in the break-even result.</p>
+                  </div>;
+                })()}
                 <div>
                   <p className="mb-1 flex items-center justify-between font-semibold uppercase tracking-wider text-xs text-muted-foreground">
-                    <span>Fixed Costs ({s.fixedLines.length})</span>
-                    <span>{fmtAUD(s.fixedOpex)}</span>
+                    <span>Fixed Costs{s.fixedLines.some((l) => l.isWages) ? " (excl. wages)" : ""} ({s.fixedLines.filter((l) => !l.isWages).length})</span>
+                    <span>{fmtAUD(s.fixedOpex - s.fixedLines.filter((l) => l.isWages).reduce((t, l) => t + l.amount, 0))}</span>
                   </p>
                   {s.fixedLines.length === 0 && s.unitemisedBalance === 0 ? (
                     <p className="text-muted-foreground">No fixed cost accounts in this period.</p>
                   ) : (
                     <ul className="divide-y divide-border/40">
-                      {s.fixedLines.map((l) => (
+                      {s.fixedLines.filter((l) => !l.isWages).map((l) => (
                         <li key={l.name} className="flex items-center justify-between gap-2 py-1">
                           <span className="truncate">
                             {l.name}
@@ -251,15 +266,17 @@ export function BreakevenWidget({
                   )}
                 </div>
                 {(() => {
-                  const varOpex = s.variableLines.filter((l) => l.section === "operating");
-                  const varCogs = s.variableLines.filter((l) => l.section === "cogs");
+                  const varOpex = s.variableLines.filter((l) => l.section === "operating" && !l.isWages);
+                  const varCogs = s.variableLines.filter((l) => l.section === "cogs" && !l.isWages);
+                  const wOpex = s.variableLines.filter((l) => l.section === "operating" && l.isWages).reduce((t, l) => t + l.amount, 0);
+                  const wCogs = s.variableLines.filter((l) => l.section === "cogs" && l.isWages).reduce((t, l) => t + l.amount, 0);
                   return (
                     <>
                       {varOpex.length > 0 && (
                         <div>
                           <p className="mb-1 flex items-center justify-between font-semibold uppercase tracking-wider text-xs text-muted-foreground">
                             <span>Variable Opex ({varOpex.length})</span>
-                            <span>{fmtAUD(s.variableOpex)}</span>
+                            <span>{fmtAUD(s.variableOpex - wOpex)}</span>
                           </p>
                           <ul className="divide-y divide-border/40">
                             {varOpex.map((l) => (
@@ -275,7 +292,7 @@ export function BreakevenWidget({
                         <div>
                           <p className="mb-1 flex items-center justify-between font-semibold uppercase tracking-wider text-xs text-muted-foreground">
                             <span>Cost of Sales, variable ({varCogs.length})</span>
-                            <span>{fmtAUD(s.variableCogs)}</span>
+                            <span>{fmtAUD(s.variableCogs - wCogs)}</span>
                           </p>
                           <ul className="divide-y divide-border/40">
                             {varCogs.map((l) => (

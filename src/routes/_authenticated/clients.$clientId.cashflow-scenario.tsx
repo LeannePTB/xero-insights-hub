@@ -636,6 +636,21 @@ function CashflowScenarioPage() {
                 );
               })}
             </section>
+            {(() => {
+              const names = new Set((data?.wageAccounts ?? []).map((n: string) => n.trim().toLowerCase()));
+              const wl = view.monthExpenses.filter((e: ScenarioExpense) => names.has(e.name.trim().toLowerCase()));
+              if (!wl.length) return null;
+              return <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-display text-lg font-semibold">Wages</h2>
+                  <span className="tabular-nums text-sm font-semibold">{fmt(wl.reduce((t: number, e: ScenarioExpense) => t + e.amount, 0))}</span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">Accounts marked Wages in Cost classification. Shown on their own; each is still counted in the group above that matches its fixed or variable tag, so the scenario figures are unchanged.</p>
+                <ul className="mt-4 space-y-1.5">{wl.map((e: ScenarioExpense) => <li key={e.id} className="flex items-center justify-between text-sm">
+                  <span className="truncate pr-3">{e.name} <span className="text-xs text-muted-foreground">({e.section === "cogs" ? "cost of sales, " : ""}{e.type.toLowerCase()})</span></span>
+                  <span className="tabular-nums">{fmt(e.amount)}</span></li>)}</ul>
+              </section>;
+            })()}
 
             {/* Excluded income */}
             <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">

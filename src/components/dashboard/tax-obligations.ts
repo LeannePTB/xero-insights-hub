@@ -65,6 +65,8 @@ export type ForwardTax = {
   owing: { amount: number; reference: string; due: string; overdue: boolean }[];
   building: { gst: number | null; payg: number | null; total: number | null; due: string; from: string; to: string };
   instalment: { amount: number; due: string } | null;
+  /** "not_required" contributes nothing; "unset" means nobody has chosen yet. */
+  instalmentSetting?: "not_required" | "quarterly" | "annual" | "unset";
   totalToPlan: number | null;
 };
 
@@ -75,11 +77,40 @@ export function forwardTax(input: {
   period: { kind: "month" | "quarter"; from: string; asAt: string };
   gst: number | null; payg: number | null; paygRegistered: boolean;
   instalment: { amount: number; due: string } | null;
+  instalmentSetting?: "not_required" | "quarterly" | "annual" | "unset";
 }): ForwardTax {
   const owing = input.bills.map(b => ({ amount: b.amount, reference: b.reference, due: b.due, overdue: b.due < input.today }));
   const payg = input.paygRegistered ? input.payg : 0;
   const total = input.gst !== null && payg !== null ? Math.round((input.gst + payg) * 100) / 100 : null;
-  const instalment = input.instalment && input.instalment.due >= input.today ? input.instalment : null;
+  const instalment = input.instalmentSetting !== "not_required" && input.instalment && input.instalment.due >= input.today ? input.instalment : null;
   const totalToPlan = total === null ? null : Math.round((owing.reduce((s, o) => s + o.amount, 0) + total + (instalment?.amount ?? 0)) * 100) / 100;
-  return { owing, building: { gst: input.gst, payg: input.paygRegistered ? input.payg : null, total, due: basDueDate(input.period.kind, input.period.asAt), from: input.period.from, to: input.period.asAt }, instalment, totalToPlan };
+  return { owing, building: { gst: input.gst, payg: input.paygRegistered ? input.payg : null, total, due: basDueDate(input.period.kind, input.period.asAt), from: input.period.from, to: input.period.asAt }, instalment, instalmentSetting: input.instalmentSetting, totalToPlan };
+}
+
+/** Organisations are Western Australian practices; no per-organisation
+ *  timezone is stored, so the organisation day is the Perth calendar day. */
+export const ORGANISATION_TIME_ZONE = "Australia/Perth";
+export function organisationToday(instant: Date = new Date(), timeZone = ORGANISATION_TIME_ZONE): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(instant);
+}
+
+export type BillStatus = { kind: "not_due" | "due_today" | "overdue" | "paid"; days: number; label: string; detail: string | null };
+const dayCount = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
+/** One status rule for every lodged bill/instalment label: follows the due date. */
+export function billStatus(due: string, today: string, owing: number): BillStatus {
+  if (!(owing > 0.005)) return { kind: "paid", days: 0, label: "Paid", detail: null };
+  const days = dayCount(today, due);
+  if (days > 0) return { kind: "not_due", days, label: "Not due yet", detail: `in ${days} day${days === 1 ? "" : "s"}` };
+  if (days === 0) return { kind: "due_today", days: 0, label: "Due today", detail: null };
+  return { kind: "overdue", days: -days, label: "Overdue", detail: `${-days} day${days === -1 ? "" : "s"} overdue` };
+}
+
+/** Instalment due date from its period end: quarterly follows the BAS quarter
+ *  rule; annual instalments fall due 21 October after the financial year. */
+export function instalmentDueDate(frequency: "not_required" | "quarterly" | "annual" | null, periodEnd: string): string {
+  if (frequency === "annual") {
+    const [y, m] = periodEnd.split("-").map(Number);
+    return `${m > 6 ? y + 1 : y}-10-21`;
+  }
+  return basDueDate("quarter", periodEnd);
 }

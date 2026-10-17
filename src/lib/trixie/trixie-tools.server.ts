@@ -123,10 +123,17 @@ async function readPnl(ctx: TrixieContext) {
     const { summarisePnl } = await import("@/lib/xero/reports.functions");
     const [mtd, ytd] = await Promise.all([snapshot(ctx, tenantId, "profit_and_loss_mtd"), snapshot(ctx, tenantId, "profit_and_loss_ytd")]);
     if (!mtd && !ytd) return { file: "", available: false, reason: "No saved Profit & Loss figures are available yet for this file." };
+    const { wageAccountNames, splitWages } = await import("@/lib/wages-split");
+    const { data: marks } = await (ctx.supabase as any).from("client_cost_classifications").select("account_name, classification, is_wages").eq("client_id", ctx.clientId).eq("tenant_id", tenantId);
+    const names = wageAccountNames(marks);
     const sum = (hit: any) => {
       if (!hit) return null;
       const s = summarisePnl(hit.payload?.Reports?.[0] ?? hit.payload);
-      return { from: s.fromDate ?? null, to: s.toDate ?? null, income: money(s.totalIncome), costOfSales: money(s.totalCostOfSales), grossProfit: money(s.grossProfit), operatingExpenses: money(s.totalExpenses), netProfit: money(s.netProfit) };
+      const w = splitWages({ costOfSales: s.totalCostOfSales, expenses: s.totalExpenses, cogsLines: s.cogsLines, expenseLines: s.expenseLines }, names);
+      const base = { from: s.fromDate ?? null, to: s.toDate ?? null, income: money(s.totalIncome), grossProfit: money(s.grossProfit), netProfit: money(s.netProfit) };
+      return w.split
+        ? { ...base, costOfSalesExclWages: money(w.costOfSalesExWages), wages: money(w.wages), overheadsExclWages: money(w.overheadsExWages), wagesNote: `Wages = accounts marked Wages in Cost classification (${names.size}); gross and net profit are unchanged` }
+        : { ...base, costOfSales: money(s.totalCostOfSales), operatingExpenses: money(s.totalExpenses), wagesNote: "No wage accounts are marked in Cost classification, so wages are not shown separately" };
     };
     return {
       file: "",
@@ -157,8 +164,27 @@ async function readTax(ctx: TrixieContext) {
       complete: pm.complete,
       components: pm.components.map((c: any) => ({ label: c.label, amount: c.amount == null ? null : money(c.amount), resolved: c.status !== "unresolved" })),
       unresolved: pm.unresolved,
+      ...(await forwardSummary(ctx, tenantId)),
     };
   });
+}
+
+/** Same stored forward summary and status words as the Tax obligations card. */
+async function forwardSummary(ctx: TrixieContext, tenantId: string) {
+  if (!ctx.clientId) return {};
+  const { loadStoredForward } = await import("@/lib/tax/forward-tax.server");
+  const { organisationToday, billStatus } = await import("@/components/dashboard/tax-obligations");
+  const today = organisationToday();
+  const fwd = (await loadStoredForward(ctx.supabase, [{ clientId: ctx.clientId, tenantId }], today)).get(ctx.clientId)?.tax;
+  if (!fwd) return {};
+  const status = (due: string, amount: number) => { const s = billStatus(due, today, amount); return s.detail ? `${s.label} (${s.detail})` : s.label; };
+  return {
+    lodgedBills: fwd.owing.map((o) => ({ reference: o.reference, amount: money(o.amount), due: o.due, status: status(o.due, o.amount) })),
+    currentlyAccruing: { total: fwd.building.total === null ? null : money(fwd.building.total), gst: fwd.building.gst === null ? null : money(fwd.building.gst), payg: fwd.building.payg === null ? null : money(fwd.building.payg), due: fwd.building.due, note: "Estimate for the period still running" },
+    incomeTaxInstalment: fwd.instalmentSetting === "not_required" ? "Not required for this client — contributes nothing"
+      : fwd.instalment ? { amount: money(fwd.instalment.amount), due: fwd.instalment.due, status: status(fwd.instalment.due, fwd.instalment.amount) } : "Not entered yet",
+    totalToPlan: fwd.totalToPlan === null ? null : money(fwd.totalToPlan),
+  };
 }
 
 function invoiceSummary(invoices: any[], party: string) {
@@ -385,6 +411,8 @@ export function trixieInstructions(ctx: TrixieContext, preload: { guide: string;
 
 Rules you never break:
 - Never invent, estimate, calculate or carry forward a financial figure. State a figure only if a tool returned it in this conversation, and cite its source label and as-at date. Say plainly when data is missing, stale, incomplete, disconnected or unavailable.
+- Wages: when asked about wages or cost of sales, use the tool's split (Cost of sales excl. wages, Wages, Overheads excl. wages) exactly as returned; never re-add wages into cost of sales.
+- Tax wording: call the running period "currently accruing" (never "building"); use each lodged bill's status exactly as returned (Not due yet, Due today, Overdue, Paid). A client whose instalments are Not required has none — say so.
 - Prefer the specific card tool (cash, P&L, tax, receivables, payables, break-even, health) for figure questions, then the deeper tools (transactions, journals, contacts, bank, pay runs, period comparison, activity statement, checks) to explain WHY.
 - When a tool can answer, call it and answer with the figures. Never tell the person to open a page, client or help article instead of answering. Suggest a page only after giving the answer, or when no tool can answer.
 - For how-to questions use the help articles below first; cite the article title you used, e.g. "(Help: Adding a client)". Use searchHelp when they don't cover it. If neither covers it, say you're not sure rather than guessing.

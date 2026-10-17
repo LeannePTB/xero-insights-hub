@@ -294,7 +294,7 @@ async function activityStatement(ctx: TrixieContext, input: { period: "current" 
         netGst: g.gstOnSales != null && g.gstOnPurchases != null ? round2(g.gstOnSales - g.gstOnPurchases) : null,
         W1: runs ? round2(runs.reduce((s, r) => s + r.wages, 0)) : null,
         W2: runs ? round2(runs.reduce((s, r) => s + r.tax, 0)) : null,
-        T7: "Income tax instalments are entered on the Tax obligations card.",
+        T7: "Income tax instalments are set in Client settings → Tax & reporting; a client marked Not required has none.",
       },
       payRunsInPeriod: runs?.length ?? null,
       unfiled: g.unfiled,

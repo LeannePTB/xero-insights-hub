@@ -51,6 +51,8 @@ export type ScenarioData = {
   unclassifiedCount: number;
   /** Names of the genuinely untagged operating accounts (empty when unknown). */
   unclassifiedNames: string[];
+  /** Accounts marked Wages (display grouping only). */
+  wageAccounts?: string[];
 };
 
 type XeroInvoice = {
@@ -262,7 +264,7 @@ export const getScenarioData = createServerFn({ method: "POST" })
     const [tagsRes, exclRes] = await Promise.all([
       sb
         .from("client_cost_classifications")
-        .select("account_name, classification")
+        .select("account_name, classification, is_wages")
         .eq("client_id", data.clientId)
         .eq("tenant_id", data.tenantId),
       sb.from("scenario_exclusions").select("xero_invoice_id").eq("client_id", data.clientId),
@@ -407,6 +409,8 @@ export const getScenarioData = createServerFn({ method: "POST" })
       avg3,
       unclassifiedCount: unclassifiedNames.size,
       unclassifiedNames: [...unclassifiedNames].sort(),
+      // Display grouping only; each wage account keeps its fixed/variable tag.
+      wageAccounts: ((tagsRes.data ?? []) as any[]).filter((t) => t.is_wages || t.classification === "wages").map((t) => String(t.account_name)),
     };
   });
 

@@ -16,6 +16,9 @@ const saveSchema = clientTenantSchema.extend({
   path: ["periodEnd"],
 });
 
+export const INSTALMENT_FREQUENCIES = ["not_required", "quarterly", "annual"] as const;
+export type InstalmentFrequency = (typeof INSTALMENT_FREQUENCIES)[number];
+
 export type IncomeTaxInstalment = {
   id: string;
   periodStart: string;
@@ -27,11 +30,11 @@ export type IncomeTaxInstalment = {
 export const listIncomeTaxInstalments = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((input: unknown) => clientTenantSchema.parse(input))
-  .handler(async ({ data, context }): Promise<{ instalments: IncomeTaxInstalment[]; canEdit: boolean }> => {
+  .handler(async ({ data, context }): Promise<{ instalments: IncomeTaxInstalment[]; canEdit: boolean; frequency: InstalmentFrequency | null }> => {
     const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
     await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
 
-    const [{ data: rows, error }, { data: canEdit, error: permissionError }] = await Promise.all([
+    const [{ data: rows, error }, { data: canEdit, error: permissionError }, { data: frequency, error: frequencyError }] = await Promise.all([
       context.supabase
         .from("client_income_tax_instalments")
         .select("id, period_start, period_end, amount, updated_at")
@@ -41,12 +44,15 @@ export const listIncomeTaxInstalments = createServerFn({ method: "POST" })
       context.supabase.rpc("can_manage_client_income_tax_instalments", {
         _client_id: data.clientId,
       }),
+      context.supabase.rpc("client_income_tax_instalment_frequency", { _client_id: data.clientId }),
     ]);
     if (error) throw new Error(error.message);
     if (permissionError) throw new Error(permissionError.message);
+    if (frequencyError) throw new Error("Instalment setting unavailable.");
 
     return {
       canEdit: canEdit === true,
+      frequency: (INSTALMENT_FREQUENCIES as readonly string[]).includes(frequency ?? "") ? (frequency as InstalmentFrequency) : null,
       instalments: (rows ?? []).map((row) => ({
         id: row.id,
         periodStart: row.period_start,
@@ -73,5 +79,16 @@ export const saveIncomeTaxInstalment = createServerFn({ method: "POST" })
     );
     if (error) throw new Error(error.message);
     if (!saved) throw new Error("The income tax instalment could not be saved.");
+    return { ok: true };
+  });
+
+export const setIncomeTaxInstalmentFrequency = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((input: unknown) => z.object({ clientId: z.string().uuid(), frequency: z.enum(INSTALMENT_FREQUENCIES) }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("set_client_income_tax_instalment_frequency", {
+      _client_id: data.clientId, _frequency: data.frequency,
+    });
+    if (error) throw new Error(error.code === "42501" ? "You can't change this setting." : "The setting could not be saved.");
     return { ok: true };
   });

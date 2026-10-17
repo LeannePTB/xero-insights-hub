@@ -94,7 +94,7 @@ async function practiceOverview(ctx: TrixieContext) {
       health: (r.verdict as any)?.label ?? null,
       cashAtBank: r.cash,
       nextTax: r.taxNext,
-      building: r.taxBuilding,
+      currentlyAccruing: r.taxBuilding,
       superDue: r.superDue,
       overdueTaxItems: r.taxItems.filter((t) => t.overdue).map((t) => ({ label: t.label, amount: t.amount, due: t.due })),
       receivables: await receivablesFor(ctx, r.clientId).catch(() => ({ available: false, reason: "Saved invoices could not be read." })),

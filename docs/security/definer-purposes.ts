@@ -111,6 +111,10 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Caller-scoped UI check: whether an active organisation member may maintain this client's ATO income tax instalment periods; aal2 required.",
   "public.save_client_income_tax_instalment":
     "Saves one ATO income tax instalment period after aal2, organisation-team write access and Xero-file ownership checks, with an audit row in the same transaction.",
+  "public.client_income_tax_instalment_frequency":
+    "Caller-scoped reader: this client's income tax instalment setting (Not required / Quarterly / Annual / unset); aal2 and client read access required, no write.",
+  "public.set_client_income_tax_instalment_frequency":
+    "Saves this client's income tax instalment setting after aal2 and organisation-team write access (same rule as instalment saves), with an audit row in the same transaction.",
   "public.can_manage_client_rental_properties":
     "Caller-scoped UI check: whether an active organisation member may maintain this client's rental property setup; aal2 required.",
   "public.save_client_rental_property":

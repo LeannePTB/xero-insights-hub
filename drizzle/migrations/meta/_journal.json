@@ -470,6 +470,13 @@
       "when": 1792127859848,
       "tag": "0066_admin_set_card_label",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1792215992825,
+      "tag": "0067_income_tax_instalment_frequency",
+      "breakpoints": true
     }
   ]
 }

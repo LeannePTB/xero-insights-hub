@@ -28,6 +28,9 @@ export type BreakevenLine = {
   amount: number;
   unclassified: boolean;
   section: "cogs" | "operating";
+  /** Marked Wages in Cost classification. Display grouping only; the
+   *  fixed/variable tag above still drives the maths. */
+  isWages?: boolean;
 };
 
 export type BreakevenLineSplit = {
@@ -80,7 +83,7 @@ export function classifyBreakevenLines({
   } else {
     for (const line of expenseLines) {
       const r = resolve(line.name);
-      place(r.effective, line, "operating", r.unclassified);
+      place(r.effective, line, "operating", r.unclassified, r.isWages);
     }
     const linesTotal = fixedTotal + variableTotal + excludedTotal;
     if (Math.abs(linesTotal - totalExpenses) > TOL) {
@@ -97,7 +100,7 @@ export function classifyBreakevenLines({
       const r = resolve(line.name);
       // Fallback for cost of sales is variable, not the resolver's fixed default.
       const effective: Classification = r.decided ?? "variable";
-      place(effective, line, "cogs", false);
+      place(effective, line, "cogs", false, r.isWages);
       cogsSeen += line.amount;
     }
     if (Math.abs(cogsSeen - totalCostOfSales) > TOL) {
@@ -126,16 +129,17 @@ export function classifyBreakevenLines({
     line: PnlLine,
     section: "cogs" | "operating",
     unclassified: boolean,
+    isWages = false,
   ) {
     if (effective === "variable") {
       variableTotal += line.amount;
-      variableLines.push({ ...line, unclassified: false, section });
+      variableLines.push({ ...line, unclassified: false, section, isWages });
     } else if (effective === "excluded") {
       excludedTotal += line.amount;
       excludedCount += 1;
     } else {
       fixedTotal += line.amount;
-      fixedLines.push({ ...line, unclassified, section });
+      fixedLines.push({ ...line, unclassified, section, isWages });
       if (unclassified) unclassifiedCount += 1;
     }
   }

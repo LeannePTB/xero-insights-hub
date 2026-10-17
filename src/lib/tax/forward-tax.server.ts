@@ -17,7 +17,7 @@ export async function loadStoredForward(
   const { SNAPSHOT_PAYLOAD_VERSION } = await import("@/lib/xero/snapshot-keys");
   const { reconVersion } = await import("@/lib/xero/recon-versions");
   const [cl, gst, snaps, inst] = await Promise.all([
-    sb.from("clients").select("id, gst_cycle, payg_withholding_cycle").in("id", ids),
+    sb.from("clients").select("id, gst_cycle, payg_withholding_cycle, income_tax_instalment_frequency").in("id", ids),
     sb.from("reconciliation_snapshots").select("client_id, report_key, as_at, payload, complete").in("client_id", ids).in("report_key", ["gst_reconciliation", "gst_reconciliation_quarter"]).in("as_at", asAts),
     sb.from("xero_snapshots").select("client_id, tenant_id, report_key, payload, payload_version, fetched_at, complete").in("client_id", ids).in("report_key", ["payroll_payruns", "invoices_accpay_open"]).order("fetched_at", { ascending: false }),
     sb.from("client_income_tax_instalments").select("client_id, tenant_id, period_end, amount").in("client_id", ids).order("period_end", { ascending: false }),
@@ -40,6 +40,7 @@ export async function loadStoredForward(
       payRuns,
       payablesPayload: ap?.payload ?? null,
       instalment: i ? { amount: Number(i.amount), periodEnd: String(i.period_end) } : null,
+      instalmentFrequency: c?.income_tax_instalment_frequency ?? null,
     });
     out.set(t.clientId, { tax, payRuns });
   }

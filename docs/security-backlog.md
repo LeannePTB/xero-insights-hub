@@ -1926,3 +1926,8 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 ## 2026-10-16 — Trixie organisation-level answers (no access change)
 - `practice_overview` and new `ask_about_client` are offered to active organisation members on organisation pages and on signed-in pages outside a client/System Admin ("general"). Both read only the caller-scoped Overview list; a typed client name is matched against that list, then re-verified with `trixie_access_context` as the caller, and card gates (`assert_widget_access`) apply per Xero file. No IDs in tool schemas.
 - OPEN (pre-existing, not changed): `trixie_access_context` "general" mode still selects the caller's earliest active membership for allowance counting and audience. The new tools do not use that organisation as a filter, but the fallback itself conflicts with the "no first organisation fallback" rule and should be reviewed by the owner.
+
+## 2026-10-17 — Income tax instalment setting (opened)
+- New column `clients.income_tax_instalment_frequency`, written by audited aal2 `set_client_income_tax_instalment_frequency` (organisation-team write predicate). Read via caller-scoped `client_income_tax_instalment_frequency`.
+- OPEN (low): `authenticated` holds table-level UPDATE on `clients`, so an organisation owner (the only UPDATE policy) could change this column directly without the audit row — same as other existing client setting columns. No widening of who can write. Decide whether to move client setting columns to column-level grants.
+- No per-organisation timezone is stored; bill status uses the Perth calendar day for all organisations.

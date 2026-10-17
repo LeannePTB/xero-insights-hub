@@ -545,6 +545,14 @@ export const MATRIX: MatrixRow[] = [
     "Only active organisation members at aal2 may save; client viewers remain read-only",
     ["pglite", "live"],
   ),
+  ...rows(
+    ["business_owner", "client_viewer", "standing_viewer", "support_grant_active", "super_admin_no_membership", "aal1_member", "idle_session_member"],
+    ["set_client_income_tax_instalment_frequency()"],
+    ["execute"],
+    "deny",
+    "Only active organisation members at aal2 may change the instalment setting; read grants never write",
+    ["pglite"],
+  ),
 
   {
     role: "org_owner",

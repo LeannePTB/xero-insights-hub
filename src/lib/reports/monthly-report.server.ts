@@ -776,6 +776,16 @@ export async function computeMonthlyReport(opts: {
       priorMonth: monthLabel(priorEnd),
       fy: `${fyLabelFor(fyStart)} to date`,
     });
+    // Wages split, frozen into this new draft (final/sent are never rebuilt).
+    const { wageAccountNames, wagesFromSections } = await import("@/lib/wages-split");
+    const { data: marks } = await opts.supabase.from("client_cost_classifications").select("account_name, classification, is_wages").eq("client_id", opts.clientId).eq("tenant_id", opts.tenantId);
+    const names = wageAccountNames(marks);
+    const w = wagesFromSections(parsed.sections, idx, names);
+    if (profitAndLoss && w !== null) {
+      const inCogs = wagesFromSections(parsed.sections.filter((s) => s.kind === "cost-of-sales"), idx, names) ?? 0;
+      const t = profitAndLoss.totals;
+      profitAndLoss.totals.wagesSplit = { wages: w, costOfSalesExWages: Math.round((t.costOfSales - inCogs) * 100) / 100, overheadsExWages: Math.round((t.expenses - (w - inCogs)) * 100) / 100, accounts: names.size };
+    }
   }
 
   // --- Receivables / payables detail, reconstructed as at the period end.
@@ -867,11 +877,18 @@ export async function computeMonthlyReport(opts: {
   // gaps. The chart covers the report period's financial year only (July on).
   const { financialYear } = await import('@/lib/charts/standard');
   const fyFrom = financialYear(periodEnd).from;
-  charts.pnl = charts.profit.map((p,i) => ({date:p.date,label:p.label,values:[
-    p.date===periodEnd && profitAndLoss ? profitAndLoss.totals.revenue+profitAndLoss.totals.otherIncome : charts.pnl?.[i]?.values[0]??null,
-    p.date===periodEnd && profitAndLoss ? profitAndLoss.totals.costOfSales+profitAndLoss.totals.expenses : charts.pnl?.[i]?.values[1]??null,
-    p.value,
-  ]})).filter(p => p.date >= fyFrom).map(({label,values}) => ({label,values}));
+  const ws = profitAndLoss?.totals.wagesSplit;
+  charts.pnl = charts.profit.map((p,i) => {
+    const income = p.date===periodEnd && profitAndLoss ? profitAndLoss.totals.revenue+profitAndLoss.totals.otherIncome : charts.pnl?.[i]?.values[0]??null;
+    const expenses = p.date===periodEnd && profitAndLoss ? profitAndLoss.totals.costOfSales+profitAndLoss.totals.expenses : charts.pnl?.[i]?.values[1]??null;
+    if (!ws) return {date:p.date,label:p.label,values:[income,expenses,p.value]};
+    // Earlier months keep their whole expense bar as "Other costs" unless a
+    // stored report froze a wages split for that month.
+    const wages = p.date===periodEnd ? ws.wages : (charts as any).pnlWages?.[i] ?? null;
+    return {date:p.date,label:p.label,values:[income, expenses===null?null:wages, expenses===null?null:wages===null?expenses:Math.round((expenses-wages)*100)/100, p.value]};
+  }).filter(p => p.date >= fyFrom).map(({label,values}) => ({label,values}));
+  if (ws) charts.pnlWagesSplit = true;
+  delete (charts as any).pnlWages;
   return {
     basis: 'accrual',
     includedSections,
