@@ -561,7 +561,7 @@ function CashflowScenarioPage() {
                           <Checkbox
                             checked={selected.has(inv.id)}
                             onCheckedChange={(on) => setSelected((cur) => { const n = new Set(cur); if (on) n.add(inv.id); else n.delete(inv.id); return n; })}
-                            aria-label={`Select invoice ${inv.description}`}
+                            aria-label={`Tick invoice ${inv.description}`}
                           />
                         )}
                         <div className="min-w-0">
