@@ -23,6 +23,8 @@ function Enquiries(){
 
 function AlertStatus({a}:{a?:{status:string;error:string|null}}){
   if(!a) return null;
+  const blocked=['suppressed','bounced'].includes(a.status)||/suppress|bounce/i.test(a.error??'');
+  if(blocked) return <p className="mt-1 text-xs text-destructive">Email blocked (address bounced)</p>;
   const sent=a.status==='sent', failed=['failed','dlq','bounced','suppressed','complained'].includes(a.status)||a.status==='not_sent';
   const label=sent?'Email sent':failed?`Email failed${a.error?` — ${a.error.slice(0,160)}`:''}`:'Email queued';
   return <p className={`mt-1 text-xs ${sent?'text-success':failed?'text-destructive':'text-muted-foreground'}`}>{label}</p>;

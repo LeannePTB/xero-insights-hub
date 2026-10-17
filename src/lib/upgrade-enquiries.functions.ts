@@ -71,3 +71,18 @@ export const setUpgradeEnquiryStatus=createServerFn({method:'POST'}).middleware(
   if(error) throw new Error('The enquiry status could not be changed.');
   return {ok:true};
 });
+
+/** System Administrator: is the configured alert address on the suppression list? (aal2 + role in the database) */
+export const getAlertAddressSuppression=createServerFn({method:'POST'}).middleware([requireAal2]).handler(async({context})=>{
+  const {data,error}=await (context.supabase as any).rpc('admin_alert_address_suppression');
+  if(error) throw new Error(/NO_ACCESS|super|Forbidden|insufficient/i.test(error.message)?'Forbidden':'Delivery status unavailable.');
+  const r=((data??[]) as any[])[0];
+  return r?{address:String(r.address),suppressed:!!r.suppressed,reason:(r.reason??null) as string|null,suppressedAt:(r.suppressed_at??null) as string|null}:null;
+});
+
+/** System Administrator: remove ONLY the configured alert address from the suppression list (audited). */
+export const unblockAlertAddress=createServerFn({method:'POST'}).middleware([requireAal2]).handler(async({context})=>{
+  const {data,error}=await (context.supabase as any).rpc('admin_unblock_alert_address');
+  if(error) throw new Error(/NO_ACCESS|super|Forbidden|insufficient/i.test(error.message)?'Forbidden':'The address could not be unblocked.');
+  return {removed:Number(data??0)};
+});
