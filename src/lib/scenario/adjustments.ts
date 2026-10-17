@@ -271,7 +271,7 @@ export function debtSchedule(d: Debt, maxMonths = 360): DebtSchedule {
     if (bal <= 0.005) break;
     const interest = r2(bal * r);
     const pay = Math.min(payment, r2(bal + interest));
-    bal = r2(bal + interest - pay);
+    bal = Math.max(0, r2(bal + interest - pay)) || 0;
     totalInterest += interest;
     rows.push({ month: m, payment: pay, interest, principal: r2(pay - interest), balance: bal });
   }
