@@ -889,7 +889,7 @@ function CostClassificationSection({
     {
       forceOpen:
         typeof window !== "undefined" &&
-        ["account-setup", "account-setup-cost", "account-setup-bank", "account-setup-tax"].includes(window.location.hash.replace("#", "")),
+        window.location.hash.replace("#", "").startsWith("account-setup") || ["cost-classification", "statutory-accounts", "bank-accounts"].includes(window.location.hash.replace("#", "")),
     },
   );
 
@@ -897,11 +897,15 @@ function CostClassificationSection({
   // Deep link from the Setup checklist: scroll to the first untagged account.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!window.location.hash.startsWith("#account-setup")) return;
+    const hash = window.location.hash.replace("#", "");
+    const legacy: Record<string, string> = { "cost-classification": "account-setup-cost", "statutory-accounts": "account-setup-tax", "bank-accounts": "account-setup-bank" };
+    const target = legacy[hash] ?? hash;
+    if (!target.startsWith("account-setup")) return;
     const t = window.setTimeout(() => {
-      document
-        .querySelector<HTMLElement>("[data-unclassified-account='true']")
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const el = target === "account-setup"
+        ? document.querySelector<HTMLElement>("[data-unclassified-account='true']")
+        : document.getElementById(target);
+      el?.scrollIntoView({ behavior: "smooth", block: target === "account-setup" ? "center" : "start" });
     }, 600);
     return () => window.clearTimeout(t);
   }, []);
