@@ -353,6 +353,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     heading(`Cash flow scenario: ${input.scenario.name} (projection)`);
     const money = (n: number | null) => (n === null ? "—" : `${n < 0 ? "-" : ""}A$${Math.abs(Math.round(n)).toLocaleString("en-AU")}`);
     for (const r of input.scenario.rows) paragraph(`${r.month}: baseline net ${money(r.baselineNet)} · scenario net ${money(r.scenarioNet)}${r.scenarioCash !== null ? ` · scenario closing cash ${money(r.scenarioCash)}` : ""}`, { colour: INK.text });
+    for (const e of input.scenario.extras ?? []) paragraph(`${e.label}: ${e.value}`, { colour: INK.text });
   }
 
   // Incomplete banner, prominently on page one --------------------------------
