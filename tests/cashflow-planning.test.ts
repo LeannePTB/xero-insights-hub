@@ -61,9 +61,9 @@ describe("debt repayment", () => {
     expect(debtSchedule({ id: "d", name: "L", balance: 10000, ratePct: 12, mode: "payment", payment: 50, start: "2026-10" }).neverPaysOff).toBe(true);
   });
   it("repayments reduce cash and flag below-zero months", () => {
-    const adj = debtAdjustment([{ id: "d", name: "L", balance: 6000, ratePct: 0, mode: "payment", payment: 3000, start: "2026-11" }])!;
+    const adj = debtAdjustment([{ id: "d", name: "L", balance: 10000, ratePct: 0, mode: "payment", payment: 5000, start: "2026-11" }])!;
     const rows = project(base, [adj], months, 0);
-    expect(rows[1]!.scenario.cashMovement).toBe(rows[1]!.baseline.cashMovement - 3000);
+    expect(rows[1]!.scenario.cashMovement).toBe(rows[1]!.baseline.cashMovement - 5000);
     expect(belowZeroMonths(rows)).toEqual(["2026-11", "2026-12"]);
   });
 });
