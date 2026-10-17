@@ -2826,10 +2826,10 @@ AS $function$
 DECLARE
   _actor uuid := auth.uid();
   _firm_id uuid;
+  _old numeric;
   _saved public.client_income_tax_instalments;
 BEGIN
   PERFORM app_private.assert_aal2();
-
   IF _actor IS NULL THEN
     RAISE EXCEPTION 'AUTH_REQUIRED' USING ERRCODE = '42501';
   END IF;
@@ -2842,16 +2842,16 @@ BEGIN
   IF _amount IS NULL OR _amount < 0 OR _amount > 999999999999.99 OR round(_amount, 2) <> _amount THEN
     RAISE EXCEPTION 'INVALID_INSTALMENT_AMOUNT' USING ERRCODE = '22023';
   END IF;
-
-  SELECT c.firm_id INTO _firm_id
-    FROM public.clients c
-   WHERE c.id = _client_id;
-
   IF NOT coalesce(app_private.user_can_write_client(_actor, _client_id), false) THEN
     RAISE EXCEPTION 'CLIENT_INCOME_TAX_INSTALMENT_FORBIDDEN' USING ERRCODE = '42501';
   END IF;
-
   PERFORM public.assert_tenant_belongs_to_client(_client_id, _tenant_id);
+  SELECT c.firm_id INTO _firm_id FROM public.clients c WHERE c.id = _client_id;
+
+  SELECT amount INTO _old FROM public.client_income_tax_instalments
+   WHERE client_id = _client_id AND tenant_id = btrim(_tenant_id)
+     AND period_start = _period_start AND period_end = _period_end
+   FOR UPDATE;
 
   INSERT INTO public.client_income_tax_instalments (
     client_id, tenant_id, period_start, period_end, amount, created_by, updated_by
@@ -2862,21 +2862,10 @@ BEGIN
   DO UPDATE SET amount = EXCLUDED.amount, updated_by = _actor, updated_at = now()
   RETURNING * INTO _saved;
 
-  INSERT INTO public.audit_log (
-    actor_user_id, firm_id, action, target_type, target_id, meta
-  ) VALUES (
-    _actor,
-    _firm_id,
-    'client_income_tax_instalment_saved',
-    'client',
-    _client_id::text,
-    jsonb_build_object(
-      'tenant_id', btrim(_tenant_id),
-      'period_start', _period_start,
-      'period_end', _period_end
-    )
-  );
-
+  INSERT INTO public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  VALUES (_actor, _firm_id, 'client_income_tax_instalment_saved', 'client', _client_id::text,
+    jsonb_build_object('tenant_id', btrim(_tenant_id), 'period_start', _period_start, 'period_end', _period_end,
+      'old_amount', _old, 'new_amount', _amount));
   RETURN _saved;
 END;
 $function$
@@ -5657,4 +5646,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: a99403124d604c955c0f69f92ef3c747bd5216c39dd71ffcc490687df6bf2968
+-- catalogue-fingerprint: 9445081ffcd508c80cde5544c46c1fef263d12934dec516ff94fb092ac0c9691
