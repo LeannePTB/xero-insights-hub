@@ -1948,3 +1948,8 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - OPEN: `client_notes` is read-only for one release (INSERT/UPDATE/DELETE revoked from authenticated; table marked DEPRECATED). No rows deleted. Its write policies remain but have no grant behind them. Drop the table and policies in a later release once no final/sent report needs it (report payloads already hold their own notes snapshots).
 - CLOSED: `src/lib/reports/monthly-report.server.ts` no longer uses supabaseAdmin (note-author lookup removed); register row removed.
 - Note: `save_report_video` now keeps heading/message without a Loom link (message ≤ 2,000 chars); same AAL2 + me_can_manage_client guard, audited set/cleared, draft-only lock unchanged.
+
+## Saved cash flow scenarios (17 Oct 2026) — CLOSED on delivery
+- New table `client_cashflow_scenarios`: RLS on, SELECT-only grant, restrictive aal2 guard; managers read via `user_can_write_client`; Business Owners of that exact client read only when `shared_with_client` (new caller-scoped read predicate `app_private.is_client_business_owner`, never a write grant). Viewers never read saved scenarios (rule 2.D: never scenario exclusions).
+- Writes only through audited AAL2 definer RPCs (save/delete/share/report pick) with client resolved from the row.
+- Report: picked scenario's totals table is frozen into new drafts by trigger and locked on final/sent; contains totals only, no invoice detail.
