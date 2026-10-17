@@ -4,6 +4,7 @@ import {describe,it,expect,vi,afterEach} from 'vitest';
 import {render,screen,cleanup} from '@testing-library/react';
 vi.mock('@tanstack/react-router',()=>({Link:({to,children,...props}:any)=><a href={to} {...props}>{children}</a>}));
 vi.mock('../src/hooks/usePlatformBranding',async(importOriginal)=>({...await importOriginal<typeof import('../src/hooks/usePlatformBranding')>(),usePlatformBranding:()=>({logoLight:'/logo.png',logoDark:'/logo.png',productName:'Traction Advisory'})}));
+vi.mock('../src/hooks/useMainContact',()=>({useMainContact:()=>'hello@tractionadvisory.com.au',MAIN_CONTACT_KEY:['x']}));
 vi.mock('../src/integrations/supabase/client',()=>({supabase:{storage:{from:()=>({getPublicUrl:(path:string)=>({data:{publicUrl:`https://example.supabase.co/storage/v1/object/public/website-media/${path}`}})})}}}));
 import {SalesPage} from '../src/components/website/SalesPage';
 import {EMPTY_WEBSITE_SETTINGS} from '../src/lib/website-settings';
