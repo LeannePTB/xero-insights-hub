@@ -432,10 +432,10 @@ function ClientDashboard() {
       )}
       <PageContainer>
         {/* SubscriptionGate disabled until payments re-enabled */}
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-lg border border-emphasis bg-tint-panel px-4 py-3">
           <div className="min-w-0">
-            <h1 className="truncate font-display text-lg font-semibold sm:text-lg">{client.name}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h1 className="truncate font-display text-2xl font-semibold text-emphasis">{client.name}</h1>
+            <p className="mt-1 text-sm font-semibold text-emphasis/80">
               {dashboardPackageSummary(catalogue, widgets)}
             </p>
           </div>
@@ -453,6 +453,7 @@ function ClientDashboard() {
           )}
 
         </div>
+        <hr className="border-border" />
 
         {isAdvisor && <OrganisationLapsedNotice clientId={clientId} />}
         {/* Not gated on isAdvisor: the Business Owner must see the trial too.
