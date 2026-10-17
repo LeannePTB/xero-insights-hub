@@ -62,13 +62,16 @@ export function TaxObligationsBody({ forward, buildingLabel, money, partPaid, pa
       <section aria-label="Income tax instalment" className="flex min-w-0 flex-col rounded-md border border-border bg-card p-4">
         <p className="text-xs font-semibold uppercase text-muted-foreground">Income tax instalment</p>
         {instalmentDisplay === "not_required" ? <p className="mt-3 font-semibold">Not required</p>
-          : forward.instalment && instalmentStatus ? <>
+          : forward.instalment && instalmentStatus ? (forward.instalment.amount > 0.005 ? <>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <p className="font-display text-2xl font-semibold tabular-nums break-words">{money(forward.instalment.amount)}</p>
               <StatusPill status={instalmentStatus} />
             </div>
             <p className="mt-1 text-xs">due {day(forward.instalment.due)}</p>
           </> : <>
+            <p className="mt-3 font-semibold">Nothing owing</p>
+            <p className="mt-1 text-xs text-muted-foreground">$0 instalment for the period due {day(forward.instalment.due)}</p>
+          </>) : <>
             <p className="mt-3 font-semibold">Not entered yet</p>
             {settingsLink && <div className="mt-2 text-xs">{settingsLink}</div>}
           </>}

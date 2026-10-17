@@ -114,3 +114,56 @@ export function instalmentDueDate(frequency: "not_required" | "quarterly" | "ann
   }
   return basDueDate("quarter", periodEnd);
 }
+
+export type InstalmentPeriod = { start: string; end: string; due: string; label: string };
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const pad = (n: number) => String(n).padStart(2, "0");
+const lastDay = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate(); // m is 1-based
+
+/** Instalment periods still to pay (due on or after today), in date order.
+ *  Quarterly: financial-year quarters; annual: 1 Jul – 30 Jun. */
+export function upcomingInstalmentPeriods(frequency: "quarterly" | "annual", today: string, count = 2): InstalmentPeriod[] {
+  const [ty, tm] = today.split("-").map(Number);
+  const out: InstalmentPeriod[] = [];
+  if (frequency === "annual") {
+    for (let fyEnd = (tm > 6 ? ty : ty - 1); out.length < count; fyEnd++) {
+      const end = `${fyEnd}-06-30`;
+      const due = instalmentDueDate("annual", end);
+      if (due >= today) out.push({ start: `${fyEnd - 1}-07-01`, end, due, label: `FY ${fyEnd - 1}–${String(fyEnd).slice(2)}` });
+    }
+    return out;
+  }
+  // Start one quarter back so a just-ended quarter that is still due is included.
+  let y = ty, q = Math.floor((tm - 1) / 3) - 1;
+  if (q < 0) { q = 3; y -= 1; }
+  for (let guard = 0; out.length < count && guard < 12; guard++) {
+    const sm = q * 3 + 1, em = sm + 2;
+    const start = `${y}-${pad(sm)}-01`, end = `${y}-${pad(em)}-${pad(lastDay(y, em))}`;
+    const due = instalmentDueDate("quarterly", end);
+    if (due >= today) out.push({ start, end, due, label: `${MON[sm - 1]}–${MON[em - 1]} ${y}` });
+    q += 1; if (q > 3) { q = 0; y += 1; }
+  }
+  return out;
+}
+
+/** Quarters of the financial year containing the first upcoming period that are still to pay. */
+export function remainingFyQuarters(today: string): InstalmentPeriod[] {
+  const all = upcomingInstalmentPeriods("quarterly", today, 5);
+  if (!all.length) return [];
+  const [y, m] = all[0].end.split("-").map(Number);
+  const fyEnd = `${m > 6 ? y + 1 : y}-06-30`;
+  return all.filter((p) => p.end <= fyEnd);
+}
+
+/** The saved instalment the tile shows: the one with the earliest due date on or after today. */
+export function pickCurrentInstalment<T extends { amount: number; periodEnd: string }>(
+  rows: readonly T[], frequency: "not_required" | "quarterly" | "annual" | null, today: string,
+): (T & { due: string }) | null {
+  if (frequency === "not_required") return null;
+  let best: (T & { due: string }) | null = null;
+  for (const r of rows) {
+    const due = instalmentDueDate(frequency, r.periodEnd);
+    if (due >= today && (!best || due < best.due)) best = { ...r, due };
+  }
+  return best;
+}

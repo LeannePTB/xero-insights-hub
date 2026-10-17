@@ -498,6 +498,20 @@
       "when": 1792222375380,
       "tag": "0070_setup_checklist_account_setup",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1792223581832,
+      "tag": "0071_fix_instalment_frequency_reader",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1792223657034,
+      "tag": "0072_instalment_audit_old_new_and_clear",
+      "breakpoints": true
     }
   ]
 }

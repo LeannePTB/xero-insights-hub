@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { buildSetupRows, groupFor, looksLikeTaxAccount, progress, suggest } from "./account-setup";
 
 const acc = (Name: string, Class: string, Type: string, extra: Record<string, string> = {}) => ({ AccountID: Name, Name, Class, Type, Status: "ACTIVE", ...extra });

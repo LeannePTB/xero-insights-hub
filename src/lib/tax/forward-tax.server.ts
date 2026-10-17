@@ -1,6 +1,6 @@
 // Stored-only loader for the shared forward tax summary. Never calls Xero.
 // Every read uses the caller's own client, so RLS applies; IDs are filters.
-import { currentGstPeriod, type ForwardTax } from "@/components/dashboard/tax-obligations";
+import { currentGstPeriod, pickCurrentInstalment, type ForwardTax } from "@/components/dashboard/tax-obligations";
 import { buildStoredForward } from "./forward-stored";
 
 export type StoredForward = { tax: ForwardTax; payRuns: { paymentDate: string | null; tax: number; super?: number }[] | null };
@@ -33,7 +33,11 @@ export async function loadStoredForward(
     const pr = mine.find((r) => r.report_key === "payroll_payruns");
     const ap = mine.find((r) => r.report_key === "invoices_accpay_open");
     const payRuns = pr?.payload?.status === "available" && Array.isArray(pr.payload.payRuns) ? pr.payload.payRuns : null;
-    const i = ((inst.data ?? []) as any[]).find((r) => r.client_id === t.clientId && (!t.tenantId || r.tenant_id === t.tenantId));
+    const i0 = pickCurrentInstalment(
+      ((inst.data ?? []) as any[]).filter((r) => r.client_id === t.clientId && (!t.tenantId || r.tenant_id === t.tenantId))
+        .map((r) => ({ amount: Number(r.amount), periodEnd: String(r.period_end) })),
+      c?.income_tax_instalment_frequency ?? null, today);
+    const i = i0 ? { amount: i0.amount, period_end: i0.periodEnd } : null;
     const tax = buildStoredForward({
       today, gstCycle, paygCycle,
       gst: g?.payload ?? null,
