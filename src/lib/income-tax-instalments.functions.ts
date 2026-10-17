@@ -48,7 +48,7 @@ export const listIncomeTaxInstalments = createServerFn({ method: "POST" })
     ]);
     if (error) throw new Error(error.message);
     if (permissionError) throw new Error(permissionError.message);
-    if (frequencyError) throw new Error("Instalment setting unavailable.");
+    if (frequencyError) throw new Error(frequencyError.code === "42501" ? "You don't have access to this client's instalments." : "Instalment setting unavailable.");
 
     return {
       canEdit: canEdit === true,
@@ -90,5 +90,19 @@ export const setIncomeTaxInstalmentFrequency = createServerFn({ method: "POST" }
       _client_id: data.clientId, _frequency: data.frequency,
     });
     if (error) throw new Error(error.code === "42501" ? "You can't change this setting." : "The setting could not be saved.");
+    return { ok: true };
+  });
+
+const clearSchema = clientTenantSchema.extend({ periodStart: z.string().date(), periodEnd: z.string().date() });
+
+/** Empties a saved period so the tile shows "Not entered" again. Audited in the database. */
+export const clearIncomeTaxInstalment = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((input: unknown) => clearSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("clear_client_income_tax_instalment", {
+      _client_id: data.clientId, _tenant_id: data.tenantId, _period_start: data.periodStart, _period_end: data.periodEnd,
+    });
+    if (error) throw new Error(error.code === "42501" ? "You can't change this setting." : "The instalment could not be cleared.");
     return { ok: true };
   });
