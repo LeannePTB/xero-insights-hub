@@ -353,6 +353,22 @@ function extractTaxLinesFromReport(
     lines.push({ name, amount, category, accountId });
   });
 
+  // Xero leaves zero-balance accounts off the Balance Sheet report. A statutory
+  // account in the chart of accounts that the report omits is A$0.00, not
+  // missing: tagged in Account setup, or a Current Liability named like one.
+  const seen = new Set(lines.map((l) => l.accountId).filter(Boolean));
+  for (const [id, account] of accountsById) {
+    if (seen.has(id) || !isActiveLiability(account)) continue;
+    const name = normaliseText((account as { Name?: string }).Name);
+    if (!name) continue;
+    const tagged = resolveStatutoryOverride(name, overrides);
+    if (tagged === "none" || tagged === "conflict") continue;
+    if (!tagged && normaliseText((account as { Type?: string }).Type).toUpperCase() !== "CURRLIAB") continue;
+    const category = classifyTaxLine(name, account, overrides);
+    if (!category || category === "other-tax") continue;
+    lines.push({ name, amount: 0, category, accountId: id });
+  }
+
   if (lines.length > 0) return { status: "assessed", lines, unrecognised };
   if (unrecognised.length > 0) return { status: "unrecognised", lines: [], unrecognised };
   return { status: "absent", lines: [], unrecognised: [] };
