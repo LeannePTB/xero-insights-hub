@@ -476,7 +476,7 @@ function CashflowScenarioPage() {
                 </div>
                 <ScenarioResults rows={projection.rows} fmt={fmt} breakEven={projection.breakEven} title={loaded ? `${loaded.name} · compare with baseline` : undefined} />
                 <PlanningPanel state={planning} onChange={setPlanning} readOnly={!canManage} fmt={fmt} baseline={projection.baseline}
-                  adjustments={adjustments} months={projection.months} openingCash={openingCash} rows={projection.rows}
+                  adjustments={projection.allAdj} months={projection.months} openingCash={openingCash} rows={projection.rows}
                   averageInvoice={projection.averageInvoice} knownDebts={ctxQ.data?.knownDebts ?? []} dues={ctxQ.data?.dues ?? []} defaultTaxPct={defaultTaxPct} />
               </>
             )}
