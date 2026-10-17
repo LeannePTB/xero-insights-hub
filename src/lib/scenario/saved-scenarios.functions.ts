@@ -99,7 +99,7 @@ export const getScenarioContext = createServerFn({ method: "POST" })
     const dues: { label: string; due: string; amount: number }[] = [];
     if (tax) {
       for (const o of tax.owing) if (o.amount > 0) dues.push({ label: o.reference || "Lodged ATO bill", due: o.due, amount: o.amount });
-      for (const u of tax.unlodged ?? []) for (const l of (u as any).lines ?? [u]) if (Number(l.amount) > 0 && l.due) dues.push({ label: String(l.label ?? "Finished period"), due: l.due, amount: Number(l.amount) });
+      for (const u of tax.unlodged ?? []) if (u.amount > 0) dues.push({ label: `${u.kind === "gst" ? "GST" : "PAYG"} ${u.from.slice(0, 7)} to ${u.to.slice(0, 7)} (not lodged)`, due: u.due, amount: u.amount });
       if (tax.building.total && tax.building.total > 0) dues.push({ label: `BAS ${tax.building.from.slice(0, 7)} to ${tax.building.to.slice(0, 7)} (accruing)`, due: tax.building.due, amount: tax.building.total });
       if (tax.instalment && tax.instalment.amount > 0) dues.push({ label: "Income tax instalment", due: tax.instalment.due, amount: tax.instalment.amount });
     }
