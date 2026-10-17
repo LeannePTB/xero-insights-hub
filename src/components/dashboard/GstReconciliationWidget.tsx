@@ -163,7 +163,7 @@ export function GstReconciliationWidget({
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
       <DashboardCardHeader label={tenantName} title="Activity statement — GST (indicative)" icon={<Percent className="h-4 w-4"/>} description="GST review aid, not a lodgement figure" badge={data?.method ? <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">{gstMethodLabel(data.method)}</span> : undefined} source={!notRegistered ? reconSource(data, data?.periodTo) : undefined} isFetching={q.isFetching || recalculating}/>
       {!notRegistered && <div className="mb-4 flex min-w-0 items-center gap-2">
-        <Select value={periodValue} onValueChange={setPeriodValue}><SelectTrigger className="h-8 w-full sm:w-[260px] text-xs"><SelectValue/></SelectTrigger><SelectContent>{options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
+        <Select value={periodValue} onValueChange={setPeriodValue}><SelectTrigger className="h-auto min-h-8 w-full py-1.5 text-left text-xs whitespace-normal sm:w-auto sm:min-w-[260px] [&>span]:line-clamp-none"><SelectValue/></SelectTrigger><SelectContent>{options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
         {data?.canRecalculate && <Button variant="ghost" size="icon-sm" onClick={recalculate} disabled={recalculating} title="Recalculate" aria-label="Recalculate"><RefreshCw className={`h-4 w-4 ${recalculating ? "animate-spin" : ""}`}/></Button>}
       </div>}
 
