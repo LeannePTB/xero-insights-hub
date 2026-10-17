@@ -10,7 +10,7 @@ export const listBankAccounts = createServerFn({ method: 'POST' }).middleware([r
     if (ownershipError) throw new Error('Accounts unavailable.');
     const [snapshot, choices] = await Promise.all([
       context.supabase.from('xero_snapshots').select('payload, fetched_at').eq('client_id', data.clientId).eq('tenant_id', data.tenantId).eq('report_key', 'accounts').eq('complete', true).order('fetched_at', { ascending: false }).limit(1).maybeSingle(),
-      context.supabase.from('client_bank_account_classifications').select('account_id, classification').eq('client_id', data.clientId).eq('tenant_id', data.tenantId),
+      context.supabase.from('account_setup_bank_v').select('account_id, classification').eq('client_id', data.clientId).eq('tenant_id', data.tenantId),
     ]);
     if (snapshot.error || choices.error || !snapshot.data) throw new Error('Saved accounts are unavailable.');
     const payload = snapshot.data.payload as { Accounts?: { AccountID: string; Name: string; Type: string; Class: string; Status: string; BankAccountType?: string }[] };

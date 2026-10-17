@@ -19,7 +19,7 @@ export const listCostClassifications = createServerFn({ method: "POST" })
     await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
     const [rowsRes, clientRes] = await Promise.all([
       context.supabase
-        .from("client_cost_classifications" as any)
+        .from("account_setup_cost_v" as any)
         .select("account_name, classification, is_wages")
         .eq("client_id", data.clientId)
         .eq("tenant_id", data.tenantId),
@@ -62,7 +62,7 @@ export const setCostClassifications = createServerFn({ method: "POST" })
       is_wages: e.isWages,
     }));
     const { error } = await context.supabase
-      .from("client_cost_classifications" as any)
+      .from("account_setup_cost_v" as any)
       .upsert(payload, { onConflict: "client_id,tenant_id,account_name" });
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -99,7 +99,7 @@ export const removeCostClassifications = createServerFn({ method: "POST" })
     await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
     if (data.accountNames.length === 0) return { ok: true };
     const { error } = await context.supabase
-      .from("client_cost_classifications" as any)
+      .from("account_setup_cost_v" as any)
       .delete()
       .eq("client_id", data.clientId)
       .eq("tenant_id", data.tenantId)

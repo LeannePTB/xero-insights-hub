@@ -116,7 +116,7 @@ export async function loadOverviewContext(sb: Sb, firmId: string | null = null):
   };
   if (!ids.length) return ctx;
 
-  const { data: classifications, error: classificationError } = await sb.from('client_bank_account_classifications').select('client_id, tenant_id, account_id, classification').in('client_id', ids);
+  const { data: classifications, error: classificationError } = await sb.from('account_setup_bank_v').select('client_id, tenant_id, account_id, classification').in('client_id', ids);
   if (classificationError) throw new Error('Bank account classifications could not be read.');
 
   const dates = comparisonDates(today);
@@ -131,7 +131,7 @@ export async function loadOverviewContext(sb: Sb, firmId: string | null = null):
       sb.from("xero_snapshots").select(cols).eq("report_key", "profit_and_loss_mtd").in("params->>toDate", dates).in("client_id", part),
       sb.from("xero_snapshots").select(cols).eq("report_key", "profit_and_loss_ytd").in("params->>toDate", dates.slice(0, 3)).in("client_id", part),
       sb.from("client_xero_orgs").select("client_id, xero_connections(tenant_id, status, base_currency)").in("client_id", part),
-      sb.from("client_statutory_accounts").select("client_id, account_name, category").in("client_id", part),
+      sb.from("account_setup_statutory_v").select("client_id, account_name, category").in("client_id", part),
       sb.from("clients").select("id, gst_cycle, payg_withholding_cycle").in("id", part),
       sb.from("client_reports").select("client_id, period_end, sent_at").not("sent_at", "is", null).in("client_id", part),
       sb.from("xero_snapshot_runs").select("client_id, status, started_at").in("client_id", part).gte("started_at", addDays(today, -9)),

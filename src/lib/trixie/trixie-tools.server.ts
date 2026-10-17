@@ -89,7 +89,7 @@ async function balanceSheetAnalysis(ctx: TrixieContext, tenantId: string) {
   if (!bs || !accounts) return null;
   const { analyseBalanceSheet, statutoryOverrideMap } = await import("@/lib/xero/tax-lines");
   const { data: overrides } = await (ctx.supabase as any)
-    .from("client_statutory_accounts")
+    .from("account_setup_statutory_v")
     .select("account_name, category")
     .eq("client_id", ctx.clientId);
   // Accounts from readSnapshot already carry this client's bank classifications.
@@ -124,7 +124,7 @@ async function readPnl(ctx: TrixieContext) {
     const [mtd, ytd] = await Promise.all([snapshot(ctx, tenantId, "profit_and_loss_mtd"), snapshot(ctx, tenantId, "profit_and_loss_ytd")]);
     if (!mtd && !ytd) return { file: "", available: false, reason: "No saved Profit & Loss figures are available yet for this file." };
     const { wageAccountNames, splitWages } = await import("@/lib/wages-split");
-    const { data: marks } = await (ctx.supabase as any).from("client_cost_classifications").select("account_name, classification, is_wages").eq("client_id", ctx.clientId).eq("tenant_id", tenantId);
+    const { data: marks } = await (ctx.supabase as any).from("account_setup_cost_v").select("account_name, classification, is_wages").eq("client_id", ctx.clientId).eq("tenant_id", tenantId);
     const names = wageAccountNames(marks);
     const sum = (hit: any) => {
       if (!hit) return null;
@@ -246,7 +246,7 @@ async function readBreakeven(ctx: TrixieContext) {
     const [pnlHit, accountsHit] = await Promise.all([snapshot(ctx, tenantId, "profit_and_loss_mtd"), snapshot(ctx, tenantId, "accounts")]);
     if (!pnlHit) return { file: "", available: false, reason: "No saved month-to-date Profit & Loss is available yet for this file." };
     const [rowsRes, clientRes] = await Promise.all([
-      (ctx.supabase as any).from("client_cost_classifications").select("account_name, classification, is_wages").eq("client_id", ctx.clientId).eq("tenant_id", tenantId),
+      (ctx.supabase as any).from("account_setup_cost_v").select("account_name, classification, is_wages").eq("client_id", ctx.clientId).eq("tenant_id", tenantId),
       (ctx.supabase as any).from("clients").select("cost_classification_enabled").eq("id", ctx.clientId).maybeSingle(),
     ]);
     if (rowsRes.error || clientRes.error) return { file: "", available: false, reason: "Cost classifications could not be read." };

@@ -17,7 +17,7 @@ export async function getStatutoryOverrides(
   if (!clientId || !tenantId) return new Map();
   try {
     const { data, error } = await db
-      .from("client_statutory_accounts")
+      .from("account_setup_statutory_v")
       .select("account_name, category")
       .eq("client_id", clientId)
       .eq("tenant_id", tenantId);

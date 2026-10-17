@@ -40,7 +40,7 @@ export async function computeClientVerdicts(supabase: any, clientIdsIn: string[]
     }
 
     const snapshots = new Map<string, any[]>();
-    const { data: bankChoices, error: bankError } = await supabase.from('client_bank_account_classifications').select('client_id, tenant_id, account_id, classification').in('client_id', clientIds);
+    const { data: bankChoices, error: bankError } = await supabase.from('account_setup_bank_v').select('client_id, tenant_id, account_id, classification').in('client_id', clientIds);
     if (bankError) throw new Error('Bank account classifications could not be read.');
     const { classifiedAccounts } = await import('./health-checks.server');
     for (const row of (rows ?? []) as any[]) {
@@ -54,7 +54,7 @@ export async function computeClientVerdicts(supabase: any, clientIdsIn: string[]
     // badge classifies accounts exactly as the monthly report does.
     const { statutoryOverrideMap } = await import("@/lib/xero/tax-lines");
     const { data: overrideRows } = await supabase
-      .from("client_statutory_accounts")
+      .from("account_setup_statutory_v")
       .select("client_id, account_name, category")
       .in("client_id", clientIds);
     const overridesByClient = new Map<string, any[]>();

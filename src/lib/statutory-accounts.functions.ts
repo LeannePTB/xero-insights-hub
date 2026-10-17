@@ -49,7 +49,7 @@ export const listStatutoryAccounts = createServerFn({ method: "POST" })
 
 
     const { data: stored, error } = await context.supabase
-      .from("client_statutory_accounts")
+      .from("account_setup_statutory_v")
       .select("account_name, category")
       .eq("client_id", data.clientId)
       .eq("tenant_id", data.tenantId);
@@ -122,7 +122,7 @@ export const setStatutoryAccount = createServerFn({ method: "POST" })
     // what was ticked. Both statements go through the caller's own session, so
     // the table's RLS is the only authorisation rule (invariant 7).
     const { error: delError } = await context.supabase
-      .from("client_statutory_accounts")
+      .from("account_setup_statutory_v")
       .delete()
       .eq("client_id", data.clientId)
       .eq("tenant_id", data.tenantId)
@@ -131,7 +131,7 @@ export const setStatutoryAccount = createServerFn({ method: "POST" })
 
     if (categories.length > 0) {
       const { data: rows, error } = await context.supabase
-        .from("client_statutory_accounts")
+        .from("account_setup_statutory_v")
         .insert(
           categories.map((category) => ({
             client_id: data.clientId,

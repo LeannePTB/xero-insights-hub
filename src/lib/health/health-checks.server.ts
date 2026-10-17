@@ -114,10 +114,10 @@ export async function loadHealthChecks(
   const [latestQ, priorQ, bankQ, overrideQ, clientQ, wageQ, periodQ] = await Promise.all([
     supabase.from("xero_snapshots").select(cols).in("client_id", clientIds).in("report_key", LATEST_KEYS).gte("fetched_at", since).order("fetched_at", { ascending: false }),
     supabase.from("xero_snapshots").select(cols).in("client_id", clientIds).eq("report_key", "profit_and_loss_prior").in("params->>fromDate", months.map((m) => m.from)).order("fetched_at", { ascending: false }),
-    supabase.from("client_bank_account_classifications").select("client_id, tenant_id, account_id, classification").in("client_id", clientIds),
-    supabase.from("client_statutory_accounts").select("client_id, account_name, category").in("client_id", clientIds),
+    supabase.from("account_setup_bank_v").select("client_id, tenant_id, account_id, classification").in("client_id", clientIds),
+    supabase.from("account_setup_statutory_v").select("client_id, account_name, category").in("client_id", clientIds),
     supabase.from("clients").select("id, gst_cycle, payg_withholding_cycle").in("id", clientIds),
-    supabase.from("client_cost_classifications").select("client_id, tenant_id, account_name, classification, is_wages").in("client_id", clientIds),
+    supabase.from("account_setup_cost_v").select("client_id, tenant_id, account_name, classification, is_wages").in("client_id", clientIds),
     supabase.from("xero_snapshots").select(cols).in("client_id", clientIds).in("report_key", PERIOD_END_BS_KEYS as unknown as string[]).gte("fetched_at", new Date(Date.now() - PERIOD_END_MAX_AGE_DAYS * 86_400_000).toISOString()).order("fetched_at", { ascending: false }),
   ]);
   if (latestQ.error || priorQ.error) throw new Error("Saved figures could not be read.");
