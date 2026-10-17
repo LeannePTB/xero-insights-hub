@@ -215,7 +215,7 @@ const SERVER_WRITTEN_TABLES = [
 const MEMBER_MANAGED_TABLES = CLIENT_DATA_TABLES.filter(
   (t) =>
     !(SERVER_WRITTEN_TABLES as readonly string[]).includes(t) &&
-    !["clients", "client_subscriptions", "report_cache", "client_access", "client_income_tax_instalments", "client_rental_properties", "client_bank_account_classifications", "client_cost_classifications", "client_statutory_accounts", "client_account_setup"].includes(t),
+    !["clients", "client_subscriptions", "report_cache", "client_access", "client_income_tax_instalments", "client_rental_properties", "client_bank_account_classifications", "client_cost_classifications", "client_statutory_accounts", "client_account_setup", "client_notes"].includes(t),
 );
 
 export const MATRIX: MatrixRow[] = [
@@ -251,6 +251,8 @@ export const MATRIX: MatrixRow[] = [
     ['execute'], 'deny', 'IDs are filters, never grants; strict account validation.', ['pglite'],
   ),
   ...rows(Object.keys(ROLE_LABELS) as Role[], ['client_cost_classifications', 'client_statutory_accounts', 'client_account_setup'], WRITES, 'deny', 'Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup().', ['pglite']),
+  ...rows(Object.keys(ROLE_LABELS) as Role[], ['client_notes'], WRITES, 'deny', 'Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes).', ['pglite']),
+  ...rows(['org_owner', 'org_staff'], ['client_notes'], ['read'], 'allow', 'Retained practice-only read for one release (unchanged user_can_manage_client predicate).', ['pglite']),
   ...rows(['org_owner', 'org_staff'], ['client_account_setup'], ['read'], 'allow', 'Existing user_can_read_client predicate (same as the legacy tag tables).', ['pglite']),
   ...rows(['business_owner', 'client_viewer', 'standing_viewer'], ['client_bank_account_classifications'], ['read'], 'allow', 'Existing exact-client read predicate only; relationship and standing access remain read-only.', ['pglite']),
   // ---------------------------------------------------------------- deny-all
