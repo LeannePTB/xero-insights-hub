@@ -89,6 +89,7 @@ describe('saved scenarios', () => {
       await expect(asUser(uid, () => db.query(`update public.client_cashflow_scenarios set name='x'`))).rejects.toThrow();
     }
   });
+  it('debug', async () => { console.log('ID', id, (await db.query('select id, client_id from public.client_cashflow_scenarios')).rows, (await asUser(owner, () => db.query<any>('select app_private.user_can_write_client(auth.uid(), $1) w, auth.uid() u', [client]))).rows); });
   it('shared flag: hidden from the Business Owner until shared; Viewer never sees it', async () => {
     expect((await read(business)).rows).toHaveLength(0);
     await asUser(owner, () => db.query('select public.set_cashflow_scenario_shared($1,true)', [id]));
