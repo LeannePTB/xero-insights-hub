@@ -635,7 +635,7 @@ export function computeHealthChecks(input: HealthInputs): HealthChecks {
       title: "Customers Paying",
       rows: [
         { label: "Late Payers", value: `${share.toFixed(0)}%` },
-        { label: `${LATE_AFTER_DAYS} Days Overdue`, value: money(debtors.late) },
+        { label: `${LATE_AFTER_DAYS}+ Days Overdue`, value: money(debtors.late) },
         { label: `${RECENT_DEBTOR_DAYS}+ Days Overdue`, value: money(debtors.old) },
         { label: "Total Owing", value: money(debtors.recent + debtors.old) },
       ],
