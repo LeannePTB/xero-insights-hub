@@ -60,6 +60,7 @@ beforeAll(async () => {
   db = new PGlite();
   await db.exec(readFileSync('tests/fixtures/rls-schema.sql', 'utf8'));
   await db.exec(`
+    alter table public.client_cashflow_scenarios alter column id set default gen_random_uuid(), alter column shared_with_client set default false, alter column created_at set default now(), alter column updated_at set default now(), alter column payload set default '{}'::jsonb;
     insert into auth.users(id,email) values ('${owner}','o@example.invalid'),('${business}','b@example.invalid'),('${viewer}','v@example.invalid');
     insert into auth.sessions(id,user_id,created_at) select id,id,now() from auth.users;
     insert into public.firms(id,name,owner_user_id) values('${org}','Synthetic organisation','${owner}');
@@ -89,7 +90,6 @@ describe('saved scenarios', () => {
       await expect(asUser(uid, () => db.query(`update public.client_cashflow_scenarios set name='x'`))).rejects.toThrow();
     }
   });
-  it('debug', async () => { console.log('ID', id, (await db.query('select id, client_id from public.client_cashflow_scenarios')).rows, (await asUser(owner, () => db.query<any>('select app_private.user_can_write_client(auth.uid(), $1) w, auth.uid() u', [client]))).rows); });
   it('shared flag: hidden from the Business Owner until shared; Viewer never sees it', async () => {
     expect((await read(business)).rows).toHaveLength(0);
     await asUser(owner, () => db.query('select public.set_cashflow_scenario_shared($1,true)', [id]));
