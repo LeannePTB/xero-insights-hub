@@ -73,6 +73,7 @@ create table public.billing_events (id uuid, firm_id uuid, stripe_event_id text,
 create table public.card_catalogue (card_key text, package text, module_key text, label text, description text, sort_order integer, updated_at timestamp with time zone, updated_by uuid, report_sections text[], status text, hide_from_coming_soon boolean);
 create table public.card_modules (module_key text, label text, description text, sort_order integer, updated_at timestamp with time zone, updated_by uuid);
 create table public.client_access (id uuid, client_id uuid, user_id uuid, tier text, created_at timestamp with time zone, updated_at timestamp with time zone, relationship client_access_relationship, inviter_label text);
+create table public.client_account_setup (id uuid, client_id uuid, tenant_id text, account_id uuid, setup_group text, value text, wages_variable boolean, confirmed boolean, account_name text, match_status text, updated_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_bank_account_classifications (client_id uuid, tenant_id text, account_id uuid, classification text, updated_by uuid, updated_at timestamp with time zone);
 create table public.client_cards (client_id uuid, cards text[], created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_cost_classifications (id uuid, client_id uuid, tenant_id text, account_name text, classification text, created_at timestamp with time zone, updated_at timestamp with time zone, is_wages boolean);
@@ -4309,6 +4310,7 @@ alter table public.billing_events enable row level security;
 alter table public.card_catalogue enable row level security;
 alter table public.card_modules enable row level security;
 alter table public.client_access enable row level security;
+alter table public.client_account_setup enable row level security;
 alter table public.client_bank_account_classifications enable row level security;
 alter table public.client_cards enable row level security;
 alter table public.client_cost_classifications enable row level security;
@@ -4465,6 +4467,14 @@ grant SELECT on table public.client_access to service_role;
 grant TRIGGER on table public.client_access to service_role;
 grant TRUNCATE on table public.client_access to service_role;
 grant UPDATE on table public.client_access to service_role;
+grant SELECT on table public.client_account_setup to authenticated;
+grant DELETE on table public.client_account_setup to service_role;
+grant INSERT on table public.client_account_setup to service_role;
+grant REFERENCES on table public.client_account_setup to service_role;
+grant SELECT on table public.client_account_setup to service_role;
+grant TRIGGER on table public.client_account_setup to service_role;
+grant TRUNCATE on table public.client_account_setup to service_role;
+grant UPDATE on table public.client_account_setup to service_role;
 grant SELECT on table public.client_bank_account_classifications to authenticated;
 grant DELETE on table public.client_bank_account_classifications to service_role;
 grant INSERT on table public.client_bank_account_classifications to service_role;
@@ -4481,10 +4491,7 @@ grant SELECT on table public.client_cards to service_role;
 grant TRIGGER on table public.client_cards to service_role;
 grant TRUNCATE on table public.client_cards to service_role;
 grant UPDATE on table public.client_cards to service_role;
-grant DELETE on table public.client_cost_classifications to authenticated;
-grant INSERT on table public.client_cost_classifications to authenticated;
 grant SELECT on table public.client_cost_classifications to authenticated;
-grant UPDATE on table public.client_cost_classifications to authenticated;
 grant DELETE on table public.client_cost_classifications to service_role;
 grant INSERT on table public.client_cost_classifications to service_role;
 grant REFERENCES on table public.client_cost_classifications to service_role;
@@ -4551,10 +4558,7 @@ grant SELECT on table public.client_reports to service_role;
 grant TRIGGER on table public.client_reports to service_role;
 grant TRUNCATE on table public.client_reports to service_role;
 grant UPDATE on table public.client_reports to service_role;
-grant DELETE on table public.client_statutory_accounts to authenticated;
-grant INSERT on table public.client_statutory_accounts to authenticated;
 grant SELECT on table public.client_statutory_accounts to authenticated;
-grant UPDATE on table public.client_statutory_accounts to authenticated;
 grant DELETE on table public.client_statutory_accounts to service_role;
 grant INSERT on table public.client_statutory_accounts to service_role;
 grant REFERENCES on table public.client_statutory_accounts to service_role;
@@ -5230,6 +5234,11 @@ create policy mfa_aal2_required on public.card_modules as restrictive for all to
 create policy "manage client access by firm (read)" on public.client_access as permissive for select to authenticated using (app_private.user_can_manage_client(auth.uid(), client_id));
 create policy mfa_aal2_required on public.client_access as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "viewers read own access" on public.client_access as permissive for select to authenticated using ((user_id = auth.uid()));
+create policy account_setup_read on public.client_account_setup as permissive for select to authenticated using (app_private.user_can_read_client(auth.uid(), client_id));
+create policy account_setup_tax_support_read on public.client_account_setup as permissive for select to authenticated using (((setup_group = 'tax'::text) AND (EXISTS ( SELECT 1
+   FROM clients c
+  WHERE ((c.id = client_account_setup.client_id) AND (c.firm_id IS NOT NULL) AND app_private.platform_staff_can_access_firm(auth.uid(), c.firm_id))))));
+create policy mfa_aal2_required on public.client_account_setup as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy client_bank_classifications_read on public.client_bank_account_classifications as permissive for select to authenticated using (app_private.user_can_read_client(auth.uid(), client_id));
 create policy mfa_aal2_required on public.client_bank_account_classifications as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "client cards readable by client read access" on public.client_cards as permissive for select to authenticated using ((app_private.is_aal2() AND app_private.user_can_read_client(auth.uid(), client_id)));
@@ -5648,4 +5657,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: b6b7ce3310ec2dfdeff9610bdc5c6f05d29f330501eb40a26e5f0c776c6e1586
+-- catalogue-fingerprint: a99403124d604c955c0f69f92ef3c747bd5216c39dd71ffcc490687df6bf2968
