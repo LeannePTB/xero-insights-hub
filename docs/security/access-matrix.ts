@@ -101,6 +101,7 @@ export const CLIENT_DATA_TABLES = [
   "client_rental_properties",
   "client_statutory_accounts",
   "client_bank_account_classifications",
+  "client_account_setup",
   "client_subscriptions",
   "client_reports",
   "reconciliation_snapshots",
@@ -214,7 +215,7 @@ const SERVER_WRITTEN_TABLES = [
 const MEMBER_MANAGED_TABLES = CLIENT_DATA_TABLES.filter(
   (t) =>
     !(SERVER_WRITTEN_TABLES as readonly string[]).includes(t) &&
-    !["clients", "client_subscriptions", "report_cache", "client_access", "client_income_tax_instalments", "client_rental_properties", "client_bank_account_classifications"].includes(t),
+    !["clients", "client_subscriptions", "report_cache", "client_access", "client_income_tax_instalments", "client_rental_properties", "client_bank_account_classifications", "client_cost_classifications", "client_statutory_accounts", "client_account_setup"].includes(t),
 );
 
 export const MATRIX: MatrixRow[] = [
@@ -249,6 +250,8 @@ export const MATRIX: MatrixRow[] = [
     ['save_client_bank_account_classification() for another client', 'save_client_bank_account_classification() with another tenant', 'save_client_bank_account_classification() with unknown account', 'save_client_bank_account_classification() with invalid classification'],
     ['execute'], 'deny', 'IDs are filters, never grants; strict account validation.', ['pglite'],
   ),
+  ...rows(Object.keys(ROLE_LABELS) as Role[], ['client_cost_classifications', 'client_statutory_accounts', 'client_account_setup'], WRITES, 'deny', 'Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup().', ['pglite']),
+  ...rows(['org_owner', 'org_staff'], ['client_account_setup'], ['read'], 'allow', 'Existing user_can_read_client predicate (same as the legacy tag tables).', ['pglite']),
   ...rows(['business_owner', 'client_viewer', 'standing_viewer'], ['client_bank_account_classifications'], ['read'], 'allow', 'Existing exact-client read predicate only; relationship and standing access remain read-only.', ['pglite']),
   // ---------------------------------------------------------------- deny-all
   ...rows(
@@ -558,10 +561,10 @@ export const MATRIX: MatrixRow[] = [
     role: "org_owner",
     resource: "reset a cost classification to Unclassified deletes its stored row",
     operation: "execute",
-    expect: "allow",
+    expect: "deny",
     rule: "PK 1 / Spec §3 — the existing caller-scoped delete restores the fixed calculation fallback without storing a new classification value",
     layers: ["pglite"],
-    note: "The UI-only Unclassified choice calls removeCostClassifications. Absence of the row remains the resolver's existing fixed fallback; no unclassified database value or access path exists.",
+    note: "17 Oct: retired with the legacy table (now read-only); Account setup clears a choice through save_client_account_setup(). Previously: the UI-only Unclassified choice called removeCostClassifications. Absence of the row remains the resolver's existing fixed fallback; no unclassified database value or access path exists.",
   },
 
   // ---------------- Batch 2 relationship foundation (13 Sep 2026) --------

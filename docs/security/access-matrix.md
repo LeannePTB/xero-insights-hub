@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **2770**. Known failures: **0**.
+Rows: **2982**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -36,6 +36,16 @@ None.
 | save_client_bank_account_classification() with another tenant | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
 | save_client_bank_account_classification() with unknown account | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
 | save_client_bank_account_classification() with invalid classification | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | read | ALLOW | pglite | Existing user_can_read_client predicate (same as the legacy tag tables). |  |
 | firms | update | DENY | pglite, live | Spec §4; no UPDATE grant for authenticated — organisation name, logo and default cards are changed by server code, never by a direct REST write |  |
 | firms | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | firm_members | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
@@ -49,6 +59,7 @@ None.
 | client_rental_properties | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_statutory_accounts | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_bank_account_classifications | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_account_setup | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_subscriptions | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_reports | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | reconciliation_snapshots | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
@@ -74,15 +85,9 @@ None.
 | client_notes | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_notes | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_notes | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_cost_classifications | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_cost_classifications | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_cost_classifications | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_true_breakeven_inputs | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_true_breakeven_inputs | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_true_breakeven_inputs | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_statutory_accounts | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_statutory_accounts | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_statutory_accounts | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | unreconciled_uploads | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | unreconciled_uploads | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | unreconciled_uploads | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
@@ -142,7 +147,7 @@ None.
 | client_rental_properties | insert | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
 | client_rental_properties | update | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
 | client_rental_properties | delete | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
-| reset a cost classification to Unclassified deletes its stored row | execute | ALLOW | pglite | PK 1 / Spec §3 — the existing caller-scoped delete restores the fixed calculation fallback without storing a new classification value | The UI-only Unclassified choice calls removeCostClassifications. Absence of the row remains the resolver's existing fixed fallback; no unclassified database value or access path exists. |
+| reset a cost classification to Unclassified deletes its stored row | execute | DENY | pglite | PK 1 / Spec §3 — the existing caller-scoped delete restores the fixed calculation fallback without storing a new classification value | 17 Oct: retired with the legacy table (now read-only); Account setup clears a choice through save_client_account_setup(). Previously: the UI-only Unclassified choice called removeCostClassifications. Absence of the row remains the resolver's existing fixed fallback; no unclassified database value or access path exists. |
 | set_client_access_relationship() for own organisation | execute | ALLOW | pglite, live | PK paths D/E — owner classifies selected-client access through an audited function |  |
 | two Business owners on one client remain independently client-scoped | execute | ALLOW | pglite, live | PK path E — several Business owners are valid; each exact client_access row stands alone |  |
 | removing membership preserves the Business owner relationship row | execute | ALLOW | pglite, live | PK path E — membership removal does not silently delete independently granted client access |  |
@@ -311,6 +316,15 @@ None.
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | clients | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | clients | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | clients | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
@@ -351,6 +365,10 @@ None.
 | client_bank_account_classifications | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_bank_account_classifications | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_bank_account_classifications | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_account_setup | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_account_setup | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_account_setup | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_account_setup | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_reports | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_reports | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_reports | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
@@ -580,6 +598,15 @@ None.
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | firms | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
 | firm_members | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
 | clients | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
@@ -592,6 +619,7 @@ None.
 | client_rental_properties | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
 | client_statutory_accounts | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
 | client_bank_account_classifications | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| client_account_setup | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
 | client_subscriptions | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
 | client_reports | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
 | reconciliation_snapshots | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
@@ -638,6 +666,9 @@ None.
 | client_bank_account_classifications | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
 | client_bank_account_classifications | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
 | client_bank_account_classifications | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_account_setup | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_account_setup | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_account_setup | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
 | client_reports | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
 | client_reports | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
 | client_reports | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
@@ -786,6 +817,15 @@ None.
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | clients | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | clients | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | clients | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
@@ -826,6 +866,10 @@ None.
 | client_bank_account_classifications | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_bank_account_classifications | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_bank_account_classifications | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_account_setup | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_account_setup | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_account_setup | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_account_setup | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_reports | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_reports | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_reports | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
@@ -924,6 +968,15 @@ None.
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | clients | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | clients | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | clients | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
@@ -964,6 +1017,10 @@ None.
 | client_bank_account_classifications | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_bank_account_classifications | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_bank_account_classifications | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_account_setup | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_account_setup | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_account_setup | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_account_setup | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_reports | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_reports | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_reports | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
@@ -1062,6 +1119,15 @@ None.
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -1110,6 +1176,10 @@ None.
 | client_bank_account_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_bank_account_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_bank_account_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -1250,6 +1320,15 @@ None.
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -1298,6 +1377,10 @@ None.
 | client_bank_account_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_bank_account_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_bank_account_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -1469,6 +1552,16 @@ None.
 | save_client_bank_account_classification() with another tenant | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
 | save_client_bank_account_classification() with unknown account | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
 | save_client_bank_account_classification() with invalid classification | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | read | ALLOW | pglite | Existing user_can_read_client predicate (same as the legacy tag tables). |  |
 | firms | update | DENY | pglite, live | Spec §4; no UPDATE grant for authenticated — organisation name, logo and default cards are changed by server code, never by a direct REST write |  |
 | firms | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | firm_members | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
@@ -1482,6 +1575,7 @@ None.
 | client_rental_properties | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_statutory_accounts | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_bank_account_classifications | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_account_setup | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_subscriptions | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_reports | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | reconciliation_snapshots | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
@@ -1507,15 +1601,9 @@ None.
 | client_notes | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_notes | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_notes | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_cost_classifications | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_cost_classifications | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_cost_classifications | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_true_breakeven_inputs | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_true_breakeven_inputs | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_true_breakeven_inputs | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_statutory_accounts | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_statutory_accounts | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_statutory_accounts | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | unreconciled_uploads | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | unreconciled_uploads | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | unreconciled_uploads | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
@@ -1729,6 +1817,15 @@ None.
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -1777,6 +1874,10 @@ None.
 | client_bank_account_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_bank_account_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_bank_account_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -1939,6 +2040,15 @@ None.
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -1987,6 +2097,10 @@ None.
 | client_bank_account_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_bank_account_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_bank_account_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -2081,6 +2195,15 @@ None.
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_bank_account_classifications | read | ALLOW | pglite | Existing exact-client read predicate only; relationship and standing access remain read-only. |  |
 | firms | update | DENY | pglite, live | Spec §4; no UPDATE grant for authenticated — organisation name, logo and default cards are changed by server code, never by a direct REST write |  |
 | clients | read | ALLOW | pglite, live | Spec §3 client viewer |  |
@@ -2240,6 +2363,15 @@ None.
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_bank_account_classifications | read | ALLOW | pglite | Existing exact-client read predicate only; relationship and standing access remain read-only. |  |
 | client_notes | read | DENY | pglite | Owner 14 Oct: notes are practice-only; Viewers and Business Owners see a note only inside a stored final/sent report payload |  |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
@@ -2398,6 +2530,15 @@ None.
 | save_client_bank_account_classification() with another tenant | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
 | save_client_bank_account_classification() with unknown account | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
 | save_client_bank_account_classification() with invalid classification | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_bank_account_classifications | read | ALLOW | pglite | Existing exact-client read predicate only; relationship and standing access remain read-only. |  |
 | client_notes | read | DENY | pglite | Owner 14 Oct: notes are practice-only; Viewers and Business Owners see a note only inside a stored final/sent report payload |  |
 | client_income_tax_instalments | read | ALLOW | pglite, live | Path A / Path E — authorised readers can see exact-client tax instalments; aal2 required |  |
@@ -2486,6 +2627,15 @@ None.
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -2534,6 +2684,10 @@ None.
 | client_bank_account_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_bank_account_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_bank_account_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -2634,6 +2788,15 @@ None.
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -2682,6 +2845,10 @@ None.
 | client_bank_account_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_bank_account_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_bank_account_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_account_setup | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -2784,6 +2951,15 @@ None.
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
 | set_client_income_tax_instalment_frequency() | execute | DENY | pglite | Only active organisation members at aal2 may change the instalment setting; read grants never write |  |
 | client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
@@ -2811,6 +2987,15 @@ None.
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
@@ -2833,6 +3018,15 @@ None.
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
@@ -2854,6 +3048,15 @@ None.
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | server fn: approveSupportAccess (own request) | update | DENY | pglite, live | PK 2 path B; Spec §7 (a super admin never approves their own access) |  |
 | client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
@@ -2875,6 +3078,15 @@ None.
 | client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_cost_classifications | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_cost_classifications | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_statutory_accounts | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
