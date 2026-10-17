@@ -45,7 +45,7 @@ export function WorkspaceSwitcher({ workspace, canSeeSystem, organisations, clie
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <SidebarMenuButton size="lg" tooltip={current} className="border border-border/60">
+            <SidebarMenuButton size="lg" tooltip={current} className="rounded-lg border border-sidebar-border bg-card">
               <Icon className="h-4 w-4" />
               <span className="flex min-w-0 flex-1 flex-col text-left leading-tight">
                 <span className="truncate text-sm font-semibold">{current}</span>

@@ -220,9 +220,9 @@ export function AppSidebar({ badges = {} }: { badges?: Record<string, number> })
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip={backLink.label}>
-                  <Link to={backLink.to as any} params={backLink.params as any} onClick={onNavigate} className="text-muted-foreground">
+                  <Link to={backLink.to as any} params={backLink.params as any} onClick={onNavigate} className="h-auto rounded-full border border-sidebar-border bg-tint-panel px-3 py-1.5 text-xs text-emphasis">
                     <ArrowLeft className="h-4 w-4" />
-                    <span className="truncate">{backLink.label}</span>
+                    <span className="truncate">{backLink.label.startsWith("Back to ") ? <><strong>Back to</strong> {backLink.label.slice(8)}</> : <strong>{backLink.label}</strong>}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -233,7 +233,7 @@ export function AppSidebar({ badges = {} }: { badges?: Record<string, number> })
           <SidebarGroup key={group.id}>
             {group.id !== "practice" && group.id !== "client" && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
             <SidebarGroupContent>
-              <SidebarMenu>
+              <SidebarMenu className="gap-2.5">
                 {group.items.map((item) => {
                   const badge = item.badgeKey ? badges[item.badgeKey] : undefined;
                   if (item.children?.length) {
@@ -243,7 +243,7 @@ export function AppSidebar({ badges = {} }: { badges?: Record<string, number> })
                       <Collapsible key={`${item.id}-${branchActive}`} defaultOpen={branchActive} asChild className="group/collapsible">
                         <SidebarMenuItem>
                           <CollapsibleTrigger asChild>
-                            <SidebarMenuButton tooltip={item.label} isActive={branchActive}>
+                            <SidebarMenuButton tooltip={item.label} isActive={branchActive} className="h-auto min-h-9 rounded-lg border border-sidebar-border bg-card py-2 text-sidebar-foreground data-[active=true]:border-sidebar-accent">
                               <Icon className="h-4 w-4" />
                               <span>{item.label}</span>
                               <ChevronRight className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
@@ -253,7 +253,7 @@ export function AppSidebar({ badges = {} }: { badges?: Record<string, number> })
                             <SidebarMenuSub>
                               {item.children.map((child) => (
                                 <SidebarMenuSubItem key={child.id}>
-                                  <SidebarMenuSubButton asChild isActive={isItemActive(child, pathname, params)}>
+                                  <SidebarMenuSubButton asChild isActive={isItemActive(child, pathname, params)} className="rounded-lg border border-sidebar-border bg-card data-[active=true]:border-sidebar-accent">
                                     <Link to={child.to as any} params={params as any} onClick={onNavigate}>
                                       <span>{child.label}</span>
                                     </Link>
@@ -268,7 +268,7 @@ export function AppSidebar({ badges = {} }: { badges?: Record<string, number> })
                   }
                   return (
                     <SidebarMenuItem key={item.id}>
-                      <SidebarMenuButton asChild isActive={isItemActive(item, pathname, params)} tooltip={item.label}>
+                      <SidebarMenuButton asChild isActive={isItemActive(item, pathname, params)} tooltip={item.label} className="h-auto min-h-9 rounded-lg border border-sidebar-border bg-card py-2 text-sidebar-foreground data-[active=true]:border-sidebar-accent">
                         {renderLink(item, item.label)}
                       </SidebarMenuButton>
                       {badge ? <SidebarMenuBadge>{badge}</SidebarMenuBadge> : null}
@@ -286,9 +286,9 @@ export function AppSidebar({ badges = {} }: { badges?: Record<string, number> })
         )}
       </SidebarContent>
       <SidebarFooter>
-        <SidebarMenu>
+        <SidebarMenu className="gap-2.5">
           <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="My account" isActive={pathname.startsWith("/settings/account")}>
+            <SidebarMenuButton asChild tooltip="My account" isActive={pathname.startsWith("/settings/account")} className="h-auto min-h-9 rounded-lg border border-sidebar-border bg-card py-2 text-sidebar-foreground data-[active=true]:border-sidebar-accent">
               <Link to="/settings/account" onClick={onNavigate}>
                 <UserCircle className="h-4 w-4" />
                 <span>My account</span>
@@ -296,7 +296,7 @@ export function AppSidebar({ badges = {} }: { badges?: Record<string, number> })
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={() => void signOut()} tooltip="Sign out" data-sign-out>
+            <SidebarMenuButton onClick={() => void signOut()} tooltip="Sign out" data-sign-out className="h-auto min-h-9 rounded-lg border border-sidebar-border bg-card py-2 text-sidebar-foreground data-[active=true]:border-sidebar-accent">
               <LogOut className="h-4 w-4" />
               <span>Sign out</span>
             </SidebarMenuButton>
