@@ -268,6 +268,8 @@ export type SuperannuationPosition =
       /** Number of whole paydays the balance covers, when it matches. */
       unpaidPaydays: number | null;
       paydayRows: { payday: string; amount: number }[];
+      /** Super from pay runs for the current SG quarter and the last finished one. */
+      sgQuarters: import("@/lib/payday-super").SgQuarterRow[];
       /** Oldest payday the balance FULLY covers. Never a payday merely reached. */
       oldestUnpaidPayday: string | null;
       /** Balance not accounted for by the paydays above. Never pushed onto an
@@ -370,6 +372,11 @@ export const getSuperannuationPosition = createServerFn({ method: "POST" })
       }
     }
 
+    const { sgQuarterRows } = await import("@/lib/payday-super");
+    const sgQuarters = runs.status === "available"
+      ? sgQuarterRows(sydneyDate(), runs.payRuns.map((r) => ({ paymentDate: r.paymentDate ?? null, super: r.super })))
+      : [];
+
     return {
       source,
       status: "available",
@@ -378,6 +385,7 @@ export const getSuperannuationPosition = createServerFn({ method: "POST" })
       matchesPaydays,
       unpaidPaydays,
       paydayRows,
+      sgQuarters,
       oldestUnpaidPayday,
       payrollStatus,
       residue,

@@ -61,3 +61,29 @@ export function paydaySuperFlag(due: string, today = sydneyDate()): "Overdue" | 
   if (due === today) return "Due today";
   return null;
 }
+
+export type SgQuarterRow = { label: string; from: string; to: string; due: string; superFromPayRuns: number; current: boolean };
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * Super from pay runs (by payment date) for the last finished SG quarter and
+ * the current one, oldest first. Quarterly SG due date: the 28th of the month
+ * after the quarter ends (Jul–Sep → 28 Oct, Oct–Dec → 28 Jan). Never a payment.
+ */
+export function sgQuarterRows(today: string, runs: { paymentDate: string | null; super: number }[]): SgQuarterRow[] {
+  dateValue(today);
+  const y = +today.slice(0, 4), m = +today.slice(5, 7);
+  const q0 = Math.floor((m - 1) / 3) * 3; // 0-based start month of current quarter
+  const quarter = (year: number, startMonth: number, current: boolean): SgQuarterRow => {
+    const from = `${year}-${String(startMonth + 1).padStart(2, "0")}-01`;
+    const end = new Date(Date.UTC(year, startMonth + 3, 0)).toISOString().slice(0, 10);
+    const dueY = startMonth === 9 ? year + 1 : year;
+    const dueM = (startMonth + 3) % 12;
+    const due = `${dueY}-${String(dueM + 1).padStart(2, "0")}-28`;
+    const total = runs.filter((r) => r.paymentDate && r.paymentDate >= from && r.paymentDate <= end).reduce((s, r) => s + (r.super || 0), 0);
+    return { label: `${MONTHS[startMonth]}–${MONTHS[startMonth + 2]} ${year}`, from, to: end, due, superFromPayRuns: Math.round(total * 100) / 100, current };
+  };
+  const prev = q0 === 0 ? quarter(y - 1, 9, false) : quarter(y, q0 - 3, false);
+  return [prev, quarter(y, q0, true)];
+}
