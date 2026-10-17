@@ -5,7 +5,7 @@ import { DashboardCardHeader } from "./DashboardCardHeader";
 import { XeroErrorNotice } from "./XeroLoadState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getHealthChecks } from "@/lib/health.functions";
-import { STATUS_LABEL, type CheckStatus } from "@/lib/health/health-checks";
+import { HealthPanels } from "./HealthPanels";
 
 type Props = {
   tenantId?: string;
@@ -14,21 +14,6 @@ type Props = {
   clientId?: string;
   /** Released to Business Owners (System Admin setting). */
   released?: boolean;
-};
-
-const PILL: Record<CheckStatus, string> = {
-  green: "border-success/30 bg-success/10 text-success",
-  watch: "border-info/30 bg-info/10 text-info",
-  red: "border-destructive/30 bg-destructive/10 text-destructive",
-  na: "border-border bg-card text-muted-foreground",
-};
-
-/** Light status tint for each check tile; text stays on the default foreground for AA contrast. */
-const TILE: Record<CheckStatus, string> = {
-  green: "border-success/30 bg-success/5",
-  watch: "border-info/30 bg-info/5",
-  red: "border-destructive/30 bg-destructive/5",
-  na: "border-border/60 bg-card",
 };
 
 /** Business Health: three plain checks from last night's saved Xero figures. */
@@ -77,21 +62,7 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId, relea
 
       {q.data && (
         <>
-          <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {q.data.checks.map((c) => (
-              <li key={c.key} className={`flex flex-col rounded-xl border p-2.5 ${TILE[c.status]}`}>
-                <div className="flex items-start justify-between gap-2">
-                  <p className="min-w-0 text-sm font-medium text-foreground">{c.question}</p>
-                  <span className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium ${PILL[c.status]}`}>
-                    {STATUS_LABEL[c.status]}
-                  </span>
-                </div>
-                <p className="mt-0.5 font-display text-base font-semibold tabular-nums text-foreground">{c.figure}</p>
-                {c.detail && <p className="mt-0.5 text-xs text-muted-foreground">{c.detail}</p>}
-                <p className="mt-1 text-xs text-muted-foreground">{c.meaning}</p>
-              </li>
-            ))}
-          </ul>
+          <HealthPanels checks={q.data.checks} />
           {q.data.info.length > 0 && (
             <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               {q.data.info.map((line) => (
