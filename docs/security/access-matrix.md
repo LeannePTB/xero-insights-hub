@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **2982**. Known failures: **0**.
+Rows: **3038**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -45,6 +45,10 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | read | ALLOW | pglite | Retained practice-only read for one release (unchanged user_can_manage_client predicate). |  |
 | client_account_setup | read | ALLOW | pglite | Existing user_can_read_client predicate (same as the legacy tag tables). |  |
 | firms | update | DENY | pglite, live | Spec §4; no UPDATE grant for authenticated — organisation name, logo and default cards are changed by server code, never by a direct REST write |  |
 | firms | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
@@ -82,9 +86,6 @@ None.
 | client_xero_orgs | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_xero_orgs | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_xero_orgs | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_notes | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_notes | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_notes | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_true_breakeven_inputs | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_true_breakeven_inputs | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_true_breakeven_inputs | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
@@ -325,6 +326,9 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
 | clients | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | clients | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | clients | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
@@ -607,6 +611,9 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
 | firms | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
 | firm_members | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
 | clients | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
@@ -826,6 +833,9 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
 | clients | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | clients | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | clients | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
@@ -977,6 +987,9 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
 | clients | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | clients | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | clients | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
@@ -1128,6 +1141,9 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
 | firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -1329,6 +1345,9 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
 | firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -1561,6 +1580,10 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | read | ALLOW | pglite | Retained practice-only read for one release (unchanged user_can_manage_client predicate). |  |
 | client_account_setup | read | ALLOW | pglite | Existing user_can_read_client predicate (same as the legacy tag tables). |  |
 | firms | update | DENY | pglite, live | Spec §4; no UPDATE grant for authenticated — organisation name, logo and default cards are changed by server code, never by a direct REST write |  |
 | firms | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
@@ -1598,9 +1621,6 @@ None.
 | client_xero_orgs | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_xero_orgs | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_xero_orgs | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_notes | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_notes | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_notes | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_true_breakeven_inputs | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_true_breakeven_inputs | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_true_breakeven_inputs | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
@@ -1826,6 +1846,9 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
 | firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -2049,6 +2072,9 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
 | firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -2204,6 +2230,9 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
 | client_bank_account_classifications | read | ALLOW | pglite | Existing exact-client read predicate only; relationship and standing access remain read-only. |  |
 | firms | update | DENY | pglite, live | Spec §4; no UPDATE grant for authenticated — organisation name, logo and default cards are changed by server code, never by a direct REST write |  |
 | clients | read | ALLOW | pglite, live | Spec §3 client viewer |  |
@@ -2372,6 +2401,9 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
 | client_bank_account_classifications | read | ALLOW | pglite | Existing exact-client read predicate only; relationship and standing access remain read-only. |  |
 | client_notes | read | DENY | pglite | Owner 14 Oct: notes are practice-only; Viewers and Business Owners see a note only inside a stored final/sent report payload |  |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
@@ -2539,6 +2571,9 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
 | client_bank_account_classifications | read | ALLOW | pglite | Existing exact-client read predicate only; relationship and standing access remain read-only. |  |
 | client_notes | read | DENY | pglite | Owner 14 Oct: notes are practice-only; Viewers and Business Owners see a note only inside a stored final/sent report payload |  |
 | client_income_tax_instalments | read | ALLOW | pglite, live | Path A / Path E — authorised readers can see exact-client tax instalments; aal2 required |  |
@@ -2636,6 +2671,9 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
 | firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -2797,6 +2835,9 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
 | firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -2960,6 +3001,9 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
 | set_client_income_tax_instalment_frequency() | execute | DENY | pglite | Only active organisation members at aal2 may change the instalment setting; read grants never write |  |
 | client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
@@ -2996,6 +3040,9 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
@@ -3027,6 +3074,9 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
@@ -3057,6 +3107,9 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
 | server fn: approveSupportAccess (own request) | update | DENY | pglite, live | PK 2 path B; Spec §7 (a super admin never approves their own access) |  |
 | client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
@@ -3087,6 +3140,9 @@ None.
 | client_account_setup | insert | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | update | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
 | client_account_setup | delete | DENY | pglite | Owner 17 Oct: legacy tag tables are read-only for one release; Account setup rows change only through the audited AAL2 save_client_account_setup(). |  |
+| client_notes | insert | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | update | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
+| client_notes | delete | DENY | pglite | Owner 17 Oct: Notes retired, replaced by the report Message to client; client_notes is read-only for one release (no deletes). |  |
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | delete | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
