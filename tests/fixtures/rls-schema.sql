@@ -76,6 +76,7 @@ create table public.client_access (id uuid, client_id uuid, user_id uuid, tier t
 create table public.client_account_setup (id uuid, client_id uuid, tenant_id text, account_id uuid, setup_group text, value text, wages_variable boolean, confirmed boolean, account_name text, match_status text, updated_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_bank_account_classifications (client_id uuid, tenant_id text, account_id uuid, classification text, updated_by uuid, updated_at timestamp with time zone);
 create table public.client_cards (client_id uuid, cards text[], created_at timestamp with time zone, updated_at timestamp with time zone);
+create table public.client_cashflow_scenarios (id uuid, client_id uuid, name text, payload jsonb, report_table jsonb, report_period_end date, shared_with_client boolean, created_by uuid, created_at timestamp with time zone, updated_by uuid, updated_at timestamp with time zone);
 create table public.client_cost_classifications (id uuid, client_id uuid, tenant_id text, account_name text, classification text, created_at timestamp with time zone, updated_at timestamp with time zone, is_wages boolean);
 create table public.client_figure_history (id uuid, client_id uuid, firm_id uuid, tenant_id text, month_end date, cash numeric, net_profit numeric, source text, fetched_at timestamp with time zone, income numeric, expenses numeric);
 create table public.client_income_tax_instalments (id uuid, client_id uuid, tenant_id text, period_start date, period_end date, amount numeric(14,2), created_by uuid, updated_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
@@ -83,7 +84,7 @@ create table public.client_key_figures (id uuid, client_id uuid, firm_id uuid, t
 create table public.client_notes (id uuid, client_id uuid, author_id uuid, body text, created_at timestamp with time zone, updated_at timestamp with time zone, include_in_report boolean);
 create table public.client_rental_properties (id uuid, client_id uuid, tenant_id text, name text, match_type text, match_ids text[], expected_amount numeric(14,2), frequency text, lease_start date, created_by uuid, updated_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_report_pending_videos (client_id uuid, period_end date, video_url text, video_heading text, video_message text, video_set_by uuid, video_set_at timestamp with time zone);
-create table public.client_reports (id uuid, client_id uuid, firm_id uuid, tenant_id text, report_key text, period_end date, title text, payload jsonb, payload_version integer, pdf_path text, status text, version integer, complete boolean, generated_by uuid, generated_at timestamp with time zone, finalised_at timestamp with time zone, sent_at timestamp with time zone, sent_to text[], video_url text, video_heading text, video_message text, video_set_by uuid, video_set_at timestamp with time zone);
+create table public.client_reports (id uuid, client_id uuid, firm_id uuid, tenant_id text, report_key text, period_end date, title text, payload jsonb, payload_version integer, pdf_path text, status text, version integer, complete boolean, generated_by uuid, generated_at timestamp with time zone, finalised_at timestamp with time zone, sent_at timestamp with time zone, sent_to text[], video_url text, video_heading text, video_message text, video_set_by uuid, video_set_at timestamp with time zone, scenario_snapshot jsonb);
 create table public.client_statutory_accounts (id uuid, client_id uuid, tenant_id text, account_name text, category statutory_category, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_subscriptions (id uuid, client_id uuid, stripe_customer_id text, stripe_subscription_id text, plan_name text, subscription_type client_subscription_type, status client_subscription_status, current_period_end timestamp with time zone, trial_end timestamp with time zone, past_due_since timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone, dashboard_tier dashboard_tier, promotion_code text, coupon_id text, comp_reason text, comped_by uuid, comped_at timestamp with time zone);
 create table public.client_true_breakeven_inputs (id uuid, client_id uuid, tenant_id text, loan_principal numeric, credit_card_interest numeric, owner_drawings numeric, tax_payments numeric, ato_payment_plan numeric, equipment_finance numeric, other numeric, notes text, created_at timestamp with time zone, updated_at timestamp with time zone);
@@ -4161,6 +4162,102 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION app_private.is_client_business_owner(_user_id uuid, _client_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select case when auth.uid() is not null and _user_id is distinct from auth.uid() then false else (
+    select exists (select 1 from public.client_access ca
+      where ca.user_id = _user_id and ca.client_id = _client_id and ca.relationship = 'business_owner')
+  ) end
+$function$
+;
+CREATE OR REPLACE FUNCTION public.save_cashflow_scenario(_client_id uuid, _id uuid, _name text, _payload jsonb, _report_table jsonb)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE v_client uuid; v_id uuid; f uuid; n text := btrim(coalesce(_name,''));
+BEGIN
+  PERFORM app_private.assert_aal2();
+  IF _id IS NOT NULL THEN
+    SELECT client_id INTO v_client FROM public.client_cashflow_scenarios WHERE id = _id;
+    IF v_client IS NULL OR v_client IS DISTINCT FROM _client_id THEN RAISE EXCEPTION 'Scenario not available.' USING ERRCODE='42501'; END IF;
+  ELSE v_client := _client_id; END IF;
+  IF auth.uid() IS NULL OR v_client IS NULL OR NOT app_private.user_can_write_client(auth.uid(), v_client) THEN RAISE EXCEPTION 'Scenario not available.' USING ERRCODE='42501'; END IF;
+  IF length(n) < 1 OR length(n) > 120 OR _payload IS NULL OR jsonb_typeof(_payload) <> 'object' OR pg_column_size(_payload) > 65536
+     OR (_report_table IS NOT NULL AND (jsonb_typeof(_report_table) <> 'object' OR pg_column_size(_report_table) > 16384)) THEN
+    RAISE EXCEPTION 'Invalid scenario.'; END IF;
+  SELECT firm_id INTO f FROM public.clients WHERE id = v_client;
+  IF _id IS NULL THEN
+    INSERT INTO public.client_cashflow_scenarios(client_id, name, payload, report_table, created_by, updated_by)
+      VALUES (v_client, n, _payload, _report_table, auth.uid(), auth.uid()) RETURNING id INTO v_id;
+  ELSE
+    UPDATE public.client_cashflow_scenarios SET name = n, payload = _payload, report_table = _report_table, updated_by = auth.uid(), updated_at = now()
+      WHERE id = _id RETURNING id INTO v_id;
+  END IF;
+  INSERT INTO public.audit_log(id, actor_user_id, firm_id, action, target_type, target_id, meta)
+    VALUES (gen_random_uuid(), auth.uid(), f, CASE WHEN _id IS NULL THEN 'cashflow_scenario_created' ELSE 'cashflow_scenario_updated' END, 'client', v_client, jsonb_build_object('scenario_id', v_id));
+  RETURN v_id;
+END $function$
+;
+CREATE OR REPLACE FUNCTION public.delete_cashflow_scenario(_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE v_client uuid; f uuid;
+BEGIN
+  PERFORM app_private.assert_aal2();
+  SELECT client_id INTO v_client FROM public.client_cashflow_scenarios WHERE id = _id;
+  IF auth.uid() IS NULL OR v_client IS NULL OR NOT app_private.user_can_write_client(auth.uid(), v_client) THEN RAISE EXCEPTION 'Scenario not available.' USING ERRCODE='42501'; END IF;
+  SELECT firm_id INTO f FROM public.clients WHERE id = v_client;
+  DELETE FROM public.client_cashflow_scenarios WHERE id = _id;
+  INSERT INTO public.audit_log(id, actor_user_id, firm_id, action, target_type, target_id, meta)
+    VALUES (gen_random_uuid(), auth.uid(), f, 'cashflow_scenario_deleted', 'client', v_client, jsonb_build_object('scenario_id', _id));
+END $function$
+;
+CREATE OR REPLACE FUNCTION public.set_cashflow_scenario_shared(_id uuid, _shared boolean)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE v_client uuid; f uuid;
+BEGIN
+  PERFORM app_private.assert_aal2();
+  SELECT client_id INTO v_client FROM public.client_cashflow_scenarios WHERE id = _id;
+  IF auth.uid() IS NULL OR v_client IS NULL OR NOT app_private.user_can_write_client(auth.uid(), v_client) THEN RAISE EXCEPTION 'Scenario not available.' USING ERRCODE='42501'; END IF;
+  SELECT firm_id INTO f FROM public.clients WHERE id = v_client;
+  UPDATE public.client_cashflow_scenarios SET shared_with_client = coalesce(_shared, false), updated_by = auth.uid(), updated_at = now() WHERE id = _id;
+  INSERT INTO public.audit_log(id, actor_user_id, firm_id, action, target_type, target_id, meta)
+    VALUES (gen_random_uuid(), auth.uid(), f, CASE WHEN coalesce(_shared,false) THEN 'cashflow_scenario_shared' ELSE 'cashflow_scenario_unshared' END, 'client', v_client, jsonb_build_object('scenario_id', _id));
+END $function$
+;
+CREATE OR REPLACE FUNCTION public.set_cashflow_scenario_report(_id uuid, _period_end date)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE v_client uuid; f uuid;
+BEGIN
+  PERFORM app_private.assert_aal2();
+  SELECT client_id INTO v_client FROM public.client_cashflow_scenarios WHERE id = _id;
+  IF auth.uid() IS NULL OR v_client IS NULL OR NOT app_private.user_can_write_client(auth.uid(), v_client) THEN RAISE EXCEPTION 'Scenario not available.' USING ERRCODE='42501'; END IF;
+  SELECT firm_id INTO f FROM public.clients WHERE id = v_client;
+  IF _period_end IS NOT NULL THEN
+    UPDATE public.client_cashflow_scenarios SET report_period_end = NULL WHERE client_id = v_client AND report_period_end = _period_end AND id <> _id;
+  END IF;
+  UPDATE public.client_cashflow_scenarios SET report_period_end = _period_end, updated_by = auth.uid(), updated_at = now() WHERE id = _id;
+  INSERT INTO public.audit_log(id, actor_user_id, firm_id, action, target_type, target_id, meta)
+    VALUES (gen_random_uuid(), auth.uid(), f, CASE WHEN _period_end IS NULL THEN 'cashflow_scenario_report_cleared' ELSE 'cashflow_scenario_report_set' END, 'client', v_client, jsonb_build_object('scenario_id', _id, 'period_end', _period_end));
+END $function$
+;
 CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -4294,6 +4391,22 @@ BEGIN
  RETURN NEW;
 END $function$
 ;
+CREATE OR REPLACE FUNCTION public.attach_report_scenario()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+  IF TG_OP = 'UPDATE' AND OLD.status IN ('final','sent') AND NEW.scenario_snapshot IS DISTINCT FROM OLD.scenario_snapshot THEN
+    RAISE EXCEPTION 'This report is locked.'; END IF;
+  IF NEW.status = 'draft' AND (TG_OP = 'INSERT' OR NEW.generated_at IS DISTINCT FROM OLD.generated_at) THEN
+    SELECT CASE WHEN s.report_table IS NULL THEN NULL ELSE s.report_table || jsonb_build_object('name', s.name) END INTO NEW.scenario_snapshot
+      FROM public.client_cashflow_scenarios s WHERE s.client_id = NEW.client_id AND s.report_period_end = NEW.period_end;
+  END IF;
+  RETURN NEW;
+END $function$
+;
 alter table public.access_invites enable row level security;
 alter table public.audit_finding_snoozes enable row level security;
 alter table public.audit_findings enable row level security;
@@ -4306,6 +4419,7 @@ alter table public.client_access enable row level security;
 alter table public.client_account_setup enable row level security;
 alter table public.client_bank_account_classifications enable row level security;
 alter table public.client_cards enable row level security;
+alter table public.client_cashflow_scenarios enable row level security;
 alter table public.client_cost_classifications enable row level security;
 alter table public.client_figure_history enable row level security;
 alter table public.client_income_tax_instalments enable row level security;
@@ -4484,6 +4598,14 @@ grant SELECT on table public.client_cards to service_role;
 grant TRIGGER on table public.client_cards to service_role;
 grant TRUNCATE on table public.client_cards to service_role;
 grant UPDATE on table public.client_cards to service_role;
+grant SELECT on table public.client_cashflow_scenarios to authenticated;
+grant DELETE on table public.client_cashflow_scenarios to service_role;
+grant INSERT on table public.client_cashflow_scenarios to service_role;
+grant REFERENCES on table public.client_cashflow_scenarios to service_role;
+grant SELECT on table public.client_cashflow_scenarios to service_role;
+grant TRIGGER on table public.client_cashflow_scenarios to service_role;
+grant TRUNCATE on table public.client_cashflow_scenarios to service_role;
+grant UPDATE on table public.client_cashflow_scenarios to service_role;
 grant SELECT on table public.client_cost_classifications to authenticated;
 grant DELETE on table public.client_cost_classifications to service_role;
 grant INSERT on table public.client_cost_classifications to service_role;
@@ -5233,6 +5355,9 @@ create policy client_bank_classifications_read on public.client_bank_account_cla
 create policy mfa_aal2_required on public.client_bank_account_classifications as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "client cards readable by client read access" on public.client_cards as permissive for select to authenticated using ((app_private.is_aal2() AND app_private.user_can_read_client(auth.uid(), client_id)));
 create policy mfa_aal2_required on public.client_cards as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "Business Owners read shared cashflow scenarios" on public.client_cashflow_scenarios as permissive for select to authenticated using ((shared_with_client AND app_private.is_client_business_owner(auth.uid(), client_id)));
+create policy "Managers read cashflow scenarios" on public.client_cashflow_scenarios as permissive for select to authenticated using (app_private.user_can_write_client(auth.uid(), client_id));
+create policy mfa_aal2_required on public.client_cashflow_scenarios as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "Manage cost classifications by firm (delete)" on public.client_cost_classifications as permissive for delete to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
   WHERE ((c.id = client_cost_classifications.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
@@ -5635,6 +5760,7 @@ create policy mfa_aal2_required on public.xero_snapshot_runs as restrictive for 
 create policy "entitled users read client snapshots" on public.xero_snapshots as permissive for select to authenticated using ((user_can_access_client(auth.uid(), client_id) AND app_private.user_can_access_tenant(auth.uid(), tenant_id)));
 create policy mfa_aal2_required on public.xero_snapshots as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 CREATE TRIGGER attach_pending_report_video BEFORE INSERT OR UPDATE ON public.client_reports FOR EACH ROW EXECUTE FUNCTION attach_pending_report_video();
+CREATE TRIGGER client_reports_attach_scenario BEFORE INSERT OR UPDATE ON public.client_reports FOR EACH ROW EXECUTE FUNCTION attach_report_scenario();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.client_subscriptions FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER tg_seed_client_cards_from_org_default AFTER INSERT ON public.clients FOR EACH ROW EXECUTE FUNCTION app_private.seed_client_cards_from_org_default();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.firms FOR EACH ROW EXECUTE FUNCTION audit_table_change();
@@ -5647,4 +5773,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: 36f89beb90c0928cc01ded55f88817e9652d507d32093a1a55cd08aab2df3aa5
+-- catalogue-fingerprint: e2bb3117fa995b78fb33b58c1ca36d0b8bc8aa6e9979451bf2c3d2e21469809b

@@ -564,6 +564,56 @@ export type Database = {
           },
         ]
       }
+      client_cashflow_scenarios: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          payload: Json
+          report_period_end: string | null
+          report_table: Json | null
+          shared_with_client: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          payload?: Json
+          report_period_end?: string | null
+          report_table?: Json | null
+          shared_with_client?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          payload?: Json
+          report_period_end?: string | null
+          report_table?: Json | null
+          shared_with_client?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_cashflow_scenarios_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_cost_classifications: {
         Row: {
           account_name: string
@@ -947,6 +997,7 @@ export type Database = {
           pdf_path: string | null
           period_end: string
           report_key: string
+          scenario_snapshot: Json | null
           sent_at: string | null
           sent_to: string[] | null
           status: string
@@ -972,6 +1023,7 @@ export type Database = {
           pdf_path?: string | null
           period_end: string
           report_key?: string
+          scenario_snapshot?: Json | null
           sent_at?: string | null
           sent_to?: string[] | null
           status?: string
@@ -997,6 +1049,7 @@ export type Database = {
           pdf_path?: string | null
           period_end?: string
           report_key?: string
+          scenario_snapshot?: Json | null
           sent_at?: string | null
           sent_to?: string[] | null
           status?: string
@@ -4801,6 +4854,7 @@ export type Database = {
         Returns: number
       }
       delete_all_my_trixie_threads: { Args: never; Returns: number }
+      delete_cashflow_scenario: { Args: { _id: string }; Returns: undefined }
       delete_client_rental_property: { Args: { _id: string }; Returns: boolean }
       delete_client_report: {
         Args: { _reason?: string; _report_id: string }
@@ -5306,6 +5360,16 @@ export type Database = {
       revoke_firm_member_invite: { Args: { _id: string }; Returns: undefined }
       revoke_firm_viewer_access: { Args: { _id: string }; Returns: undefined }
       revoke_viewer_invite: { Args: { _id: string }; Returns: undefined }
+      save_cashflow_scenario: {
+        Args: {
+          _client_id: string
+          _id: string
+          _name: string
+          _payload: Json
+          _report_table: Json
+        }
+        Returns: string
+      }
       save_client_account_setup: {
         Args: { _changes: Json; _client_id: string; _tenant_id: string }
         Returns: number
@@ -5478,6 +5542,14 @@ export type Database = {
           skipped_billed: number
           unchanged: number
         }[]
+      }
+      set_cashflow_scenario_report: {
+        Args: { _id: string; _period_end: string }
+        Returns: undefined
+      }
+      set_cashflow_scenario_shared: {
+        Args: { _id: string; _shared: boolean }
+        Returns: undefined
       }
       set_client_access_relationship: {
         Args: {

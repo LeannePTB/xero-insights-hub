@@ -28,6 +28,7 @@ import { getMonthlyReportPdfUrl } from "@/lib/reports/report-pdf.functions";
 import type { MonthlyReportPayload } from "@/lib/reports/monthly-report";
 import { MONTHLY_REPORT_PAYLOAD_VERSION, wasRateLimited } from "@/lib/reports/monthly-report";
 import { reportVideoFrom } from "@/lib/reports/report-video";
+import { scenarioSnapshotFrom } from "@/lib/scenario/adjustments";
 import { ReportVideoEditor, type ReportVideoEditorHandle } from "@/components/reports/ReportVideoEditor";
 import { PageContainer } from "@/components/PageContainer";
 
@@ -266,7 +267,7 @@ function ReportsPage() {
               <Button size="sm" variant="outline" disabled={pdfBusyId === shownRow.id} onClick={() => { setPdfBusyId(shownRow.id); pdfMut.mutate(shownRow); }}><Download className="mr-1.5 h-3.5 w-3.5" />PDF</Button>
             </div>}
             <MonthlyReportPreview payload={preview.payload} status={shownStatus ?? preview.status} version={preview.version}
-              showWarnings={isAdvisor} showWorkflowDetails={isAdvisor} video={shownVideo} />
+              showWarnings={isAdvisor} showWorkflowDetails={isAdvisor} video={shownVideo} scenario={scenarioSnapshotFrom(shownRow?.scenario_snapshot)} />
           </section>
         ) : null}
 

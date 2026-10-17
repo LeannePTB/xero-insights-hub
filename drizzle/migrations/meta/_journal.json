@@ -519,6 +519,13 @@
       "when": 1792226616223,
       "tag": "0073_message_to_client",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1792229572296,
+      "tag": "0074_cashflow_saved_scenarios",
+      "breakpoints": true
     }
   ]
 }

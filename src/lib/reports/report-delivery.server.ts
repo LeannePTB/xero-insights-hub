@@ -367,7 +367,7 @@ async function resolveToken(token: string): Promise<{ recipient: Recipient; repo
   const { data: report } = await (supabaseAdmin as any)
     .from("client_reports")
     .select(
-      "id, client_id, firm_id, title, period_end, version, status, payload, pdf_path, video_url, video_heading, video_message",
+      "id, client_id, firm_id, title, period_end, version, status, payload, pdf_path, video_url, video_heading, video_message, scenario_snapshot",
     )
 
     .eq("id", rec.report_id)
@@ -499,6 +499,7 @@ export async function openLink(token: string, email: string, ip: string | null, 
       video_url: (report.video_url as string | null) ?? null,
       video_heading: (report.video_heading as string | null) ?? null,
       video_message: (report.video_message as string | null) ?? null,
+      scenario_snapshot: (report.scenario_snapshot as any) ?? null,
     },
     pdfUrl,
   };

@@ -5,7 +5,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { ChevronRight, Loader2, RefreshCw, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { AdjustmentsPanel } from "@/components/scenario/AdjustmentsPanel";
+import { ScenarioResults } from "@/components/scenario/ScenarioResults";
+import { SavedScenariosBar } from "@/components/scenario/SavedScenariosBar";
+import { breakEvenImpact, filterInvoices, monthsAhead, project, selectAllState, toggleSelectAll, type Adjustment, type Baseline } from "@/lib/scenario/adjustments";
 import {
   Select,
   SelectContent,
@@ -26,7 +31,6 @@ import {
 import {
   getScenarioData,
   resetScenario,
-  setInvoiceExcluded,
   setInvoicesExcludedBulk,
 
   type ScenarioExpense,
@@ -77,7 +81,6 @@ function CashflowScenarioPage() {
 
   const fetchClient = useServerFn(getClient);
   const fetchScenario = useServerFn(getScenarioData);
-  const toggleExcluded = useServerFn(setInvoiceExcluded);
   const reset = useServerFn(resetScenario);
   const toggleExcludedBulk = useServerFn(setInvoicesExcludedBulk);
 
@@ -108,31 +111,12 @@ function CashflowScenarioPage() {
       fetchScenario({ data: { clientId, tenantId: tenantId!, fromDate: fromStr, toDate: toStr } }),
   });
 
-  const excludeMut = useMutation({
-    mutationFn: (v: { xeroInvoiceId: string; excluded: boolean }) =>
-      toggleExcluded({ data: { clientId, ...v } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["scenario", clientId] }),
-    onError: (e: any) => toast.error(e?.message ?? "Could not update this invoice"),
-  });
   const bulkMut = useMutation({
     mutationFn: (v: { xeroInvoiceIds: string[]; excluded: boolean }) =>
       toggleExcludedBulk({ data: { clientId, ...v } }),
     onSuccess: (_r, v) => {
       qc.invalidateQueries({ queryKey: ["scenario", clientId] });
-      toast.success(v.excluded ? "All invoices excluded for this month" : "All invoices included");
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Could not update these invoices"),
-  });
-  const customerMut = useMutation({
-    mutationFn: (v: { xeroInvoiceIds: string[]; excluded: boolean; label: string }) =>
-      toggleExcludedBulk({ data: { clientId, xeroInvoiceIds: v.xeroInvoiceIds, excluded: v.excluded } }),
-    onSuccess: (_r, v) => {
-      qc.invalidateQueries({ queryKey: ["scenario", clientId] });
-      toast.success(
-        `${v.excluded ? "Excluded" : "Included"} ${v.xeroInvoiceIds.length} invoice${
-          v.xeroInvoiceIds.length === 1 ? "" : "s"
-        } for ${v.label}`,
-      );
+      toast.success(`${v.excluded ? "Excluded" : "Included"} ${v.xeroInvoiceIds.length} invoice${v.xeroInvoiceIds.length === 1 ? "" : "s"}`);
     },
     onError: (e: any) => toast.error(e?.message ?? "Could not update these invoices"),
   });
@@ -144,6 +128,13 @@ function CashflowScenarioPage() {
   });
 
   const [customer, setCustomer] = useState<string>("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [adjustments, setAdjustments] = useState<Adjustment[]>([]);
+  const [horizon, setHorizon] = useState(3);
+  const [openingCash, setOpeningCash] = useState<number | null>(null);
+  const [loaded, setLoaded] = useState<{ id: string; name: string } | null>(null);
+  /** Exclusions from a saved scenario opened read-only (never written). */
+  const [excludedOverride, setExcludedOverride] = useState<Set<string> | null>(null);
   const [scope, setScope] = useState<"month" | "all">("month");
   const [matrixOpen, setMatrixOpen] = useState(false);
   const [invoicesOpen, setInvoicesOpen] = useState(false);
@@ -151,6 +142,7 @@ function CashflowScenarioPage() {
     `scenario-cost-basis:${clientId}:${tenantId ?? "none"}`,
   );
 
+  const invoices = useMemo(() => (data?.invoices ?? []).map((i: ScenarioInvoice) => excludedOverride ? { ...i, excluded: excludedOverride.has(i.id) } : i), [data, excludedOverride]);
   const view = useMemo(() => {
     if (!data) return null;
     const months = data.months;
@@ -169,23 +161,23 @@ function CashflowScenarioPage() {
       fixed: resolveGroupCost(actuals.fixed, avg?.fixed ?? null, costBasis.fixed),
       variable: resolveGroupCost(actuals.variable, avg?.variable ?? null, costBasis.variable),
     };
-    const monthTotals = computeTotals(data.invoices, data.expenses, month);
+    const monthTotals = computeTotals(invoices, data.expenses, month);
     const appliedCosts = applied.cogs + applied.fixed + applied.variable;
     return {
       months,
       month,
-      matrix: buildMatrix(data.customers, data.invoices, months),
+      matrix: buildMatrix(data.customers, invoices, months),
       monthTotals,
       costActuals: actuals,
       costAvg: avg,
       costApplied: applied,
       scenarioNet: monthTotals.revenue - appliedCosts,
-      rangeTotals: computeTotals(data.invoices, data.expenses, null),
-      monthInvoices: data.invoices.filter((i: ScenarioInvoice) => monthKey(i.issue_date) === month),
+      rangeTotals: computeTotals(invoices, data.expenses, null),
+      monthInvoices: invoices.filter((i: ScenarioInvoice) => monthKey(i.issue_date) === month),
       monthExpenses,
       monthPnl: (data.pnl ?? []).find((p) => p.month === month) ?? null,
     };
-  }, [data, month, costBasis]);
+  }, [data, invoices, month, costBasis]);
 
 
 
@@ -197,13 +189,31 @@ function CashflowScenarioPage() {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [data]);
 
-  const customerInvoiceIds = useMemo(() => {
-    if (!customer) return [] as string[];
-    const pool = (scope === "month" ? view?.monthInvoices : data?.invoices) ?? [];
-    return (pool as ScenarioInvoice[])
-      .filter((i) => (i.customer_id ?? "Unassigned") === customer)
-      .map((i) => i.id);
-  }, [customer, scope, view, data]);
+  const shown = useMemo(() => filterInvoices(((scope === "month" ? view?.monthInvoices : invoices) ?? []) as ScenarioInvoice[], customer), [customer, scope, view, invoices]);
+  const shownIds = shown.map((i) => i.id);
+  const selState = selectAllState(shownIds, selected);
+  const selectedShown = shown.filter((i) => selected.has(i.id));
+
+  const projection = useMemo(() => {
+    if (!view || !data) return null;
+    const byCustomer: Record<string, number> = {};
+    for (const inv of view.monthInvoices as ScenarioInvoice[]) if (!inv.excluded) byCustomer[inv.customer_id ?? "Unassigned"] = (byCustomer[inv.customer_id ?? "Unassigned"] ?? 0) + inv.amount;
+    const accounts: Baseline["accounts"] = {};
+    for (const e of view.monthExpenses as ScenarioExpense[]) {
+      const group = e.section === "cogs" && e.type === "Variable" ? "cogs" : e.type === "Fixed" ? "fixed" : "variable";
+      accounts[e.name] = { amount: (accounts[e.name]?.amount ?? 0) + e.amount, group };
+    }
+    const baseline: Baseline = { revenue: view.monthTotals.revenue, revenueByCustomer: byCustomer, costs: view.costApplied, accounts };
+    const months = monthsAhead(month, horizon + 1);
+    const rows = project(baseline, adjustments, months, openingCash);
+    return { baseline, rows, months, breakEven: breakEvenImpact(baseline, rows), accountNames: Object.keys(accounts).sort() };
+  }, [view, data, month, horizon, adjustments, openingCash]);
+
+  const currentPayload = () => ({
+    version: 1 as const, month, horizon, openingCash, adjustments,
+    excludedInvoiceIds: invoices.filter((i) => i.excluded).map((i) => i.id),
+    costBasis,
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -252,6 +262,35 @@ function CashflowScenarioPage() {
         <div className="mt-4">
           <MonthPicker value={month} onChange={setMonth} />
         </div>
+
+        {tenantId && data && (
+          <SavedScenariosBar
+            clientId={clientId}
+            canManage={canManage}
+            loaded={loaded}
+            monthEnd={toStr}
+            monthLabel={monthLabelOf(month)}
+            currentPayload={currentPayload}
+            reportTable={projection ? () => ({ kind: "cashflow_scenario", rows: projection.rows.map((r) => ({ month: r.month, baselineNet: r.baseline.net, scenarioNet: r.scenario.net, baselineCash: r.baseline.closingCash, scenarioCash: r.scenario.closingCash })) }) : () => null}
+            onSaved={(sc) => setLoaded(sc)}
+            onLoad={async (sc, payload) => {
+              setLoaded(sc ? { id: sc.id, name: sc.name } : null);
+              if (!sc || !payload) { setAdjustments([]); setExcludedOverride(null); return; }
+              setAdjustments(payload.adjustments);
+              setHorizon(payload.horizon);
+              setOpeningCash(payload.openingCash);
+              if (payload.costBasis && typeof payload.costBasis === "object") for (const g of ["cogs", "fixed", "variable"] as const) { const b = (payload.costBasis as any)[g]; if (b?.mode) setCostBasis(g, b); }
+              const saved = new Set(payload.excludedInvoiceIds);
+              if (!canManage) { setExcludedOverride(saved); return; }
+              // Managers: re-apply the saved exclusions through the audited writes.
+              const ids = invoices.map((i) => i.id);
+              const ex = ids.filter((id) => saved.has(id)); const inc = ids.filter((id) => !saved.has(id));
+              if (ex.length) await toggleExcludedBulk({ data: { clientId, xeroInvoiceIds: ex, excluded: true } });
+              if (inc.length) await toggleExcludedBulk({ data: { clientId, xeroInvoiceIds: inc, excluded: false } });
+              qc.invalidateQueries({ queryKey: ["scenario", clientId] });
+            }}
+          />
+        )}
 
         {!tenantId ? (
           <p className="mt-8 text-sm text-muted-foreground">
@@ -352,6 +391,36 @@ function CashflowScenarioPage() {
 
 
 
+            </section>
+
+            {projection && (
+              <>
+                <AdjustmentsPanel
+                  adjustments={adjustments}
+                  onChange={setAdjustments}
+                  months={monthsAhead(month, 6)}
+                  month={month}
+                  customers={customerNames}
+                  accounts={projection.accountNames}
+                  readOnly={!canManage}
+                  fmt={fmt}
+                />
+                <div className="mt-4 flex flex-wrap items-end gap-3">
+                  <label className="flex flex-col gap-1 text-xs text-muted-foreground">Months ahead
+                    <Select value={String(horizon)} onValueChange={(v) => setHorizon(Number(v))}>
+                      <SelectTrigger className="h-9 w-[110px] text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>{[3, 4, 5, 6].map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs text-muted-foreground">Opening cash (A$, optional)
+                    <Input className="h-9 w-[180px]" type="number" value={openingCash ?? ""} disabled={!canManage} onChange={(e) => setOpeningCash(e.target.value === "" ? null : Number(e.target.value))} />
+                  </label>
+                </div>
+                <ScenarioResults rows={projection.rows} fmt={fmt} breakEven={projection.breakEven} title={loaded ? `${loaded.name} · compare with baseline` : undefined} />
+              </>
+            )}
+
+            <section>
             {/* Matrix */}
             <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
               <button
@@ -427,140 +496,83 @@ function CashflowScenarioPage() {
                     {view.monthInvoices.length}
                   </span>
                 </h2>
-                {canManage && view.monthInvoices.length > 0 && (
-                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={bulkMut.isPending}
-                      onClick={() =>
-                        bulkMut.mutate({
-                          xeroInvoiceIds: view.monthInvoices.map((i: ScenarioInvoice) => i.id),
-                          excluded: true,
-                        })
-                      }
-                    >
-                      {bulkMut.isPending ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : null}
-                      Exclude all (nobody paid)
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={bulkMut.isPending}
-                      onClick={() =>
-                        bulkMut.mutate({
-                          xeroInvoiceIds: view.monthInvoices.map((i: ScenarioInvoice) => i.id),
-                          excluded: false,
-                        })
-                      }
-                    >
-                      Include all
-                    </Button>
-                  </div>
-                )}
               </button>
 
               <div className={`${invoicesOpen ? "" : "hidden"}`}>
-                {canManage && customerNames.length > 0 && (
+                {customerNames.length > 0 && (
                   <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-card p-3">
                     <span className="text-xs text-muted-foreground">What if</span>
-                    <Select value={customer} onValueChange={setCustomer}>
-                      <SelectTrigger className="h-9 w-[240px] text-xs">
-                        <SelectValue placeholder="Select a customer" />
-                      </SelectTrigger>
+                    <Select value={customer || "__all"} onValueChange={(v) => { setCustomer(v === "__all" ? "" : v); setSelected(new Set()); }}>
+                      <SelectTrigger className="h-9 w-[240px] text-xs"><SelectValue placeholder="Select a customer" /></SelectTrigger>
                       <SelectContent>
-                        {customerNames.map((n) => (
-                          <SelectItem key={n} value={n}>
-                            {n}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="__all">All customers</SelectItem>
+                        {customerNames.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    <Select value={scope} onValueChange={(v) => setScope(v as "month" | "all")}>
-                      <SelectTrigger className="h-9 w-[150px] text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Select value={scope} onValueChange={(v) => { setScope(v as "month" | "all"); setSelected(new Set()); }}>
+                      <SelectTrigger className="h-9 w-[170px] text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="month">This month</SelectItem>
                         <SelectItem value="all">All months shown</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={!customer || customerInvoiceIds.length === 0 || customerMut.isPending}
-                      onClick={() =>
-                        customerMut.mutate({
-                          xeroInvoiceIds: customerInvoiceIds,
-                          excluded: true,
-                          label: customer,
-                        })
-                      }
-                    >
-                      {customerMut.isPending ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : null}
-                      Mark as unpaid
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={!customer || customerInvoiceIds.length === 0 || customerMut.isPending}
-                      onClick={() =>
-                        customerMut.mutate({
-                          xeroInvoiceIds: customerInvoiceIds,
-                          excluded: false,
-                          label: customer,
-                        })
-                      }
-                    >
-                      Mark as paid
-                    </Button>
                     {customer && (
-                      <span className="text-xs text-muted-foreground">
-                        {customerInvoiceIds.length} invoice
-                        {customerInvoiceIds.length === 1 ? "" : "s"}
+                      <span className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/30 px-3 py-1 text-xs">
+                        Showing {customer}
+                        <button type="button" className="font-medium text-link hover:underline" onClick={() => { setCustomer(""); setSelected(new Set()); }}>Clear</button>
                       </span>
                     )}
                   </div>
                 )}
 
+                {canManage && !excludedOverride && shown.length > 0 && (
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <label className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={selState === "all" ? true : selState === "some" ? "indeterminate" : false}
+                        onCheckedChange={() => setSelected((cur) => toggleSelectAll(shownIds, cur))}
+                        aria-label="Select all shown invoices"
+                      />
+                      Select all
+                    </label>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {selectedShown.length} selected · {fmt(selectedShown.reduce((t, i) => t + i.amount, 0))}
+                    </span>
+                    <Button variant="outline" size="sm" disabled={!selectedShown.length || bulkMut.isPending}
+                      onClick={() => bulkMut.mutate({ xeroInvoiceIds: selectedShown.map((i) => i.id), excluded: true }, { onSuccess: () => setSelected(new Set()) })}>
+                      {bulkMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Exclude selected (not paid)
+                    </Button>
+                    <Button variant="ghost" size="sm" disabled={!selectedShown.length || bulkMut.isPending}
+                      onClick={() => bulkMut.mutate({ xeroInvoiceIds: selectedShown.map((i) => i.id), excluded: false }, { onSuccess: () => setSelected(new Set()) })}>
+                      Include selected
+                    </Button>
+                  </div>
+                )}
 
-
-              {view.monthInvoices.length === 0 ? (
-                <p className="mt-3 text-sm text-muted-foreground">No invoices in this month.</p>
+              {shown.length === 0 ? (
+                <p className="mt-3 text-sm text-muted-foreground">{customer ? `No invoices for ${customer} here.` : "No invoices in this month."}</p>
               ) : (
-                <div className="mt-4 divide-y divide-border/60">
-                  {view.monthInvoices.map((inv: ScenarioInvoice) => (
-                    <div
-                      key={inv.id}
-                      className={`flex items-center justify-between gap-3 py-2 ${inv.excluded ? "opacity-50" : ""}`}
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">
-                          {inv.customer_id ?? "Unassigned"}
-                          {inv.excluded && (
-                            <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs uppercase tracking-wider">
-                              Excluded
-                            </span>
-                          )}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {inv.description} · {inv.issue_date} · {inv.status}
-                        </p>
+                <div className="mt-3 divide-y divide-border/60">
+                  {shown.map((inv: ScenarioInvoice) => (
+                    <div key={inv.id} className={`flex items-center justify-between gap-3 py-2 ${inv.excluded ? "opacity-50" : ""}`}>
+                      <div className="flex min-w-0 items-center gap-3">
+                        {canManage && !excludedOverride && (
+                          <Checkbox
+                            checked={selected.has(inv.id)}
+                            onCheckedChange={(on) => setSelected((cur) => { const n = new Set(cur); if (on) n.add(inv.id); else n.delete(inv.id); return n; })}
+                            aria-label={`Tick invoice ${inv.description}`}
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {inv.customer_id ?? "Unassigned"}
+                            {inv.excluded && <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs uppercase tracking-wider">Excluded</span>}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">{inv.description} · {inv.issue_date} · {inv.status}</p>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="tabular-nums text-sm">{fmt(inv.amount)}</span>
-                        {canManage && <Switch
-                          checked={!inv.excluded}
-                          onCheckedChange={(on) =>
-                            excludeMut.mutate({ xeroInvoiceId: inv.id, excluded: !on })
-                          }
-                          aria-label="Include in scenario"
-                        />}
-                      </div>
+                      <span className="shrink-0 tabular-nums text-sm">{fmt(inv.amount)}</span>
                     </div>
                   ))}
                 </div>
