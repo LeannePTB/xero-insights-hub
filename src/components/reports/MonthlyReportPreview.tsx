@@ -1,3 +1,4 @@
+import type { ScenarioSnapshot } from "@/lib/scenario/adjustments";
 import { useWorkspaceBranding } from "@/hooks/useWorkspaceBranding";
 import { VectorChart } from '@/components/charts/VectorChart';
 import { sectionIncluded } from "@/lib/reports/monthly-report";
@@ -197,6 +198,7 @@ export function MonthlyReportPreview({
   showWarnings = false,
   showWorkflowDetails = false,
   video = null,
+  scenario = null,
 }: {
   payload: MonthlyReportPayload;
   status?: string;
@@ -208,6 +210,8 @@ export function MonthlyReportPreview({
   showWorkflowDetails?: boolean;
   /** Optional personal video. Lives outside the payload, so never in the PDF. */
   video?: ReportVideo | null;
+  /** Cash flow scenario frozen into the draft when it was generated. */
+  scenario?: ScenarioSnapshot | null;
 }) {
   const workspaceBrand = useWorkspaceBranding();
   const m = payload.meta;
@@ -266,6 +270,21 @@ export function MonthlyReportPreview({
           </div>
         ) : null}
       </header>
+
+      {scenario && (
+        <section aria-label="Cash flow scenario" className="rounded-2xl border border-border bg-card p-4 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-display text-base font-semibold">Cash flow scenario: {scenario.name}</h2>
+            <span className="rounded-full border border-border px-2 py-0.5 text-xs font-semibold uppercase text-muted-foreground">Projection</span>
+          </div>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[480px] text-sm">
+              <thead><tr className="border-b border-border text-left text-xs uppercase text-muted-foreground"><th className="py-2 pr-3">Month</th><th className="px-2 py-2 text-right">Baseline net</th><th className="px-2 py-2 text-right">Scenario net</th>{scenario.rows.some((r) => r.scenarioCash !== null) && <th className="py-2 pl-2 text-right">Scenario closing cash</th>}</tr></thead>
+              <tbody>{scenario.rows.map((r) => <tr key={r.month} className="border-b border-border/50"><td className="py-2 pr-3">{r.month}</td><td className="px-2 py-2 text-right tabular-nums">{scenarioMoney(r.baselineNet)}</td><td className="px-2 py-2 text-right font-semibold tabular-nums">{scenarioMoney(r.scenarioNet)}</td>{scenario.rows.some((x) => x.scenarioCash !== null) && <td className="py-2 pl-2 text-right tabular-nums">{r.scenarioCash === null ? "—" : scenarioMoney(r.scenarioCash)}</td>}</tr>)}</tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
 
       {!payload.complete && shownFailures.length > 0 && (
@@ -613,4 +632,8 @@ export function MonthlyReportPreview({
       </footer>
     </div>
   );
+}
+
+function scenarioMoney(n: number) {
+  return `${n < 0 ? "-" : ""}A$${Math.abs(Math.round(n)).toLocaleString("en-AU")}`;
 }

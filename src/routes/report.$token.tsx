@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { MonthlyReportPreview } from "@/components/reports/MonthlyReportPreview";
 import { describeReportLink, openReportLink } from "@/lib/reports/report-link.functions";
 import { reportVideoFrom } from "@/lib/reports/report-video";
+import { scenarioSnapshotFrom } from "@/lib/scenario/adjustments";
 
 
 export const Route = createFileRoute("/report/$token")({
@@ -120,6 +121,7 @@ function ReportLinkPage() {
           status={opened.report.status}
           version={opened.report.version}
           video={reportVideoFrom(opened.report)}
+          scenario={scenarioSnapshotFrom((opened.report as any).scenario_snapshot)}
         />
 
       </Shell>
