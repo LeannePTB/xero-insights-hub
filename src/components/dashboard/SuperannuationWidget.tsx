@@ -79,17 +79,17 @@ export function SuperannuationWidget({
           Set how often this client lodges PAYG withholding before payroll figures can be shown.
         </p>
       ) : isPaidUp ? (
-        <div className="mt-6 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/40">
-          <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+        <div className="mt-6 space-y-3">
           <div>
-            <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-              All super paid — nothing outstanding
-            </p>
-            <p className="text-xs text-emerald-700 dark:text-emerald-400">
-              The superannuation account balance is nil, so no accrued super is waiting to go to
-              employees&apos; funds.
-            </p>
+            <p className="text-xs text-muted-foreground">{available.accounts.map((a) => a.name).join(", ") || "Super liability"} balance in Xero</p>
+            <p className="mt-1 font-display text-lg font-semibold tabular-nums">{fmt(outstanding)}</p>
           </div>
+          <SgQuarterTable rows={available.sgQuarters ?? []} fmt={fmt} />
+          {(available.sgQuarters ?? []).find((q) => q.current && q.superFromPayRuns > outstanding + 0.005) && (
+            <p className="rounded-lg border border-border bg-card px-3 py-2 text-sm">
+              Super from pay runs {fmt(available.sgQuarters.find((q) => q.current)!.superFromPayRuns)} this quarter; {available.accounts[0]?.name ?? "the super liability account"} in Xero shows {fmt(outstanding)} — it may have been paid, or super is posted elsewhere. Check in Xero.
+            </p>
+          )}
         </div>
       ) : available ? (
         <>
