@@ -1,12 +1,6 @@
 import { PANEL_STATUS_LABEL, PANEL_TITLE, type CheckStatus, type HealthCheck } from "@/lib/health/health-checks";
 
-/** Owner-approved status tints for Business Health panels only. */
-const PANEL: Record<CheckStatus, { box: string; pill: string; cell: string }> = {
-  green: { box: "border-health-good bg-health-good-surface", pill: "border-health-good/40 bg-health-good-cell text-health-good", cell: "bg-health-good-cell" },
-  watch: { box: "border-health-watch/60 bg-health-watch-surface", pill: "border-health-watch/30 bg-health-watch-cell text-health-watch", cell: "bg-health-watch-cell" },
-  red: { box: "border-health-alert bg-health-alert-surface", pill: "border-health-alert/40 bg-health-alert-cell text-health-alert", cell: "bg-health-alert-cell" },
-  na: { box: "border-border bg-card", pill: "border-border bg-muted text-muted-foreground", cell: "bg-muted" },
-};
+import { TONE as PANEL } from "./status-tone";
 
 /** Three side-by-side panels (stack on mobile). Display only: every string comes from the check payload. */
 export function HealthPanels({ checks }: { checks: HealthCheck[] }) {

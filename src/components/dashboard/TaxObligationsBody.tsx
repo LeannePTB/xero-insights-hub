@@ -33,7 +33,6 @@ export function TaxObligationsBody({ forward, buildingLabel, money, partPaid, pa
   const day = (date: string) => format(new Date(`${date}T00:00:00`), "d MMM");
   const estimate = (amount: number | null) => amount === null ? "Unavailable" : `~${money(amount)}`;
   const statuses = forward.owing.map((bill) => billStatus(bill.due, today, bill.amount));
-  const overdue = statuses.some((s) => s.kind === "overdue") || (!forward.owing.length && (forward.unlodged ?? []).some((u) => u.overdue));
   const unlodged = forward.owing.length ? [] : (forward.unlodged ?? []);
   const unlodgedStatuses = unlodged.map((u) => billStatus(u.due, today, u.amount));
   const splitDue = !!(paygRegistered && forward.building.gstDue && forward.building.paygDue && forward.building.gstDue !== forward.building.paygDue);
