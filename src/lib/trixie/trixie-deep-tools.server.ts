@@ -310,7 +310,7 @@ async function activityStatement(ctx: TrixieContext, input: { period: "current" 
 }
 
 async function findIssues(ctx: TrixieContext) {
-  return perFile(ctx, "find_issues", "Bookkeeping checks (saved)", async (tenantId) => {
+  return perFile(ctx, "find_issues", "File checks (saved)", async (tenantId) => {
     const [tb, bills, invs, bank] = await Promise.all([
       snapshot(ctx, tenantId, "trial_balance"),
       snapshot(ctx, tenantId, "invoices_accpay_open"),
@@ -359,7 +359,7 @@ export function buildDeepTools(ctx: TrixieContext): ToolSet {
     pay_runs: tool({ description: "Saved pay runs: payment date, gross, PAYG withheld, super and Payday Super due date (7 business days).", inputSchema: z.object({ from: z.string().regex(ISO_DATE).optional(), to: z.string().regex(ISO_DATE).optional() }), execute: (i) => payRuns(ctx, i) }),
     compare_periods: tool({ description: "Profit & Loss for two periods side by side (prior defaults to the same days last month), the accounts that moved most, and the paydays in each. Use for any 'why did X change' question.", inputSchema: range.extend({ priorFrom: z.string().regex(ISO_DATE).optional(), priorTo: z.string().regex(ISO_DATE).optional() }), execute: (i) => comparePeriods(ctx, i) }),
     activity_statement: tool({ description: "The GST card's figures for a BAS period: 1A, 1B, W1, W2, unfiled amounts, cash or accrual method, GST account tie-out, lodged ATO bills and due date.", inputSchema: z.object({ period: z.enum(["current", "previous", "same_last_year"]) }), execute: (i) => activityStatement(ctx, i) }),
-    find_issues: tool({ description: "Staff only. Bookkeeping checks: suspense/clearing balances, possible duplicate bills (same contact and amount within 14 days), debts over 90 days, uncoded bank lines, unusual one-off bills.", inputSchema: z.object({}), execute: () => findIssues(ctx) }),
+    find_issues: tool({ description: "Staff only. File checks from saved data: suspense/clearing balances, possible duplicate bills (same contact and amount within 14 days), debts over 90 days, uncoded bank lines, unusual one-off bills.", inputSchema: z.object({}), execute: () => findIssues(ctx) }),
   };
   return Object.fromEntries(Object.entries(all).filter(([k]) => allowed.has(k as DeepToolName))) as ToolSet;
 }

@@ -42,7 +42,7 @@ const TOOL_LABELS: Record<string, string> = {
   pay_runs: "Read pay runs",
   compare_periods: "Compared two periods",
   activity_statement: "Read activity statement figures",
-  find_issues: "Ran bookkeeping checks",
+  find_issues: "Ran file checks",
   practice_overview: "Read the organisation Overview",
   ask_about_client: "Read a client's saved figures",
 };
