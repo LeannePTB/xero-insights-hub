@@ -170,7 +170,7 @@ export function clientFileItems(files: ClientXeroFile[]): NavItem[] {
         };
   return [{
     // The Xero file audit is retired (Bookkeeping checks); its page stays in code, unlinked.
-    id: "xero-files", label: "Xero files", icon: "link", to: `/clients/$clientId/receivables/${files[0].tenantId}`,
+    id: "xero-files", label: "Xero files", icon: "link", to: `/clients/$clientId/payables/${files[0].tenantId}`,
     children: [make("payables", "Payables", "file"), make("receivables", "Receivables", "file")],
   }];
 }
