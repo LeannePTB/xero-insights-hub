@@ -77,3 +77,38 @@ export const setScenarioReport = createServerFn({ method: "POST" })
     if (error) throw new Error(GENERIC);
     return { ok: true };
   });
+
+/** Opening cash, known debts and tax dues for the planning tools. Reuses the
+ *  shared health reader (Cash Cover's cash at bank) and the shared tax-position
+ *  reader; card-gated, client resolved from the tenant server-side. */
+export const getScenarioContext = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) => z.object({ tenantId: uuid }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { assertWidgetAccess } = await import("@/lib/xero/access.server");
+    await assertWidgetAccess(context.supabase, data.tenantId, "cashflow_scenario");
+    const { data: clientId, error } = await context.supabase.rpc("client_for_tenant", { _tenant_id: data.tenantId });
+    if (error || !clientId) throw new Error("Scenario details unavailable.");
+    const { organisationToday } = await import("@/components/dashboard/tax-obligations");
+    const today = organisationToday();
+    const [{ loadHealthChecks }, { loadStoredForward }] = await Promise.all([import("@/lib/health/health-checks.server"), import("@/lib/tax/forward-tax.server")]);
+    const target = [{ clientId: clientId as string, tenantId: data.tenantId }];
+    const [health, forward] = await Promise.all([loadHealthChecks(context.supabase, target, today), loadStoredForward(context.supabase, target, today)]);
+    const h = health.get(clientId as string);
+    const tax = forward.get(clientId as string)?.tax ?? null;
+    const dues: { label: string; due: string; amount: number }[] = [];
+    if (tax) {
+      for (const o of tax.owing) if (o.amount > 0) dues.push({ label: o.reference || "Lodged ATO bill", due: o.due, amount: o.amount });
+      for (const u of tax.unlodged ?? []) for (const l of (u as any).lines ?? [u]) if (Number(l.amount) > 0 && l.due) dues.push({ label: String(l.label ?? "Finished period"), due: l.due, amount: Number(l.amount) });
+      if (tax.building.total && tax.building.total > 0) dues.push({ label: `BAS ${tax.building.from.slice(0, 7)} to ${tax.building.to.slice(0, 7)} (accruing)`, due: tax.building.due, amount: tax.building.total });
+      if (tax.instalment && tax.instalment.amount > 0) dues.push({ label: "Income tax instalment", due: tax.instalment.due, amount: tax.instalment.amount });
+    }
+    return {
+      today,
+      cashAtBank: h?.cashAtBank ?? null,
+      cashAsAt: h?.cashAsAt ?? null,
+      knownDebts: h?.knownDebts ?? [],
+      dues: dues.slice(0, 12),
+      building: tax ? { amount: tax.building.total, from: tax.building.from, to: tax.building.to } : null,
+    };
+  });
