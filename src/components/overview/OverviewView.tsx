@@ -16,6 +16,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { PageContainer } from "@/components/PageContainer";
 import { ResyncHeader, ResyncRowControl, useResyncQueue } from "@/components/overview/ResyncControls";
+import { billStatus, organisationToday } from "@/components/dashboard/tax-obligations";
+const statusText = (due: string, amount: number) => { const st = billStatus(due, organisationToday(), amount); return st.detail ? `${st.label} · ${st.detail}` : st.label; };
 
 
 type Bucket = OverviewRow["bucket"];
@@ -261,11 +263,11 @@ function GroupRows({ name, rows, onOpen, queue }: { name: string | null; rows: O
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-auto flex-col items-end gap-0.5 py-1" aria-label={`Tax and super owed for ${r.clientName}`}>
                   <span className={r.taxNext?.overdue ? "font-semibold text-destructive" : ""}>
-                    {r.taxNext ? `Next due: ${money(r.taxNext.amount)} · ${dayMonth(r.taxNext.due)}${r.taxNext.overdue ? " · overdue" : ""}` : "—"}
+                    {r.taxNext ? `Next due: ${money(r.taxNext.amount)} · ${dayMonth(r.taxNext.due)} · ${statusText(r.taxNext.due, r.taxNext.amount)}` : "—"}
                   </span>
                   {(r.taxBuilding || r.superDue) && (
                     <span className="text-xs font-normal text-muted-foreground">
-                      {[r.taxBuilding ? `Building ~${money(r.taxBuilding.amount)} (${monthShort(r.taxBuilding.due)})` : null,
+                      {[r.taxBuilding ? `Currently accruing · ~${money(r.taxBuilding.amount)} (${monthShort(r.taxBuilding.due)})` : null,
                         r.superDue ? `Super ${money(Math.round(r.superDue.amount))}${r.superDue.due ? ` (${dayMonth(r.superDue.due)})` : ""}` : null].filter(Boolean).join(" · ")}
                     </span>
                   )}
@@ -277,7 +279,7 @@ function GroupRows({ name, rows, onOpen, queue }: { name: string | null; rows: O
                     {r.taxItems.map((it, i) => (
                       <li key={i} className={`flex justify-between gap-3 ${it.overdue ? "text-destructive" : ""}`}>
                         <span>{it.label}</span>
-                        <span className="tabular-nums">{money(it.amount)}{it.due ? ` · due ${dayMonth(it.due)}` : ""}{it.overdue ? " · overdue" : ""}</span>
+                        <span className="tabular-nums">{money(it.amount)}{it.due ? ` · due ${dayMonth(it.due)} · ${statusText(it.due, it.amount)}` : ""}</span>
                       </li>
                     ))}
                   </ul>

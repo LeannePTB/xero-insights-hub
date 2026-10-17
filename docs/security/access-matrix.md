@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **2763**. Known failures: **0**.
+Rows: **2770**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -423,6 +423,7 @@ None.
 | client_subscriptions | update | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
 | client_subscriptions | delete | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
+| set_client_income_tax_instalment_frequency() | execute | DENY | pglite | Only active organisation members at aal2 may change the instalment setting; read grants never write |  |
 | set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | xero_connections.refresh_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
@@ -692,6 +693,7 @@ None.
 | client_rental_properties | update | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
 | client_rental_properties | delete | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
+| set_client_income_tax_instalment_frequency() | execute | DENY | pglite | Only active organisation members at aal2 may change the instalment setting; read grants never write |  |
 | set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | xero_connections.refresh_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
@@ -1361,6 +1363,7 @@ None.
 | scenario_exclusions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | scenario_exclusions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
+| set_client_income_tax_instalment_frequency() | execute | DENY | pglite | Only active organisation members at aal2 may change the instalment setting; read grants never write |  |
 | set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | xero_connections (non-token columns) | read | DENY | pglite, live | PK 3, PK 4 |  |
 | public.user_can_access_firm() | execute | DENY | pglite, live | PK 2 (assert_aal2 guard is the first statement) |  |
@@ -2099,6 +2102,7 @@ None.
 | client_rental_properties | update | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
 | client_rental_properties | delete | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
+| set_client_income_tax_instalment_frequency() | execute | DENY | pglite | Only active organisation members at aal2 may change the instalment setting; read grants never write |  |
 | set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | xero_connections.refresh_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
@@ -2239,6 +2243,7 @@ None.
 | client_bank_account_classifications | read | ALLOW | pglite | Existing exact-client read predicate only; relationship and standing access remain read-only. |  |
 | client_notes | read | DENY | pglite | Owner 14 Oct: notes are practice-only; Viewers and Business Owners see a note only inside a stored final/sent report payload |  |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
+| set_client_income_tax_instalment_frequency() | execute | DENY | pglite | Only active organisation members at aal2 may change the instalment setting; read grants never write |  |
 | set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | loans: me_can_open_consolidations(organisation with Consolidation) | execute | DENY | pglite | Staff, Viewers, Business Owners, support passes, another organisation, a System Administrator with no membership, aal1 and signed-out callers are refused Loans and Consolidations at the server (PK 3, PK 5) |  |
 | loans: me_can_open_client_loans(grouped client, Consolidation ticked) | execute | DENY | pglite | Staff, Viewers, Business Owners, support passes, another organisation, a System Administrator with no membership, aal1 and signed-out callers are refused Loans and Consolidations at the server (PK 3, PK 5) |  |
@@ -2405,6 +2410,7 @@ None.
 | client_rental_properties | delete | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
 | save_client_income_tax_instalment() for another client | execute | DENY | pglite, live | PK 1.4 — caller-supplied client and tenant are filters, never grants |  |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
+| set_client_income_tax_instalment_frequency() | execute | DENY | pglite | Only active organisation members at aal2 may change the instalment setting; read grants never write |  |
 | loans: me_can_open_consolidations(organisation with Consolidation) | execute | DENY | pglite | Staff, Viewers, Business Owners, support passes, another organisation, a System Administrator with no membership, aal1 and signed-out callers are refused Loans and Consolidations at the server (PK 3, PK 5) |  |
 | loans: me_can_open_client_loans(grouped client, Consolidation ticked) | execute | DENY | pglite | Staff, Viewers, Business Owners, support passes, another organisation, a System Administrator with no membership, aal1 and signed-out callers are refused Loans and Consolidations at the server (PK 3, PK 5) |  |
 | wip: client_visible_cards shows a ticked Work-in-progress card | execute | DENY | pglite | card_catalogue.status = 'wip' removes the card from app_private.client_available_cards, so client_cards_v2 (and every reader through assert_widget_access) refuses it; a System Administrator without access to the client still gets nothing |  |
@@ -2779,6 +2785,7 @@ None.
 | client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
+| set_client_income_tax_instalment_frequency() | execute | DENY | pglite | Only active organisation members at aal2 may change the instalment setting; read grants never write |  |
 | client_report_pending_videos | read | DENY | pglite | No viewer, Business Owner, support or bare admin pending-video reads |  |
 | client_report_pending_videos | insert | DENY | pglite | Audited caller-scoped save only; no direct writes |  |
 | client_report_pending_videos | update | DENY | pglite | Audited caller-scoped save only; no direct writes |  |

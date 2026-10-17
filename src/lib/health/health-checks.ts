@@ -448,7 +448,7 @@ function nextTaxCore(next: NextTaxPayment): string {
     : `due ${dayLabel(next.due)}`;
   const then = next.later.map((l) => ` · then ~${money(l.amount)} due ${dayLabel(l.due)}`).join("");
   const building = next.building > 0
-    ? next.buildingDue ? ` · building now: ~${money(next.building)} due ${dayLabel(next.buildingDue)}` : ` · building for next period: ~${money(next.building)}`
+    ? next.buildingDue ? ` · currently accruing: ~${money(next.building)} due ${dayLabel(next.buildingDue)}` : ` · currently accruing for next period: ~${money(next.building)}`
     : "";
   return `${head}${then}${building}`;
 }

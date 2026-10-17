@@ -5,7 +5,7 @@ import type { PnlObservation } from './standard';
 /** Stored reads only. A separate result per existing card gate, never a combined data grant. */
 export async function loadStandardHistory(db: any, clientId: string, tenantId: string, card: string, basis: string) {
   const today = sydneyDate(), from = addMonths(today,-13);
-  const result: {today:string;pnl:PnlObservation[];cash:{date:string;value:number|null}[];overdue:{date:string;value:number|null}[];scores:{date:string;value:number|null}[];note:string;cashNote:string|null} = {today,pnl:[],cash:[],overdue:[],scores:[],note:'Stored observations only. Missing periods are unavailable, not zero.',cashNote:null};
+  const result: {today:string;wagesSplit:boolean;pnl:PnlObservation[];cash:{date:string;value:number|null}[];overdue:{date:string;value:number|null}[];scores:{date:string;value:number|null}[];note:string;cashNote:string|null} = {today,wagesSplit:false,pnl:[],cash:[],overdue:[],scores:[],note:'Stored observations only. Missing periods are unavailable, not zero.',cashNote:null};
   if(card==='health') {
     const {rows} = await readMergedHistory(db,[clientId],from,today,tenantId);
     result.cash=rows.filter(r=>r.as_at>=addMonths(today,-12)).map(r=>({date:r.as_at,value:r.cash===null?null:Number(r.cash)}));
@@ -30,6 +30,10 @@ export async function loadStandardHistory(db: any, clientId: string, tenantId: s
     result.overdue=(data??[]).map((r:any)=>({date:r.as_at,value:r.debtors_overdue===null?null:Number(r.debtors_overdue)}));
   }
   if(card==='pnl') {
+    const { wageAccountNames, wagesFromSections } = await import('@/lib/wages-split');
+    const marks = await db.from('client_cost_classifications').select('account_name,classification,is_wages').eq('client_id',clientId).eq('tenant_id',tenantId);
+    const names = wageAccountNames(marks.data);
+    result.wagesSplit = names.size > 0;
     const [reports,snapshots,filled] = await Promise.all([
       db.from('client_reports').select('id,period_end,version,payload').eq('client_id',clientId).eq('tenant_id',tenantId).eq('report_key','monthly_management').in('status',['final','sent']).gte('period_end',from).lte('period_end',today).order('period_end').order('version',{ascending:false}).limit(500),
       db.from('xero_snapshots').select('payload,params,as_at,fetched_at').eq('client_id',clientId).eq('tenant_id',tenantId).eq('report_key','profit_and_loss_mtd').eq('complete',true).gte('as_at',from).order('fetched_at',{ascending:false}).limit(500),
@@ -44,7 +48,7 @@ export async function loadStandardHistory(db: any, clientId: string, tenantId: s
       const totals=r.payload?.profitAndLoss?.totals;
       // This report generator historically requests accrual; explicit future basis wins.
       if(!totals || (r.payload?.basis??'accrual')!==basis || months.get(r.period_end.slice(0,7))?.income!==null && months.get(r.period_end.slice(0,7))?.income!==undefined) continue;
-      months.set(r.period_end.slice(0,7),{date:r.period_end,income:totals.revenue+totals.otherIncome,expenses:totals.costOfSales+totals.expenses,profit:totals.netProfit,partial:false,source:'Stored monthly report',basis});
+      months.set(r.period_end.slice(0,7),{date:r.period_end,income:totals.revenue+totals.otherIncome,expenses:totals.costOfSales+totals.expenses,profit:totals.netProfit,wages:names.size&&typeof totals.wages==='number'?totals.wages:null,partial:false,source:'Stored monthly report',basis});
     }
     for(const r of snapshots.data??[]) {
       const params=r.params??{}, date=params.toDate;
@@ -52,8 +56,9 @@ export async function loadStandardHistory(db: any, clientId: string, tenantId: s
       const key=date.slice(0,7), old=months.get(key);
       if(old?.income!==null && old?.income!==undefined && old.date>=date) continue;
       const report=r.payload?.Reports?.[0];if(!report) continue;
-      const totals=totalsForPeriod(parsePnl(report,endOfMonth(date)),0);
-      months.set(key,{date,income:totals.revenue+totals.otherIncome,expenses:totals.costOfSales+totals.expenses,profit:totals.netProfit,partial:date!==endOfMonth(date),source:'Stored P&L snapshot',basis});
+      const parsed=parsePnl(report,endOfMonth(date));
+      const totals=totalsForPeriod(parsed,0);
+      months.set(key,{date,income:totals.revenue+totals.otherIncome,expenses:totals.costOfSales+totals.expenses,profit:totals.netProfit,wages:wagesFromSections(parsed.sections,0,names),partial:date!==endOfMonth(date),source:'Stored P&L snapshot',basis});
     }
     result.pnl=[...months.values()].sort((a,b)=>a.date.localeCompare(b.date));
     result.note+=' * Month-to-date is partial. Profit-only backfill has no income/expense breakdown. Unknown report bases are not mixed.';

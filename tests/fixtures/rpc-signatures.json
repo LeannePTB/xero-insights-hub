@@ -484,6 +484,13 @@
         "args": [
             "_client_id"
         ],
+        "name": "client_income_tax_instalment_frequency",
+        "required": 1
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
         "name": "client_locked_modules",
         "required": 1
     },
@@ -1417,6 +1424,14 @@
             "_method"
         ],
         "name": "set_client_gst_method",
+        "required": 2
+    },
+    {
+        "args": [
+            "_client_id",
+            "_frequency"
+        ],
+        "name": "set_client_income_tax_instalment_frequency",
         "required": 2
     },
     {

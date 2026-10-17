@@ -18,6 +18,8 @@ import {
 import { StatutoryAccountsSection } from "@/components/clients/StatutoryAccountsSection";
 import { BankAccountsSection } from "@/components/clients/BankAccountsSection";
 import { ClientSetupSection } from "@/components/clients/ClientSetupSection";
+import { TAB_BY_ANCHOR } from "@/components/clients/ClientSettingsNav";
+import { IncomeTaxInstalmentsSection } from "@/components/clients/IncomeTaxInstalmentsSection";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { basisLabel } from "@/lib/report-basis";
 import { getClientGstMethod, setClientGstMethod } from "@/lib/xero/gst-method.functions";
@@ -84,6 +86,13 @@ const ActiveSettingsSection = createContext<ClientSettingsSection>("general");
 
 export function ClientSettingsPage({ clientId, section }: { clientId: string; section: ClientSettingsSection }) {
   const navigate = useNavigate();
+  // Old deep links (General#anchor) open the section on its own tab.
+  useEffect(() => {
+    if (section !== "general" || typeof window === "undefined") return;
+    const anchor = window.location.hash.replace("#", "");
+    const tab = TAB_BY_ANCHOR[anchor];
+    if (tab && tab !== "general") navigate({ to: `/clients/$clientId/settings/${tab}` as never, params: { clientId } as never, hash: anchor, replace: true });
+  }, [section, clientId, navigate]);
   const qc = useQueryClient();
 
   const fetchClient = useServerFn(getClient);
@@ -378,6 +387,16 @@ export function ClientSettingsPage({ clientId, section }: { clientId: string; se
 
         <Section title="GST accounting method" id="gst-method" collapsible>
           <GstMethodSection
+            clientId={clientId}
+            tenantId={
+              linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
+                ?.tenant_id
+            }
+          />
+        </Section>
+
+        <Section title="Income tax instalments (PAYG instalments)" id="income-tax-instalments" collapsible defaultOpen>
+          <IncomeTaxInstalmentsSection
             clientId={clientId}
             tenantId={
               linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
@@ -776,6 +795,8 @@ const SETTINGS_SECTION_BY_TITLE: Record<string, ClientSettingsSection> = {
   "Xero organisations": "xero",
   "Profit & Loss basis": "tax-reporting",
   "How often this client lodges": "tax-reporting",
+  "GST accounting method": "tax-reporting",
+  "Income tax instalments (PAYG instalments)": "tax-reporting",
   "How this client codes GST, PAYG and super": "tax-reporting",
   "Bank accounts & credit cards": "banks",
   "Cost classification": "cost-classification",

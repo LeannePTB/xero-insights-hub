@@ -1189,6 +1189,7 @@ export type Database = {
           firm_id: string | null
           gst_cycle: Database["public"]["Enums"]["gst_cycle"] | null
           id: string
+          income_tax_instalment_frequency: string | null
           logo_path: string | null
           max_xero_orgs: number
           name: string
@@ -1212,6 +1213,7 @@ export type Database = {
           firm_id?: string | null
           gst_cycle?: Database["public"]["Enums"]["gst_cycle"] | null
           id?: string
+          income_tax_instalment_frequency?: string | null
           logo_path?: string | null
           max_xero_orgs?: number
           name: string
@@ -1235,6 +1237,7 @@ export type Database = {
           firm_id?: string | null
           gst_cycle?: Database["public"]["Enums"]["gst_cycle"] | null
           id?: string
+          income_tax_instalment_frequency?: string | null
           logo_path?: string | null
           max_xero_orgs?: number
           name?: string
@@ -4552,6 +4555,10 @@ export type Database = {
       }
       client_for_access: { Args: { _id: string }; Returns: string }
       client_for_tenant: { Args: { _tenant_id: string }; Returns: string }
+      client_income_tax_instalment_frequency: {
+        Args: { _client_id: string }
+        Returns: string
+      }
       client_locked_modules: { Args: { _client_id: string }; Returns: string[] }
       client_org_trial: {
         Args: { _client_id: string }
@@ -5324,6 +5331,10 @@ export type Database = {
       set_client_gst_method: {
         Args: { _client_id: string; _method: string }
         Returns: undefined
+      }
+      set_client_income_tax_instalment_frequency: {
+        Args: { _client_id: string; _frequency: string }
+        Returns: string
       }
       set_client_module: {
         Args: { _client_id: string; _enabled: boolean; _module_key: string }

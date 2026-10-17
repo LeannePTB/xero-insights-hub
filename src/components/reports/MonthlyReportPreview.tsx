@@ -339,7 +339,7 @@ export function MonthlyReportPreview({
       </SectionShell>
 
       {payload.charts && sectionIncluded(payload,'charts') && <SectionShell title="Financial trends">
-        {payload.charts.pnl && <VectorChart title="Income, expenses and net profit" points={payload.charts.pnl} series={[{label:'Income',kind:'bar'},{label:'Expenses',kind:'bar'},{label:'Net profit',kind:'line'}]} currency={m.currency}/>}
+        {payload.charts.pnl && <VectorChart title="Income, expenses and net profit" points={payload.charts.pnl} series={payload.charts.pnlWagesSplit?[{label:'Income',kind:'bar'},{label:'Wages',kind:'stack'},{label:'Other costs',kind:'stack'},{label:'Net profit',kind:'line'}]:[{label:'Income',kind:'bar'},{label:'Expenses',kind:'bar'},{label:'Net profit',kind:'line'}]} currency={m.currency}/>}
         <VectorChart title="Cash at bank" points={payload.charts.cash.map(p=>({label:p.label,values:[p.value]}))} series={[{label:'Cash at bank',kind:'line'}]} currency={m.currency}/>
         {!payload.charts.pnl && <VectorChart title="Net profit" points={payload.charts.profit.map(p=>({label:p.label,values:[p.value]}))} series={[{label:'Net profit',kind:'line'}]} currency={m.currency}/>}
         <p className="text-xs text-muted-foreground">{payload.charts.note}</p>
@@ -549,9 +549,16 @@ export function MonthlyReportPreview({
               {[
                 ["Revenue (sales)", payload.profitAndLoss.totals.revenue],
                 ["Other income", payload.profitAndLoss.totals.otherIncome],
-                ["Cost of sales", payload.profitAndLoss.totals.costOfSales],
-                ["Gross Profit", payload.profitAndLoss.totals.grossProfit],
-                ["Expenses (excl. cost of sales)", payload.profitAndLoss.totals.expenses],
+                ...(payload.profitAndLoss.totals.wagesSplit ? [
+                  ["Cost of sales (excl. wages)", payload.profitAndLoss.totals.wagesSplit.costOfSalesExWages],
+                  ["Wages", payload.profitAndLoss.totals.wagesSplit.wages],
+                  ["Gross Profit", payload.profitAndLoss.totals.grossProfit],
+                  ["Overheads (excl. wages)", payload.profitAndLoss.totals.wagesSplit.overheadsExWages],
+                ] : [
+                  ["Cost of sales", payload.profitAndLoss.totals.costOfSales],
+                  ["Gross Profit", payload.profitAndLoss.totals.grossProfit],
+                  ["Expenses (excl. cost of sales)", payload.profitAndLoss.totals.expenses],
+                ]),
                 ["Net Profit/Loss", payload.profitAndLoss.totals.netProfit],
               ].map(([label, value]) => (
                 <div key={label as string} className="flex justify-between gap-3 rounded-lg bg-background px-3 py-2">

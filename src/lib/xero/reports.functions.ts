@@ -111,6 +111,15 @@ export const getProfitAndLoss = createServerFn({ method: "POST" })
     await assertWidgetAccess(context.supabase, data.tenantId, data.widget ?? "pnl");
 
     const basis = data.basis ?? (await getClientReportBasis(data.tenantId));
+    // Wages marker (Cost classification), read as the caller under RLS.
+    const wageInfo = async () => {
+      const [{ data: clientId }, { data: rows }] = await Promise.all([
+        (context.supabase as any).rpc("client_for_tenant", { _tenant_id: data.tenantId }),
+        (context.supabase as any).from("client_cost_classifications").select("account_name, classification, is_wages").eq("tenant_id", data.tenantId),
+      ]);
+      const wageAccounts = ((rows ?? []) as any[]).filter((r) => r.is_wages || r.classification === "wages").map((r) => String(r.account_name));
+      return { clientId: (clientId as string | null) ?? null, wageAccounts };
+    };
     // Saved figures first: the nightly save stores this month to date and last
     // month on Xero's default (accrual) basis. An exact parameter match serves
     // the stored copy; anything else, or an explicit Refresh, goes live.
@@ -120,7 +129,7 @@ export const getProfitAndLoss = createServerFn({ method: "POST" })
       for (const reportKey of ["profit_and_loss_mtd", "profit_and_loss_prior", "profit_and_loss_ytd"]) {
         const hit = await readSnapshot({ supabase: context.supabase, tenantId: data.tenantId, reportKey, params });
         const report = hit?.payload?.Reports?.[0];
-        if (hit && report) return { ...summarisePnl(report), basis, source: hit.source };
+        if (hit && report) return { ...summarisePnl(report), ...(await wageInfo()), basis, source: hit.source };
       }
     }
     const conn = await getConnectionByTenant(data.tenantId);
@@ -133,7 +142,7 @@ export const getProfitAndLoss = createServerFn({ method: "POST" })
     const report = res.Reports?.[0];
     if (!report) throw new Error("No P&L report returned by Xero.");
     const { liveSource } = await import("./snapshot-source");
-    return { ...summarisePnl(report), basis, source: liveSource("disabled") };
+    return { ...summarisePnl(report), ...(await wageInfo()), basis, source: liveSource("disabled") };
   });
 
 export type TaxLiabilities = {

@@ -8,6 +8,9 @@ import { sameDaysPreviousMonth, paydayNote, shortRange } from "@/lib/pnl-compari
 import { PnlKpi as Kpi } from "./PnlKpi";
 import { Loader2, RefreshCw, LineChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "@tanstack/react-router";
+import { splitWages, wageAccountNames } from "@/lib/wages-split";
+import { useCanManageClient } from "@/hooks/useCanManageClient";
 import { StandardHistoryChart } from '@/components/charts/StandardHistoryChart';
 
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
@@ -82,6 +85,12 @@ export function PnlWidget({
 
   const current = data?.current;
   const priorData = data?.prior;
+  const names = wageAccountNames((current?.wageAccounts ?? []).map((account_name) => ({ account_name, is_wages: true })));
+  const clientId = current?.clientId ?? null;
+  const { canManage } = useCanManageClient(clientId);
+  const split = (r: typeof current) => r ? splitWages({ costOfSales: r.totalCostOfSales, expenses: r.totalExpenses, cogsLines: r.cogsLines, expenseLines: r.expenseLines }, names) : null;
+  const cur = split(current);
+  const pri = split(priorData);
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-soft">
@@ -107,11 +116,20 @@ export function PnlWidget({
           {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}
           <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Kpi label="Income" value={current.totalIncome} previous={priorData?.totalIncome ?? 0} higherIsBetter currency={currency} priorLabel={priorLabel} />
-            <Kpi label="Cost of Sales" value={current.totalCostOfSales} previous={priorData?.totalCostOfSales ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
-            <Kpi label="Gross Profit" value={current.grossProfit} previous={priorData?.grossProfit ?? 0} higherIsBetter currency={currency} priorLabel={priorLabel} />
-            <Kpi label="Expenses" value={current.totalExpenses} previous={priorData?.totalExpenses ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
+            {cur?.split ? <>
+              <Kpi label="Cost of sales (excl. wages)" value={cur.costOfSalesExWages} previous={pri?.costOfSalesExWages ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
+              <Kpi label="Wages" value={cur.wages} previous={pri?.wages ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
+              <Kpi label="Gross Profit" value={current.grossProfit} previous={priorData?.grossProfit ?? 0} higherIsBetter currency={currency} priorLabel={priorLabel} />
+              <Kpi label="Overheads (excl. wages)" value={cur.overheadsExWages} previous={pri?.overheadsExWages ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
+            </> : <>
+              <Kpi label="Cost of Sales" value={current.totalCostOfSales} previous={priorData?.totalCostOfSales ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
+              <Kpi label="Gross Profit" value={current.grossProfit} previous={priorData?.grossProfit ?? 0} higherIsBetter currency={currency} priorLabel={priorLabel} />
+              <Kpi label="Expenses" value={current.totalExpenses} previous={priorData?.totalExpenses ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
+            </>}
             <Kpi label="Net Profit" value={current.netProfit} previous={priorData?.netProfit ?? 0} higherIsBetter currency={currency} priorLabel={priorLabel} />
           </div>
+          {cur?.split && clientId ? <p className="mt-2 text-xs text-muted-foreground">Wages = accounts marked Wages in <Link to="/clients/$clientId/settings/cost-classification" params={{ clientId }} className="text-link hover:underline">Cost classification</Link> ({names.size} account{names.size === 1 ? "" : "s"})</p>
+            : !cur?.split && canManage && clientId ? <p className="mt-2 text-xs text-muted-foreground"><Link to="/clients/$clientId/settings/cost-classification" params={{ clientId }} className="text-link hover:underline">Mark wage accounts in Cost classification</Link> to see wages separately.</p> : null}
         </>
       ) : null}
     </div>

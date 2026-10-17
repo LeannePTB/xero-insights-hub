@@ -461,8 +461,9 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     if(payload.charts.pnl) {
       need(240);
       heading(`Income, expenses and net profit (${m.currency})`);
-      y += drawPdfChart(doc,payload.charts.pnl,[{label:'Income',kind:'bar'},{label:'Expenses',kind:'bar'},{label:'Net profit',kind:'line'}],M.left,y,PAGE.w-M.left-M.right);
-      table({head:['Month','Income','Expenses','Net profit'],body:payload.charts.pnl.map(p=>[p.label,...p.values.map(v=>v===null?'Unavailable':money(v))])});
+      const ws=payload.charts.pnlWagesSplit;
+      y += drawPdfChart(doc,payload.charts.pnl,ws?[{label:'Income',kind:'bar'},{label:'Wages',kind:'stack'},{label:'Other costs',kind:'stack'},{label:'Net profit',kind:'line'}]:[{label:'Income',kind:'bar'},{label:'Expenses',kind:'bar'},{label:'Net profit',kind:'line'}],M.left,y,PAGE.w-M.left-M.right);
+      table({head:ws?['Month','Income','Wages','Other costs','Net profit']:['Month','Income','Expenses','Net profit'],body:payload.charts.pnl.map(p=>[p.label,...p.values.map(v=>v===null?'Unavailable':money(v))])});
     }
     for (const [title, points, kind] of [
       ['Cash at bank trend', payload.charts.cash, 'line'],
@@ -642,9 +643,16 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
       body: [
         ["Revenue (sales)", money(p.totals.revenue)],
         ["Other income", money(p.totals.otherIncome)],
-        ["Cost of sales", money(p.totals.costOfSales)],
-        ["Gross Profit", money(p.totals.grossProfit)],
-        ["Expenses (excl. cost of sales)", money(p.totals.expenses)],
+        ...(p.totals.wagesSplit ? [
+          ["Cost of sales (excl. wages)", money(p.totals.wagesSplit.costOfSalesExWages)],
+          ["Wages", money(p.totals.wagesSplit.wages)],
+          ["Gross Profit", money(p.totals.grossProfit)],
+          ["Overheads (excl. wages)", money(p.totals.wagesSplit.overheadsExWages)],
+        ] : [
+          ["Cost of sales", money(p.totals.costOfSales)],
+          ["Gross Profit", money(p.totals.grossProfit)],
+          ["Expenses (excl. cost of sales)", money(p.totals.expenses)],
+        ]),
         ["Net Profit/Loss", money(p.totals.netProfit)],
         ["Net margin", pct(p.totals.netMargin)],
       ],

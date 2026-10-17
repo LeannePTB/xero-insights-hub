@@ -1,23 +1,17 @@
 import { staggered, xeroQueryRetry } from "@/lib/xero/live-load";
 import { DashboardCardHeader } from "./DashboardCardHeader";
 import { paygQueryKey, paygQueryLimits } from "./payg-query";
-import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
-import { Calculator, Loader2, Save } from "lucide-react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Calculator, Loader2 } from "lucide-react";
 import { getGstReconciliation } from "@/lib/xero/gst.functions";
 import { getPaygWithholdingPosition } from "@/lib/xero/reports.functions";
-import {
-  listIncomeTaxInstalments,
-  saveIncomeTaxInstalment,
-} from "@/lib/income-tax-instalments.functions";
+import { listIncomeTaxInstalments } from "@/lib/income-tax-instalments.functions";
 import { completedGstPeriod, type GstCycle } from "./recon-periods";
-import { latestCompletedPaygMonth, netGstAmount, currentGstPeriod, forwardTax, basDueDate } from "./tax-obligations";
+import { latestCompletedPaygMonth, netGstAmount, currentGstPeriod, forwardTax, instalmentDueDate, organisationToday } from "./tax-obligations";
 import { getLodgedTaxBills } from "@/lib/xero/lodged-tax.functions";
 import { formatMoneyExact, useTenantCurrency } from "./useTenantCurrency";
 import { TaxObligationsBody } from "./TaxObligationsBody";
@@ -42,24 +36,13 @@ export function TaxObligationsWidget({
   gstCycle: GstCycle | null;
   paygRegistered: boolean;
 }) {
-  const queryClient = useQueryClient();
   const fetchGst = useServerFn(getGstReconciliation);
   const fetchPayg = useServerFn(getPaygWithholdingPosition);
   const fetchBills = useServerFn(getLodgedTaxBills);
   const listInstalments = useServerFn(listIncomeTaxInstalments);
-  const saveInstalment = useServerFn(saveIncomeTaxInstalment);
   const currency = useTenantCurrency(tenantId);
   const money = (value: number) => formatMoneyExact(value, currency);
   const gstPeriod = useMemo(() => completedGstPeriod(gstCycle), [gstCycle]);
-  const today = new Date();
-  const initialPeriodStart = `${today.getFullYear()}-${String(Math.floor(today.getMonth() / 3) * 3 + 1).padStart(2, "0")}-01`;
-  const [editing, setEditing] = useState(false);
-  const [periodStart, setPeriodStart] = useState(initialPeriodStart);
-  const [periodEnd, setPeriodEnd] = useState(() => {
-    const end = new Date(today.getFullYear(), Math.floor(today.getMonth() / 3) * 3 + 3, 0);
-    return `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
-  });
-  const [amount, setAmount] = useState("");
 
   const gstQuery = useQuery({
     queryKey: ["gst-reconciliation", clientId, tenantId, gstPeriod.kind, gstPeriod.asAt],
@@ -70,7 +53,7 @@ export function TaxObligationsWidget({
     refetchOnReconnect: false,
     enabled: gstCycle !== "not_registered",
   });
-  const todayIso = format(today, "yyyy-MM-dd");
+  const todayIso = organisationToday();
   const runPeriod = useMemo(() => currentGstPeriod(gstCycle, todayIso), [gstCycle, todayIso]);
   const runGstQuery = useQuery({
     queryKey: ["gst-reconciliation", clientId, tenantId, runPeriod.kind, runPeriod.asAt],
@@ -98,19 +81,6 @@ export function TaxObligationsWidget({
     staleTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
-  const saveMutation = useMutation({
-    mutationFn: () => saveInstalment({
-      data: { clientId, tenantId, periodStart, periodEnd, amount: Number(amount) },
-    }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["income-tax-instalments", clientId, tenantId] });
-      setEditing(false);
-      setAmount("");
-      toast.success("Income tax instalment saved");
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
   const gst = gstQuery.data;
   const payg = latestCompletedPaygMonth(paygQuery.data);
   const run = runGstQuery.data;
@@ -118,11 +88,13 @@ export function TaxObligationsWidget({
     // Same rule as the stored summary: PAYG withheld on paydays in the running period.
     ? Math.round(paygQuery.data.months.filter((m) => m.month >= runPeriod.from && m.month <= runPeriod.asAt).reduce((t, m) => t + m.withheld, 0) * 100) / 100
     : null;
-  const latestInstalment = instalmentsQuery.data?.instalments[0] ?? null;
+  const frequency = instalmentsQuery.data?.frequency ?? null;
+  const latestInstalment = frequency === "not_required" ? null : instalmentsQuery.data?.instalments[0] ?? null;
   const fwd = forwardTax({
     bills: billsQuery.data?.bills ?? [], today: todayIso, period: runPeriod,
     gst: gstCycle === "not_registered" ? 0 : run ? (run.statementNet ?? netGstAmount(run)) : null, payg: runPayg, paygRegistered,
-    instalment: latestInstalment ? { amount: latestInstalment.amount, due: basDueDate("quarter", latestInstalment.periodEnd) } : null,
+    instalment: latestInstalment ? { amount: latestInstalment.amount, due: instalmentDueDate(frequency, latestInstalment.periodEnd) } : null,
+    instalmentSetting: frequency ?? "unset",
   });
   const accountGap = run && run.closingBalance !== null && run.statementNet !== null ? Math.round((run.closingBalance - run.statementNet) * 100) / 100 : null;
   const busy = gstQuery.isLoading || paygQuery.isLoading || instalmentsQuery.isLoading || runGstQuery.isLoading;
@@ -142,7 +114,9 @@ export function TaxObligationsWidget({
             ? `${format(new Date(`${fwd.building.from}T00:00:00`), "MMM")}–${format(new Date(`${fwd.building.to}T00:00:00`), "MMM yyyy")}`
             : format(new Date(`${fwd.building.from}T00:00:00`), "MMMM")}
           partPaid={(billsQuery.data?.bills ?? []).map((bill) => bill.total !== undefined && bill.total > bill.amount + 0.005)}
-          addInstalment={instalmentsQuery.data?.canEdit && !editing ? () => setEditing(true) : undefined}
+          today={todayIso}
+          instalmentDisplay={frequency === "not_required" ? "not_required" : "required"}
+          settingsLink={instalmentsQuery.data?.canEdit ? <Link to="/clients/$clientId/settings/tax-reporting" params={{ clientId }} hash="income-tax-instalments" className="text-link underline-offset-2 hover:underline">Set in Client settings</Link> : undefined}
           details={<>
           {run?.unfiled?.status === "estimate" && run.unfiled.sales - run.unfiled.purchases !== 0 && (
             <p className="text-xs text-muted-foreground">GST includes an estimated {money(run.unfiled.sales - run.unfiled.purchases)} of unfiled amounts from earlier periods.</p>
@@ -158,20 +132,6 @@ export function TaxObligationsWidget({
         />
       )}
 
-      {editing && (
-        <form
-          className="mt-6 grid gap-4 border-t border-border pt-5 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end"
-          onSubmit={(event) => {
-            event.preventDefault();
-            saveMutation.mutate();
-          }}
-        >
-          <div className="space-y-2"><Label htmlFor={`${tenantId}-tax-start`}>Period start</Label><Input id={`${tenantId}-tax-start`} type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} required /></div>
-          <div className="space-y-2"><Label htmlFor={`${tenantId}-tax-end`}>Period end</Label><Input id={`${tenantId}-tax-end`} type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} required /></div>
-          <div className="space-y-2"><Label htmlFor={`${tenantId}-tax-amount`}>ATO amount</Label><Input id={`${tenantId}-tax-amount`} type="number" inputMode="decimal" min="0" max="999999999999.99" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} required /></div>
-          <div className="flex gap-2"><Button type="button" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button><Button type="submit" disabled={saveMutation.isPending}><Save className="mr-2 h-4 w-4" /> Save</Button></div>
-        </form>
-      )}
     </div>
   );
 }

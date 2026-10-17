@@ -1,3 +1,4 @@
+import { TAB_BY_ANCHOR } from "@/components/clients/ClientSettingsNav";
 /**
  * Setup checklist on client settings. Display only: every status comes from the
  * server, and each flag links to the section that fixes it.
@@ -12,15 +13,6 @@ import { getClientSetupChecklist, acknowledgeSetupItem } from "@/lib/setup-check
 import type { SetupChecklist } from "@/lib/setup-checklist.server";
 
 /** Which settings tab holds each checklist anchor. */
-const TAB_BY_ANCHOR: Record<string, string> = {
-  "xero-organisations": "xero",
-  "lodgement-cycles": "tax-reporting",
-  "report-basis": "tax-reporting",
-  "statutory-accounts": "tax-reporting",
-  "cost-classification": "cost-classification",
-  "bank-accounts": "banks",
-  cards: "cards",
-};
 
 /** Tabs with no automatic check that should still be reviewed once per client. */
 const REVIEW_TABS = [

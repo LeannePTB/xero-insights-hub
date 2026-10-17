@@ -1,5 +1,5 @@
 /** Standard chart transformations. Missing observations are never zero-filled. */
-export type PnlObservation = { date: string; income: number | null; expenses: number | null; profit: number | null; partial: boolean; source: string; basis?: string };
+export type PnlObservation = { date: string; income: number | null; expenses: number | null; profit: number | null; /** Marked wages within expenses; null = not split for this month. */ wages?: number | null; partial: boolean; source: string; basis?: string };
 export function ageingPoints(invoices: { daysOverdue: number; amountDue: number }[]) {
   const amounts = [0, 0, 0, 0, 0];
   for (const i of invoices) {
@@ -17,6 +17,19 @@ export function financialYear(today: string) {
   return { from: `${start}-07-01`, label: `FY${yy(start)}–${yy(start + 1)}`, months: (m >= 7 ? m - 7 : m + 5) + 1 };
 }
 /** July → current month of the current financial year; current month marked partial. */
+export const PNL_SERIES = [{ label: 'Income', kind: 'bar' as const }, { label: 'Expenses (including cost of sales)', kind: 'bar' as const }, { label: 'Net profit', kind: 'line' as const }];
+export const PNL_WAGES_SERIES = [{ label: 'Income', kind: 'bar' as const }, { label: 'Wages', kind: 'stack' as const }, { label: 'Other costs', kind: 'stack' as const }, { label: 'Net profit', kind: 'line' as const }];
+/** Same months; expenses split into Wages / Other costs where wages are known.
+ *  A month without a known split shows its whole expense bar as Other costs. */
+export function pnlWagesPoints(rows: PnlObservation[], today: string) {
+  return pnlPoints(rows, today).map((p, i) => {
+    const key = p.label.slice(0, 7);
+    const row = rows.filter(r => r.date.slice(0, 7) === key).sort((a, b) => b.date.localeCompare(a.date))[0];
+    const [inc, exp, profit] = p.values;
+    const w = row?.wages ?? null;
+    return { label: p.label, values: [inc, exp === null ? null : w, exp === null ? null : w === null ? exp : Math.round((exp - w) * 100) / 100, profit] };
+  });
+}
 export function pnlPoints(rows: PnlObservation[], today: string) {
   const fy = financialYear(today);
   const [sy] = fy.from.split('-').map(Number);

@@ -48,7 +48,7 @@ export function DemoPnl() {
 
 export function DemoTax() {
   return <Card icon={<Landmark className="h-4 w-4" />} title="Tax obligations">
-    <TaxObligationsBody forward={DEMO_TAX} buildingLabel="October" money={money} partPaid={[false]} paygRegistered
+    <TaxObligationsBody forward={DEMO_TAX} buildingLabel="October" money={money} partPaid={[false]} paygRegistered today="2026-10-17"
       details={<><p>Unfiled GST from earlier periods: none.</p><p>Last lodged period: Sep 2026 · GST $2,890 · PAYG $1,160</p></>} />
   </Card>;
 }

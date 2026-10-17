@@ -20,7 +20,7 @@ export function VectorChart({ title, points, series, currency = 'AUD', table = t
   return <figure className="min-w-0 space-y-1.5 py-1" aria-labelledby={id}>
     <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
       <figcaption id={id} className="text-sm font-semibold">{title} <span className="font-normal text-muted-foreground">· {currency}</span></figcaption>
-      {available > 0 && <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">{series.map((s, i) => <span key={s.label} className="inline-flex items-center gap-1.5"><span className={tones[i % tones.length]} aria-hidden="true">{s.kind === 'bar' ? '▥' : '●—'}</span>{s.label}</span>)}</div>}
+      {available > 0 && <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">{series.map((s, i) => <span key={s.label} className="inline-flex items-center gap-1.5"><span className={tones[i % tones.length]} aria-hidden="true">{s.kind !== 'line' ? '▥' : '●—'}</span>{s.label}</span>)}</div>}
     </div>
     {!available ? <p className="text-xs text-muted-foreground">No reliable figures available for this period.</p> : <>
       <svg ref={svgRef} viewBox="0 0 600 210" className="block h-auto max-h-64 w-full" role="group" aria-label={title}>
@@ -36,7 +36,7 @@ export function VectorChart({ title, points, series, currency = 'AUD', table = t
               {s.kind === 'line' && prev && <line x1={prev.x} y1={prev.y} x2={p.x} y2={p.y} stroke="currentColor" strokeWidth="2" strokeDasharray={si > 1 ? '5 3' : undefined}/>}
               <g role="button" tabIndex={0} aria-label={label} onFocus={() => setSelected(label)} onClick={() => setSelected(label)} onKeyDown={e => { if(e.key === 'Enter' || e.key === ' ') {e.preventDefault();setSelected(label);} }} className="cursor-pointer outline-none focus:stroke-foreground" strokeWidth="2">
                 <title>{label}</title>
-                {s.kind === 'bar' ? <rect x={p.barX} y={p.barY} width={p.width} height={Math.max(p.height, 1)} fill="currentColor" stroke="var(--foreground)" strokeWidth=".5"/> : <circle cx={p.x} cy={p.y} r="4" fill="currentColor" stroke="var(--foreground)" strokeWidth=".8"/>}
+                {s.kind !== 'line' ? <rect x={p.barX} y={p.barY} width={p.width} height={Math.max(p.height, 1)} fill="currentColor" stroke="var(--foreground)" strokeWidth=".5"/> : <circle cx={p.x} cy={p.y} r="4" fill="currentColor" stroke="var(--foreground)" strokeWidth=".8"/>}
               </g>
             </g>;
           })}

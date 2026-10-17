@@ -13,7 +13,7 @@ export const MONTHLY_REPORT_KEY = "monthly_management";
 // cap on large files and reported the ageing sections as failed.
 // v4: the rendered disclaimer text is frozen into the payload at generation
 // time, so an old report always shows the wording that was actually sent.
-export const MONTHLY_REPORT_PAYLOAD_VERSION = 13;
+export const MONTHLY_REPORT_PAYLOAD_VERSION = 14;
 // v13: the Business Health section is the three checks (`healthChecks`), built
 // by the same function as the dashboard card. Older reports keep `verdict`.
 // v10: only notes marked "Include in management report" are carried into the payload.
@@ -69,6 +69,9 @@ export type PnlSectionPayload = {
     expenses: number;
     netProfit: number;
     netMargin: number;
+    /** v14+: wages marked in Cost classification, shown on their own line.
+     *  Presentation only — gross and net profit above are unchanged. */
+    wagesSplit?: { wages: number; costOfSalesExWages: number; overheadsExWages: number; accounts: number };
   };
 };
 

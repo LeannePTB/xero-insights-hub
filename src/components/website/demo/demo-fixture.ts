@@ -70,11 +70,11 @@ export const DEMO_SUPER = {
 export const DEMO_BREAKEVEN = { revenue: 33556, target: 26400, monthlyFixed: 17160, margin: 65 };
 
 export const DEMO_OVERVIEW = [
-  { name: "Harbour Studio", onTrack: 1, red: true, cash: 28600, next: "$4,050 · 21 Oct", overdue: false, building: "Building ~$7,946 (Nov)" },
-  { name: "Saltbush Joinery", onTrack: 3, red: false, cash: 61200, next: "$2,180 · 21 Oct", overdue: false, building: "Building ~$3,420 (Nov)" },
-  { name: "Kestrel Physiotherapy", onTrack: 2, red: false, cash: 19450, next: "$3,310 · 28 Oct", overdue: false, building: "Building ~$1,960 (Nov)" },
-  { name: "Copperleaf Catering", onTrack: 0, red: true, cash: 4120, next: "$6,870 · 28 Sep", overdue: true, building: "Building ~$5,140 (Oct)" },
-  { name: "Northpoint Landscapes", onTrack: 2, red: false, cash: 37800, next: "$1,540 · 21 Oct", overdue: false, building: "Building ~$2,250 (Nov)" },
+  { name: "Harbour Studio", onTrack: 1, red: true, cash: 28600, next: "$4,050 · 21 Oct", overdue: false, building: "Currently accruing · ~$7,946 (Nov)" },
+  { name: "Saltbush Joinery", onTrack: 3, red: false, cash: 61200, next: "$2,180 · 21 Oct", overdue: false, building: "Currently accruing · ~$3,420 (Nov)" },
+  { name: "Kestrel Physiotherapy", onTrack: 2, red: false, cash: 19450, next: "$3,310 · 28 Oct", overdue: false, building: "Currently accruing · ~$1,960 (Nov)" },
+  { name: "Copperleaf Catering", onTrack: 0, red: true, cash: 4120, next: "$6,870 · 28 Sep", overdue: true, building: "Currently accruing · ~$5,140 (Oct)" },
+  { name: "Northpoint Landscapes", onTrack: 2, red: false, cash: 37800, next: "$1,540 · 21 Oct", overdue: false, building: "Currently accruing · ~$2,250 (Nov)" },
 ];
 
 /** Fictional multi-company group. Inter-company loans net to zero across the group. */
@@ -93,14 +93,14 @@ export const DEMO_TRIXIE = {
   question: "How's our cash looking this month?",
   answer: [
     "Cash at bank covers about 1.4 months of costs, which is enough for now but worth watching.",
-    "The $4,050 September BAS is due on 21 Oct, and about $7,946 is building for the November BAS.",
+    "The $4,050 September BAS is due on 21 Oct, and about $7,946 is currently accruing for the November BAS.",
     "Only 62% of recent invoices were paid within terms. Chasing the slow payers would be the quickest way to strengthen cash.",
   ],
   keyNumbers: [
     ["Cash at bank", "A$28,600"],
     ["Cash cover", "1.4 months"],
     ["BAS due 21 Oct", "A$4,050"],
-    ["Building (Nov)", "~A$7,946"],
+    ["Currently accruing (Nov)", "~A$7,946"],
     ["Paid within terms", "62%"],
   ] as const,
 };
