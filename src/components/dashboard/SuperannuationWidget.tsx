@@ -180,3 +180,21 @@ export function SuperannuationWidget({
     </div>
   );
 }
+
+function SgQuarterTable({ rows, fmt }: { rows: import("@/lib/payday-super").SgQuarterRow[]; fmt: (n: number) => string }) {
+  if (!rows.length) return null;
+  return (
+    <div className="divide-y divide-border">
+      <div className="grid grid-cols-3 gap-3 pb-2 text-xs text-muted-foreground">
+        <span>SG quarter</span><span>Super from pay runs</span><span>SG due</span>
+      </div>
+      {rows.map((q) => (
+        <div key={q.from} className="grid grid-cols-3 gap-3 py-2 text-sm">
+          <span>{q.label}{q.current ? <span className="block text-xs text-muted-foreground">Current quarter</span> : null}</span>
+          <span className="tabular-nums">{fmt(q.superFromPayRuns)}</span>
+          <span>{format(new Date(`${q.due}T00:00:00`), "d MMM yyyy")}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
