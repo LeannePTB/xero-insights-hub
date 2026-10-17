@@ -3,6 +3,7 @@
 // `@/lib/xero/api.server`.
 
 import { nextDueItems, superDueNext } from "@/lib/tax/forward-stored";
+import { dueNowItems } from "@/components/dashboard/tax-obligations";
 import { lateSharePct, splitDebtors } from "@/lib/health/health-checks";
 import { PERIOD_END_BS_KEYS, classifiedAccounts } from "@/lib/health/health-checks.server";
 import { bankReconWarning, parseStored, statementPosition } from "./bank-reconciliation";
@@ -388,10 +389,11 @@ export async function buildOverview(
         if (!fw) return { taxNext: null, taxBuilding: null, superDue: null, taxItems: [] };
         const sup = superDueNext(today?.superOwed ?? null, fw.payRuns);
         const items = nextDueItems(fw.tax, sup);
-        const first = [...fw.tax.owing].sort((a, b) => (a.due < b.due ? -1 : 1))[0];
+        const dueNow = dueNowItems(fw.tax);
+        const first = [...dueNow].sort((a, b) => (a.due < b.due ? -1 : 1))[0];
         const b = fw.tax.building;
         const taxNext = first
-          ? { amount: fw.tax.owing.filter((o) => o.due === first.due).reduce((t, o) => t + o.amount, 0), due: first.due, overdue: first.overdue }
+          ? { amount: Math.round(dueNow.filter((o) => o.due === first.due).reduce((t, o) => t + o.amount, 0) * 100) / 100, due: first.due, overdue: first.overdue }
           : b.total !== null && b.total > 0 ? { amount: b.total, due: b.due, overdue: false } : null;
         return {
           taxNext,

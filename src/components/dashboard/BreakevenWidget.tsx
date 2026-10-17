@@ -376,12 +376,12 @@ export function BreakevenWidget({
             {isAdvisor && clientId && (
               <p className="mt-4 text-xs text-muted-foreground">
                 <Link
-                  to="/clients/$clientId/settings"
+                  to="/clients/$clientId/settings/account-setup"
                   params={{ clientId }}
                   hash="account-setup-cost"
                   className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-2"
                 >
-                  <Settings2 className="h-3 w-3" /> Cost classification settings
+                  <Settings2 className="h-3 w-3" /> Account setup → Costs
                 </Link>
               </p>
             )}

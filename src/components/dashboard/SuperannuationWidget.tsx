@@ -1,4 +1,5 @@
 import { DashboardCardHeader, CompactCardState } from "./DashboardCardHeader";
+import { Link } from "@tanstack/react-router";
 import { staggered, xeroQueryRetry } from "@/lib/xero/live-load";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -45,11 +46,11 @@ export function SuperannuationWidget({
 
   if (!isLoading && !error && data && data.status !== 'available') {
     const explanation = data.status === 'no_super_accounts'
-      ? 'This Xero file has no superannuation account on its balance sheet.'
+      ? <>This Xero file has no super liability account (e.g. "Superannuation Payable") on its balance sheet, so unpaid super can't be shown.{clientId ? <> If super is held in another account, tag it in <Link to="/clients/$clientId/settings/account-setup" params={{ clientId }} hash="account-setup-tax" className="text-link hover:underline">Account setup → Tax &amp; super</Link>.</> : null}</>
       : data.status === 'payroll_not_registered'
         ? 'This client is not registered for PAYG withholding, so payroll figures are not requested.'
         : 'Set how often this client lodges PAYG withholding before payroll figures can be shown.';
-    return <CompactCardState label={tenantName} title="Superannuation not yet paid" icon={<PiggyBank className="h-4 w-4"/>} summary={data.status === 'no_super_accounts' ? 'No superannuation account' : 'Payroll figures unavailable'} explanation={explanation} source={data.source} isFetching={isFetching}/>;
+    return <CompactCardState label={tenantName} title="Superannuation not yet paid" icon={<PiggyBank className="h-4 w-4"/>} summary={data.status === 'no_super_accounts' ? 'No super liability account in Xero' : 'Payroll figures unavailable'} explanation={explanation} source={data.source} isFetching={isFetching}/>;
   }
 
   return (

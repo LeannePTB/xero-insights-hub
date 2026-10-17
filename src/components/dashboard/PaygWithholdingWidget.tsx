@@ -12,6 +12,7 @@ import { useTenantCurrency, formatMoneyExact } from "@/components/dashboard/useT
 import { CardFreshness } from "@/components/dashboard/CardFreshness";
 import { getLodgedTaxBills } from "@/lib/xero/lodged-tax.functions";
 import { paygMonthState } from "./tax-obligations";
+import { getStoredTaxPosition } from "@/lib/tax/tax-position.functions";
 
 /**
  * PAYG withholding, month by month.
@@ -46,6 +47,13 @@ export function PaygWithholdingWidget({
     queryFn: () => fetchBills({ data: { tenantId, widget: "payg_withholding" } }),
     staleTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
+  });
+  const fetchPosition = useServerFn(getStoredTaxPosition);
+  // Same shared tax position as Tax obligations, Business Health and Overview (ledger tie-out only).
+  const positionQ = useQuery({
+    queryKey: ["tax-position", clientId, tenantId, "payg"],
+    queryFn: () => fetchPosition({ data: { tenantId, widget: "payg_withholding" } }),
+    staleTime: 10 * 60 * 1000, retry: false, refetchOnWindowFocus: false,
   });
   const currency = useTenantCurrency(tenantId);
   const fmt = (n: number) => formatMoneyExact(n, currency);
@@ -153,13 +161,25 @@ export function PaygWithholdingWidget({
                     </>
                   ) : (
                     <>
-                      <span className="font-medium tabular-nums">{fmt(available.residue)}</span> of
-                      this balance is not accounted for by any whole month of pay runs — it is shown
-                      as an amount only, and is not assigned to an earlier month.
+                      <span className="font-medium tabular-nums">{fmt(available.residue)}</span> is an
+                      older balance in Xero not matched to a pay run (e.g. opening balance or earlier
+                      periods) — check in Xero. It is not assigned to a month.
                     </>
                   )}
                 </p>
               )}
+              {(() => {
+                const pos = positionQ.data?.tax;
+                const runs = pos?.building.paygPayRuns;
+                const moved = pos?.building.payg;
+                if (runs == null || moved == null) return null;
+                return <p className="mt-2 text-xs text-muted-foreground">
+                  Difference: this month's pay runs withheld {fmt(runs)}, but the PAYG account in Xero rose {fmt(moved)} since the last period end ({fmt(Math.abs(runs - moved))} {runs > moved ? "less" : "more"}). Usually a payment, journal or a pay run posted to another date — check the account's transactions in Xero.
+                </p>;
+              })()}
+              <p className="mt-2 text-xs text-muted-foreground">
+                If this has been paid, record the payment in Xero (Spend money to the PAYG Withholdings Payable account) and refresh.
+              </p>
             </div>
           )}
 
@@ -197,7 +217,8 @@ export function PaygWithholdingWidget({
           <ul className="mt-5 divide-y divide-border rounded-xl border border-border">
             {available.months.map((m) => {
               const state = paygMonthState(m, billsQ.data?.bills ?? [], billsQ.data?.complete === true);
-              const label = state === "lodged_part_paid" ? "Lodged · part paid" : state === "lodged_owing" ? "Lodged · still owing" : state === "owing" ? "Still owing" : "Paid";
+              const olderBalance = available.residue > 0.005 && available.residueKind !== "since_last_pay_run";
+              const label = state === "lodged_part_paid" ? "Lodged · part paid" : state === "lodged_owing" ? "Lodged · still owing" : state === "owing" ? "Still owing" : olderBalance ? "Paid or in older balance" : "Paid";
               return <li key={m.month} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
                 <span className="min-w-0">
                   <span className="text-sm">{monthLabel(m.month)}</span>
@@ -211,7 +232,7 @@ export function PaygWithholdingWidget({
                   {state !== "unknown" && (!isPaidUp || state.startsWith("lodged")) && (
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        state !== "paid"
+                        state !== "paid" || olderBalance
                           ? "bg-info/10 text-info"
                           : "bg-success/10 text-success"
                       }`}
