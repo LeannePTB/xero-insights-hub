@@ -32,4 +32,3 @@
 - Period video uses separate storage, caller-scoped audited RPCs and a draft-only attachment trigger; the unchanged notes builder preserves generation snapshots.
 - Health uses the DB visibility/release rule; tax bill labels share `lodgedAtoBills` through a stored-only, card-gated reader (no access grant).
 - Boxes (cards, table rows, inputs, dialogs, tiles) use `bg-card`; only pages use `bg-background`; header rows may tint `bg-muted/30` — owner wants white boxes on grey.
-- Retired cards (`status='retired'`) keep code/data but fail every `available` gate; restore via status only.
