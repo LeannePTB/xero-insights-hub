@@ -52,29 +52,3 @@ export const setCostClassificationEnabled = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
-
-/**
- * Remove stored tags. Used both to return an active account to Unclassified and
- * to clear stale rows whose account no longer exists in Xero. "Unclassified"
- * is therefore absence of a row, never a value stored in `classification`.
- */
-export const removeCostClassifications = createServerFn({ method: "POST" })
-  .middleware([requireAal2])
-  .inputValidator(
-    (input: { clientId: string; tenantId: string; accountNames: string[] }) => input,
-  )
-  .handler(async ({ data, context }) => {
-    const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
-    await assertClientDataAccessForClient(context.userId, data.clientId);
-    const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
-    await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
-    if (data.accountNames.length === 0) return { ok: true };
-    const { error } = await context.supabase
-      .from("account_setup_cost_v" as any)
-      .delete()
-      .eq("client_id", data.clientId)
-      .eq("tenant_id", data.tenantId)
-      .in("account_name", data.accountNames);
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
