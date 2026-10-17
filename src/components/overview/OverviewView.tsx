@@ -17,7 +17,9 @@ import { Label } from "@/components/ui/label";
 import { PageContainer } from "@/components/PageContainer";
 import { ResyncHeader, ResyncRowControl, useResyncQueue } from "@/components/overview/ResyncControls";
 import { billStatus, organisationToday } from "@/components/dashboard/tax-obligations";
+import { TONE, PILL_BASE, billTone } from "@/components/dashboard/status-tone";
 const statusText = (due: string, amount: number) => { const st = billStatus(due, organisationToday(), amount); return st.detail ? `${st.label} · ${st.detail}` : st.label; };
+const StatusChip = ({ due, amount }: { due: string; amount: number }) => { const st = billStatus(due, organisationToday(), amount); return <span className={`${PILL_BASE} ${TONE[billTone(st.kind)].pill}`}>{st.detail ? `${st.label} · ${st.detail}` : st.label}</span>; };
 
 
 type Bucket = OverviewRow["bucket"];
@@ -262,8 +264,8 @@ function GroupRows({ name, rows, onOpen, queue }: { name: string | null; rows: O
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-auto max-w-[16rem] flex-col items-end gap-0.5 whitespace-normal py-1 text-right" aria-label={`Tax and super owed for ${r.clientName}`}>
-                  <span className={r.taxNext?.overdue ? "font-semibold text-destructive" : ""}>
-                    {r.taxNext ? `Next due: ${money(r.taxNext.amount)} · ${dayMonth(r.taxNext.due)} · ${statusText(r.taxNext.due, r.taxNext.amount)}` : "—"}
+                  <span className={r.taxNext?.overdue ? "font-semibold text-health-alert" : ""}>
+                    {r.taxNext ? <>Next due: {money(r.taxNext.amount)} · {dayMonth(r.taxNext.due)} <StatusChip due={r.taxNext.due} amount={r.taxNext.amount} /></> : "—"}
                   </span>
                   {(r.taxBuilding || r.superDue) && (
                     <span className="text-xs font-normal text-muted-foreground">
